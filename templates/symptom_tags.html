@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* 1. RIGHT SIDE MAIN PAGE SCROLLBAR (Sidebar isolated) */
+    #main-content {
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    /* 2. NEUTRAL GREY SCROLLBAR FOR MAIN PAGE & MEDICINES BOX */
+    #main-content::-webkit-scrollbar,
+    .custom-med-scroll::-webkit-scrollbar {
+        width: 6px !important;
+        height: 6px !important;
+    }
+
+    #main-content::-webkit-scrollbar-track,
+    .custom-med-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9 !important;
+        border-radius: 10px !important;
+    }
+
+    #main-content::-webkit-scrollbar-thumb,
+    .custom-med-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        /* Sleek Grey */
+        border-radius: 10px !important;
+    }
+
+    #main-content::-webkit-scrollbar-thumb:hover,
+    .custom-med-scroll::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8 !important;
+        /* Darker Grey on Hover */
+    }
+
+    /* Firefox Grey Scrollbar */
+    #main-content,
+    .custom-med-scroll {
+        scrollbar-width: thin !important;
+        scrollbar-color: #cbd5e1 #f1f5f9 !important;
+    }
+
+    /* 3. MEDICINES SCROLLBOX LOCK */
+    .custom-med-scroll {
+        height: 115px !important;
+        max-height: 115px !important;
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        padding-right: 4px !important;
+    }
+
+    /* 4. DROPDOWNS & INPUTS ALIGNMENT FIX */
+    .card-header select.form-select,
+    .card-body select.form-select,
+    .card-body input.form-control {
+        height: 30px !important;
+        line-height: normal !important;
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        font-size: 11px !important;
+    }
+
+    .card-body .btn-primary {
+        height: 30px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+    }
+</style>
+
+
+<div class="container-fluid py-3 pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold text-primary mb-0"><i class="bi bi-tags-fill me-2"></i>Disease & Symptom Tags Master</h3>
+        <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addTagModal">
+            <i class="bi bi-plus-circle me-1"></i> Add New Symptom/Disease Tag
+        </button>
+    </div>
+    <!-- LIVE TAG SEARCH BAR -->
+    <div class="row mb-3">
+        <div class="col-md-6 col-lg-5">
+            <div class="input-group input-group-sm shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="tagMasterSearchInput" class="form-control border-start-0"
+                    placeholder="Type tag name to search (e.g. Fever, Loose Motion)..." onkeyup="searchTagCards()">
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIFORM 4 CARDS PER ROW WITH PERMANENT FIXED HEIGHT -->
+    <div class="row g-3">
+        {% for tag in tags %}
+        <div class="col-sm-6 col-md-4 col-lg-3 tag-card-col" data-tag-name="{{ tag.name | lower }}">
+            <!-- FIXED CARD HEIGHT CONTAINER -->
+            <div class="card shadow-sm border-0 rounded-3 overflow-hidden d-flex flex-column" style="height: 350px;">
+
+                <!-- SLEEK COMPACT HEADER -->
+                <div class="card-header bg-primary text-white p-2 px-3 flex-shrink-0">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fw-bold text-white text-truncate me-2" title="{{ tag.name }}">{{ tag.name }}
+                        </h6>
+
+                        <!-- Action Buttons Right Aligned Group -->
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <!-- Edit Tag Button -->
+                            <button type="button" class="btn p-0 text-white opacity-75 opacity-100-hover border-0"
+                                title="Edit Tag" data-id="{{ tag.id }}" data-name="{{ tag.name }}"
+                                data-desc="{{ tag.description or '' }}" onclick="openEditTagModal(this)">
+                                <i class="bi bi-pencil-square small"></i>
+                            </button>
+
+                            <!-- Delete Tag Link -->
+                            <a href="/symptom-tags/delete-tag/{{ tag.id }}" onclick="return confirm('Delete this tag?')"
+                                class="text-white opacity-75 opacity-100-hover" title="Delete Tag">
+                                <i class="bi bi-trash-fill small"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- PERFECTLY ALIGNED TARGET AGE SELECTOR -->
+                    <div class="bg-white bg-opacity-10 rounded p-1 border border-white border-opacity-20 mt-1">
+                        <div class="d-flex justify-content-between align-items-center gap-1">
+                            <label class="fw-medium text-white mb-0 text-nowrap" style="font-size: 10px;">
+                                <i class="bi bi-person-bounding-box me-1"></i>Age:
+                            </label>
+
+                            <form id="ageForm-{{ tag.id }}" action="/symptom-tags/update-tag-age/{{ tag.id }}"
+                                method="POST" class="m-0 flex-grow-1">
+                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%
+                                endif %}
+
+                                <select name="target_age"
+                                    class="form-select form-select-sm fw-semibold border-0 text-dark shadow-none py-0 px-1"
+                                    style="font-size: 10px; height: 22px; line-height: 1.1;"
+                                    data-tag-name="{{ tag.name }}" data-initial-val="{{ tag.target_age or 'all' }}"
+                                    onchange="handleAgeChange(this, '{{ tag.id }}')">
+                                    <option value="all" {% if tag.target_age=='all' or not tag.target_age %}selected{%
+                                        endif %}>All Ages</option>
+                                    <option value="infant" {% if tag.target_age=='infant' %}selected{% endif %}>● Infant
+                                        (0-2 Yrs)</option>
+                                    <option value="pediatric" {% if tag.target_age=='pediatric' %}selected{% endif %}>●
+                                        Pediatric (2-12 Yrs)</option>
+                                    <option value="adult" {% if tag.target_age=='adult' %}selected{% endif %}>● Adult
+                                        (12-60 Yrs)</option>
+                                    <option value="senior" {% if tag.target_age=='senior' %}selected{% endif %}>● Senior
+                                        (60+ Yrs)</option>
+                                </select>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPACT CARD BODY (FLEXIBLE INNER LAYOUT) -->
+                <div class="card-body p-2 d-flex flex-column justify-content-between overflow-hidden">
+                    <div>
+                        <p class="text-muted small mb-1 text-truncate" style="font-size: 10.5px;"
+                            title="{{ tag.description or '' }}">{{ tag.description or 'No description' }}</p>
+                        <div class="fw-bold text-secondary border-bottom pb-1 mb-1" style="font-size: 10.5px;">Mapped
+                            Medicines:</div>
+
+                        <!-- SCROLLBOX WITH FLEX GROW & FIXED INNER SCROLL -->
+                        <div class="custom-med-scroll"
+                            style="height: 110px; max-height: 110px; overflow-y: auto; overflow-x: hidden; padding-right: 2px;">
+                            <ul class="list-group list-group-flush mb-0">
+                                {% for m in tag.mappings %}
+                                <li class="list-group-item px-2 py-1 border mb-1 rounded bg-light"
+                                    style="font-size: 10.5px;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="text-truncate me-1" style="max-width: 120px;">
+                                            <strong class="d-block text-dark text-truncate" style="font-size: 10.5px;"
+                                                title="{{ m.medicine.name }}">
+                                                {{ m.medicine.name }}
+                                                {% if m.medicine.rx_required %}
+                                                <span
+                                                    class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle"
+                                                    style="font-size: 8px; padding: 1px 4px;">Rx</span>
+                                                {% endif %}
+                                                {% if m.medicine.medicine_type == 'generic' %}
+                                                <span
+                                                    class="badge rounded-pill bg-success-subtle text-success border border-success-subtle"
+                                                    style="font-size: 8px; padding: 1px 4px;">G</span>
+                                                {% elif m.medicine.medicine_type == 'pharma' %}
+                                                <span
+                                                    class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle"
+                                                    style="font-size: 8px; padding: 1px 4px;">P</span>
+                                                {% endif %}
+                                            </strong>
+                                            {% if m.dosage_note %}
+                                            <small class="text-muted d-block text-truncate" style="font-size: 9px;"><i
+                                                    class="bi bi-info-circle me-1"></i>{{ m.dosage_note }}</small>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                            <button class="btn btn-sm btn-outline-secondary p-0 px-1" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#editDosage-{{ m.id }}"
+                                                style="font-size: 10px;">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <a href="/symptom-tags/delete-mapping/{{ m.id }}" class="text-danger ms-1"
+                                                onclick="return confirm('Remove medicine?')" style="font-size: 10.5px;">
+                                                <i class="bi bi-x-circle-fill"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <!-- EDIT DOSAGE COLLAPSE -->
+                                    <div class="collapse mt-1 pt-1 border-top" id="editDosage-{{ m.id }}">
+                                        <form action="/symptom-tags/update-mapping/{{ m.id }}" method="POST"
+                                            class="d-flex gap-1 align-items-center">
+                                            {% if csrf_token %}<input type="hidden" name="csrf_token"
+                                                value="{{ csrf_token() }}">{% endif %}
+                                            <input type="text" name="dosage_note"
+                                                class="form-control form-control-sm p-1"
+                                                value="{{ m.dosage_note or '' }}" placeholder="Dosage"
+                                                style="font-size: 9.5px; height: 20px;">
+                                            <button type="submit" class="btn btn-sm btn-success p-0 px-1"
+                                                style="font-size: 9.5px; height: 20px;">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                                {% else %}
+                                <li class="list-group-item px-0 text-muted italic border-0 py-2 text-center"
+                                    style="font-size: 10px;">No medicines mapped yet.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- SLEEK MAP MEDICINE FORM FIXED AT BOTTOM -->
+                    <form action="/symptom-tags/add-medicine" method="POST" class="bg-light p-1.5 rounded border mt-1">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <input type="hidden" name="tag_id" value="{{ tag.id }}">
+
+                        <div class="mb-1">
+                            <select name="medicine_id" class="form-select form-select-sm py-0 px-1 text-dark fw-medium"
+                                style="font-size: 10px; height: 24px; line-height: 1.2;" required>
+                                <option value="">-- Select Medicine --</option>
+                                {% for med in medicines %}
+                                <option value="{{ med.id }}">{{ med.name }} {% if med.rx_required %} (Rx){% endif %} {%
+                                    if med.medicine_type == 'generic' %}(G){%
+                                    elif med.medicine_type== 'pharma' %}(P){% endif %} ({{ med.quantity }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="dosage_note" class="form-control py-0 px-1" placeholder="Dosage"
+                                style="font-size: 10px; height: 22px;">
+                            <button class="btn btn-primary py-0 px-2 fw-semibold" type="submit"
+                                style="font-size: 10px; height: 22px;"><i class="bi bi-plus-lg"></i> Map</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <h5 class="text-muted">No disease tags created yet. Click above to create your first tag (e.g., Fever,
+                Acidity)!</h5>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+
+
+<!-- Modal: Add New Tag -->
+<div class="modal fade" id="addTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/symptom-tags" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Disease / Symptom Tag</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Symptom / Disease Name</label>
+                        <input type="text" name="tag_name" class="form-control"
+                            placeholder="e.g. Fever, Headache, Loose Motion" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description / Note (Optional)</label>
+                        <input type="text" name="description" class="form-control"
+                            placeholder="e.g. High temperature & body ache">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Save Tag</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Symptom Tag Modal -->
+<div class="modal fade" id="editTagModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom px-4 pt-4 pb-3">
+                <h5 class="modal-title fw-bold">Edit Disease / Symptom Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editTagForm" method="POST" action="">
+                <div class="modal-body px-4 py-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Symptom / Disease Name</label>
+                        <input type="text" id="editTagInputName" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold small">Description / Note (Optional)</label>
+                        <input type="text" id="editTagInputDesc" name="description" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- AGE UPDATE CONFIRMATION MODAL -->
+<div class="modal fade" id="confirmAgeUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark py-2">
+                <h6 class="modal-title fw-bold mb-0" id="confirmModalTitle">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i> Update Age Tag
+                </h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"
+                    onclick="cancelAgeUpdate()"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <p class="small text-secondary mb-1">Are you sure you want to change the target age group for</p>
+                <strong class="d-block text-dark mb-2" id="tagNameInModal">Tag Name</strong>
+                <span class="badge bg-light text-dark border small" id="ageChangeDetails">Change Age</span>
+            </div>
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal"
+                    onclick="cancelAgeUpdate()">Cancel</button>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="proceedAgeUpdate()">Yes,
+                    Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeFormToSubmit = null;
+    let activeSelectElem = null;
+    let previousAgeValue = '';
+
+    function handleAgeChange(selectElem, tagId) {
+        let initialVal = selectElem.getAttribute('data-initial-val') || 'all';
+        let newVal = selectElem.value;
+        let tagName = selectElem.getAttribute('data-tag-name');
+
+        // Case 1: First time setting or selecting same value -> Direct Submit
+        if (initialVal === 'all' || initialVal === newVal) {
+            document.getElementById('ageForm-' + tagId).submit();
+            return;
+        }
+
+        // Case 2: Re-updating an already set age -> Trigger Confirmation Modal
+        activeFormToSubmit = document.getElementById('ageForm-' + tagId);
+        activeSelectElem = selectElem;
+        previousAgeValue = initialVal;
+
+        document.getElementById('tagNameInModal').innerText = `"${tagName}"`;
+        document.getElementById('ageChangeDetails').innerText = `${initialVal.toUpperCase()} ➔ ${newVal.toUpperCase()}`;
+
+        var modal = new bootstrap.Modal(document.getElementById('confirmAgeUpdateModal'));
+        modal.show();
+    }
+
+    function proceedAgeUpdate() {
+        if (activeFormToSubmit) {
+            activeFormToSubmit.submit();
+        }
+    }
+
+    function cancelAgeUpdate() {
+        if (activeSelectElem && previousAgeValue) {
+            activeSelectElem.value = previousAgeValue; // Revert selection back
+        }
+    }
+    function searchTagCards() {
+        let input = document.getElementById('tagMasterSearchInput').value.toLowerCase().trim();
+        let cards = document.querySelectorAll('.tag-card-col');
+
+        cards.forEach(card => {
+            let tagName = card.getAttribute('data-tag-name') || '';
+            if (tagName.includes(input)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function openEditTagModal(btn) {
+        const tagId = btn.getAttribute('data-id');
+        const tagName = btn.getAttribute('data-name');
+        const tagDesc = btn.getAttribute('data-desc');
+
+        document.getElementById('editTagForm').action = '/edit_symptom_tag/' + tagId;
+        document.getElementById('editTagInputName').value = tagName;
+        document.getElementById('editTagInputDesc').value = tagDesc;
+
+        var editModal = new bootstrap.Modal(document.getElementById('editTagModal'));
+        editModal.show();
+    }
+</script>
+{% endblock %}

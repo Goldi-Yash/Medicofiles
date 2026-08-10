@@ -1,0 +1,1811 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-sliders text-primary me-2"></i>System & Pharma Configurations
+            </h3>
+            <p class="text-muted small mb-0">Manage billing rules, tax compliance, stock alerts, and print formats.</p>
+        </div>
+    </div>
+
+    {% if request.args.get('saved') %}
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> System settings saved successfully!
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/settings" enctype="multipart/form-data">
+        <div class="row g-4">
+
+            <!-- Left Tab Navigation Menu -->
+            <div class="col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="list-group list-group-flush custom-settings-nav p-2">
+
+                        <!-- Store Profile Tab -->
+                        {% if current_user.has_permission('settings', 'store') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1" id="tab-store-btn"
+                            data-bs-toggle="list" href="#tab-store">
+                            <i class="bi bi-shop me-2 text-primary"></i>Store Profile
+                        </a>
+                        {% endif %}
+
+                        <!-- Billing & Invoices Tab -->
+                        {% if current_user.has_permission('settings', 'billing') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1"
+                            id="tab-billing-btn" data-bs-toggle="list" href="#tab-billing">
+                            <i class="bi bi-receipt me-2 text-primary"></i>Billing & Invoices
+                        </a>
+                        {% endif %}
+
+                        <!-- Stock & Alerts Tab -->
+                        {% if current_user.has_permission('settings', 'stock') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1"
+                            id="tab-inventory-btn" data-bs-toggle="list" href="#tab-inventory">
+                            <i class="bi bi-box-seam me-2 text-primary"></i>Stock & Alerts
+                        </a>
+                        {% endif %}
+
+                        <!-- Tax & Accounting Tab -->
+                        {% if current_user.has_permission('settings', 'tax') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1" id="tab-tax-btn"
+                            data-bs-toggle="list" href="#tab-tax">
+                            <i class="bi bi-calculator me-2 text-primary"></i>Tax & Accounting
+                        </a>
+                        {% endif %}
+
+                        <!-- Security & Roles Tab -->
+                        {% if current_user.has_permission('settings', 'security') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1"
+                            id="tab-security-btn" data-bs-toggle="list" href="#tab-security">
+                            <i class="bi bi-shield-lock me-2 text-primary"></i>Security & Roles
+                        </a>
+                        {% endif %}
+
+                        <!-- Backup & Sync Tab -->
+                        {% if current_user.has_permission('settings', 'backup') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1" id="tab-backup-btn"
+                            data-bs-toggle="list" href="#tab-backup">
+                            <i class="bi bi-cloud-arrow-up me-2 text-primary"></i>Backup & Sync
+                        </a>
+                        {% endif %}
+
+                        <!-- Account & Security Tab -->
+                        {% if current_user.has_permission('settings', 'account') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1"
+                            id="tab-account-btn" data-bs-toggle="list" href="#tab-account">
+                            <i class="bi bi-person-badge me-2 text-primary"></i>Account & Security
+                        </a>
+                        {% endif %}
+
+                        <!-- Staff Management Tab -->
+                        {% if current_user.has_permission('settings', 'staff') %}
+                        <a class="list-group-item list-group-item-action fw-semibold rounded-3 mb-1"
+                            id="v-pills-staff-btn" data-bs-toggle="list" href="#v-pills-staff">
+                            <i class="bi bi-people-fill me-2 text-primary"></i>Staff Management
+                        </a>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Tab Content -->
+            <div class="col-lg-9">
+                <div class="tab-content">
+
+                    <!-- TAB 1: Store & Business Profile -->
+                    {% if current_user.has_permission('settings', 'store') %}
+                    <div class="tab-pane fade show active" id="tab-store" role="tabpanel">
+
+                        <!-- IMPORTANT: enctype="multipart/form-data" for File Uploads -->
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold text-dark mb-4 border-bottom pb-2">
+                                <i class="bi bi-shop me-2 text-primary"></i>1. Store Basic Profile
+                            </h5>
+
+                            <div class="row g-3">
+                                <!-- Logo Upload & Preview -->
+                                <div class="col-md-12 mb-2">
+                                    <label class="form-label fw-semibold small text-muted">Store Logo / Brand
+                                        Image</label>
+                                    <div class="d-flex align-items-center gap-3">
+                                        {% if config.logo_path %}
+                                        <div class="doc-preview-wrapper border" style="width: 75px; height: 75px;">
+                                            <img src="{{ url_for('static', filename=config.logo_path) }}"
+                                                style="width: 100%; height: 100%; object-fit: cover;">
+                                            <div class="delete-overlay"
+                                                onclick="confirmDeleteDoc('store_logo', 'Store Logo')"
+                                                title="Delete Logo">
+                                                <i class="bi bi-trash-fill text-white fs-4"></i>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="bg-light rounded-3 d-flex align-items-center justify-content-center border"
+                                            style="width: 75px; height: 75px;">
+                                            <i class="bi bi-shop fs-2 text-secondary"></i>
+                                        </div>
+                                        {% endif %}
+
+                                        <div>
+                                            <input type="file" name="store_logo"
+                                                class="form-control form-control-sm custom-file-blue" accept="image/*">
+                                            <small class="text-muted d-block mt-1">PNG, JPG, or WEBP up to 2MB (Appears
+                                                on bill header)</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Store Name *</label>
+                                    <input type="text" name="shop_name" class="form-control"
+                                        value="{{ config.shop_name or '' }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Store Contact Phone *</label>
+                                    <input type="text" name="phone" class="form-control"
+                                        value="{{ config.phone or '' }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Store Email Address</label>
+                                    <input type="email" name="store_email" class="form-control"
+                                        value="{{ config.email or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Operating Hours /
+                                        Timings</label>
+                                    <input type="text" name="operating_hours" class="form-control"
+                                        placeholder="e.g. 08:00 AM - 10:00 PM"
+                                        value="{{ config.operating_hours or '' }}">
+                                </div>
+
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small text-muted">Full Address / Street
+                                        *</label>
+                                    <textarea name="address" class="form-control" rows="2"
+                                        required>{{ config.address or '' }}</textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">City</label>
+                                    <input type="text" name="city" class="form-control" value="{{ config.city or '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">State</label>
+                                    <input type="text" name="state" class="form-control"
+                                        value="{{ config.state or '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Pincode</label>
+                                    <input type="text" name="pincode" class="form-control"
+                                        value="{{ config.pincode or '' }}">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small text-muted">Weekly Off Days</label>
+                                    <input type="text" name="off_days" class="form-control"
+                                        placeholder="e.g. Sunday or Open 7 Days" value="{{ config.off_days or '' }}">
+                                </div>
+                            </div>
+
+                            <!-- OWNER DETAILS SECTION -->
+                            <h5 class="fw-bold text-dark mt-5 mb-4 border-bottom pb-2">
+                                <i class="bi bi-person-vcard me-2 text-primary"></i>2. Store Owner Details
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Owner Full Name</label>
+                                    <input type="text" name="owner_name" class="form-control"
+                                        value="{{ config.owner_name or '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Owner Personal
+                                        Contact</label>
+                                    <input type="text" name="owner_contact" class="form-control"
+                                        value="{{ config.owner_contact or '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Owner Personal Email</label>
+                                    <input type="email" name="owner_email" class="form-control"
+                                        value="{{ config.owner_email or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">PAN Card No.
+                                        (Optional)</label>
+                                    <input type="text" name="owner_pan" class="form-control text-uppercase"
+                                        value="{{ config.owner_pan or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Aadhaar Card No.
+                                        (Optional)</label>
+                                    <input type="text" name="owner_aadhaar" class="form-control"
+                                        value="{{ config.owner_aadhaar or '' }}">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small text-muted">Owner ID/Kyc Document Upload
+                                        (PDF/Image)</label>
+                                    <input type="file" name="owner_doc"
+                                        class="form-control form-control-sm custom-file-blue" accept=".pdf,image/*">
+                                    {% if config.owner_doc_path %}
+                                    <div class="mt-2 d-inline-flex align-items-center gap-2">
+                                        <div class="doc-preview-wrapper px-2 py-1 bg-light border rounded">
+                                            <small class="text-success fw-semibold"><i
+                                                    class="bi bi-file-check me-1"></i> Owner Doc Uploaded</small>
+                                            <div class="delete-overlay"
+                                                onclick="confirmDeleteDoc('owner_doc', 'Owner KYC Document')"
+                                                title="Delete Document">
+                                                <i class="bi bi-trash-fill text-white fs-6"></i>
+                                            </div>
+                                        </div>
+                                        <a href="{{ url_for('static', filename=config.owner_doc_path) }}"
+                                            target="_blank" class="btn btn-sm btn-outline-primary py-0"><i
+                                                class="bi bi-eye"></i> View</a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- LEGAL & PHARMA LICENSES SECTION -->
+                            <h5 class="fw-bold text-dark mt-5 mb-4 border-bottom pb-2">
+                                <i class="bi bi-file-earmark-medical me-2 text-primary"></i>3. Legal & Pharma Compliance
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Drug License (DL) No. (Form
+                                        20/21) *</label>
+                                    <input type="text" name="dl_number" class="form-control"
+                                        value="{{ config.dl_number or '' }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">GSTIN Number
+                                        (Optional)</label>
+                                    <input type="text" name="gstin" class="form-control text-uppercase"
+                                        value="{{ config.gstin or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">FSSAI License No.
+                                        (Optional)</label>
+                                    <input type="text" name="fssai_no" class="form-control"
+                                        value="{{ config.fssai_no or '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Pharmacist Reg. No.
+                                        (Optional)</label>
+                                    <input type="text" name="pharmacist_reg_no" class="form-control"
+                                        value="{{ config.pharmacist_reg_no or '' }}">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-semibold small text-muted">Upload License / Legal
+                                        Documents (Combined PDF or Image)</label>
+                                    <input type="file" name="legal_doc"
+                                        class="form-control form-control-sm custom-file-blue" accept=".pdf,image/*">
+                                    {% if config.legal_doc_path %}
+                                    <div class="mt-2 d-inline-flex align-items-center gap-2">
+                                        <div class="doc-preview-wrapper px-2 py-1 bg-light border rounded">
+                                            <small class="text-success fw-semibold"><i
+                                                    class="bi bi-file-check me-1"></i> Legal Doc Uploaded</small>
+                                            <div class="delete-overlay"
+                                                onclick="confirmDeleteDoc('legal_doc', 'Legal License Document')"
+                                                title="Delete Document">
+                                                <i class="bi bi-trash-fill text-white fs-6"></i>
+                                            </div>
+                                        </div>
+                                        <a href="{{ url_for('static', filename=config.legal_doc_path) }}"
+                                            target="_blank" class="btn btn-sm btn-outline-primary py-0"><i
+                                                class="bi bi-eye"></i> View</a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-12 mt-3">
+                                    <label class="form-label fw-semibold small text-muted">Invoice Footer Note /
+                                        Disclaimer</label>
+                                    <input type="text" name="footer_note" class="form-control"
+                                        value="{{ config.footer_note or '' }}">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- TAB 2: Billing & Invoice Settings -->
+                    {% if current_user.has_permission('settings', 'billing') %}
+                    <div class="tab-pane fade" id="tab-billing">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-receipt me-2 text-primary"></i>Billing &
+                                Invoice Formatting</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Printer Format</label>
+                                    <select name="receipt_format" class="form-select">
+                                        <option value="thermal_80mm" {% if config.receipt_format=='thermal_80mm'
+                                            %}selected{% endif %}>POS Thermal Receipt (3 Inch / 80mm)</option>
+                                        <option value="a4_sheet" {% if config.receipt_format=='a4_sheet' %}selected{%
+                                            endif %}>Standard A4 Sheet</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Bill Number Prefix
+                                        Format</label>
+                                    <input type="text" name="invoice_prefix" class="form-control"
+                                        value="{{ config.invoice_prefix }}" placeholder="e.g. INV/2026/">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Default Patient Discount
+                                        (%)</label>
+                                    <input type="number" step="0.1" name="default_discount" class="form-control"
+                                        value="{{ config.default_discount }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch mt-4">
+                                        <input class="form-check-input" type="checkbox" name="enable_negative_stock"
+                                            id="negStock" {% if config.enable_negative_stock %}checked{% endif %}>
+                                        <label class="form-check-label fw-semibold small" for="negStock">Allow Billing
+                                            When Stock is 0 (Negative Stock)</label>
+                                    </div>
+                                </div>
+                                <!-- Require Doctor Name Toggle Switch -->
+                                <div class="col-md-12 mt-3">
+                                    <div
+                                        class="form-check form-switch card p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between flex-row">
+                                        <div>
+                                            <label class="form-check-label fw-semibold text-dark d-block mb-0"
+                                                for="requireDoctorSwitch">
+                                                Require Doctor Name During Billing For Prescription Sales
+                                            </label>
+                                            <span class="text-muted small">Enforce cashier to enter Doctor Name before
+                                                completing any sale receipt.</span>
+                                        </div>
+                                        <input class="form-check-input fs-5 ms-3" type="checkbox" role="switch"
+                                            id="requireDoctorSwitch" name="require_doctor_name" value="true" {% if
+                                            config and config.require_doctor_name %}checked{% endif %}>
+                                    </div>
+                                </div>
+                                <!-- Show/Hide Salt Composition Toggle -->
+                                <div class="col-md-12 mt-3">
+                                    <div
+                                        class="form-check form-switch card p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between flex-row">
+                                        <div>
+                                            <label class="form-check-label fw-semibold text-dark d-block mb-0"
+                                                for="saltPrintSwitch">
+                                                Show Salt / Composition Name on Invoice Receipt
+                                            </label>
+                                            <span class="text-muted small">Print medicine active salt/composition right
+                                                below the medicine name on bill.</span>
+                                        </div>
+                                        <input class="form-check-input fs-5 ms-3" type="checkbox" role="switch"
+                                            id="saltPrintSwitch" name="show_salt_on_print" value="true" {% if config and
+                                            config.show_salt_on_print %}checked{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- TAB 3: Inventory & Stock Alerts -->
+                    {% if current_user.has_permission('settings', 'stock') %}
+                    <div class="tab-pane fade" id="tab-inventory">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-box-seam me-2 text-primary"></i>Stock
+                                Alerts & Margins</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Near-Expiry Warning Threshold
+                                        (Days)</label>
+                                    <input type="number" name="expiry_alert_days" class="form-control"
+                                        value="{{ config.expiry_alert_days }}">
+                                    <span class="text-muted extra-small">Highlight items expiring within these many
+                                        days.</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Est. Net Profit Margin Rate
+                                        (%)</label>
+                                    <input type="number" step="0.1" name="profit_margin" class="form-control"
+                                        value="{{ config.profit_margin }}">
+                                    <span class="text-muted extra-small">Used for Dashboard net profit analytics.</span>
+                                </div>
+                                <hr class="my-4">
+                                <h6 class="fw-bold text-dark mb-3"><i
+                                        class="bi bi-sliders me-2 text-primary"></i>Category-Wise Low Stock Thresholds
+                                    (Units)</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Tablet Threshold</label>
+                                        <input type="number" name="thresh_tablet" class="form-control"
+                                            value="{{ config.thresh_tablet or 5 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Syrup Threshold</label>
+                                        <input type="number" name="thresh_syrup" class="form-control"
+                                            value="{{ config.thresh_syrup or 2 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Injection Threshold</label>
+                                        <input type="number" name="thresh_injection" class="form-control"
+                                            value="{{ config.thresh_injection or 2 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Ointment Threshold</label>
+                                        <input type="number" name="thresh_ointment" class="form-control"
+                                            value="{{ config.thresh_ointment or 3 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Capsule Threshold</label>
+                                        <input type="number" name="thresh_capsule" class="form-control"
+                                            value="{{ config.thresh_capsule or 5 }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold">Other Threshold</label>
+                                        <input type="number" name="thresh_other" class="form-control"
+                                            value="{{ config.thresh_other or 2 }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- TAB 4: Tax & Accounting -->
+                    {% if current_user.has_permission('settings', 'tax') %}
+                    <div class="tab-pane fade" id="tab-tax">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3 text-dark"><i
+                                    class="bi bi-calculator me-2 text-primary"></i>Taxation & Rounding Off</h5>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="round_off_bills" id="roundOff" {%
+                                    if config.round_off_bills %}checked{% endif %}>
+                                <label class="form-check-label fw-semibold small" for="roundOff">Auto Round-Off Invoice
+                                    Grand Total to Nearest ₹1</label>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- TAB 5: Security & Roles -->
+                    {% if current_user.has_permission('settings', 'security') %}
+                    <div class="tab-pane fade" id="tab-security" role="tabpanel">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+
+                            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                                <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger d-flex align-items-center justify-content-center"
+                                    style="width: 50px; height: 50px;">
+                                    <i class="bi bi-shield-lock-fill fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-dark">Admin Authorization PIN</h5>
+                                    <p class="text-muted small mb-0">PIN required when deleting transactions, modifying
+                                        stock, or altering ledger entries.</p>
+                                </div>
+                            </div>
+
+                            <!-- Active PIN Indicator Status -->
+                            <div
+                                class="alert alert-light border d-flex align-items-center justify-content-between rounded-3 p-3 mb-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <i class="bi bi-key-fill fs-3 text-primary"></i>
+                                    <div>
+                                        <strong class="d-block text-dark">Current Security Status</strong>
+                                        <span class="text-muted small">PIN Protection is <strong>Active</strong> (PIN is
+                                            masked: ••••)</span>
+                                    </div>
+                                </div>
+                                <span
+                                    class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Protected
+                                </span>
+                            </div>
+
+                            <!-- Flash Alerts Block -->
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm mb-3"
+                                role="alert">
+                                <i
+                                    class="bi {% if category == 'success' %}bi-check-circle-fill text-success{% else %}bi-exclamation-triangle-fill text-danger{% endif %} me-2 fs-5"></i>
+                                <span>{{ message }}</span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% endwith %}
+
+                            <h6 class="fw-bold text-dark mb-3"><i
+                                    class="bi bi-pencil-square me-2 text-primary"></i>Update Security PIN</h6>
+
+                            <div class="row g-3 mb-4">
+                                <!-- Old PIN / Auth Field -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">Current PIN or Account
+                                        Password</label>
+                                    <div class="input-group">
+                                        <input type="password" id="old_pin_input" name="current_admin_auth"
+                                            class="form-control" placeholder="Enter current PIN or account password">
+                                        <button class="btn btn-outline-secondary border-start-0" type="button"
+                                            onclick="togglePass('old_pin_input', 'eye_icon_pin_1')">
+                                            <i id="eye_icon_pin_1" class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Required to verify manager authorization before changing.
+                                    </div>
+                                </div>
+
+                                <!-- New PIN Field -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">New 4-Digit Security
+                                        PIN</label>
+                                    <div class="input-group">
+                                        <input type="password" id="new_pin_input" name="admin_pin" class="form-control"
+                                            maxlength="6" placeholder="Enter new PIN (e.g. 1234)">
+                                        <button class="btn btn-outline-secondary border-start-0" type="button"
+                                            onclick="togglePass('new_pin_input', 'eye_icon_pin_2')">
+                                            <i id="eye_icon_pin_2" class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- TAB 6: Backup & Sync -->
+                    {% if current_user.has_permission('settings', 'backup') %}
+                    <div class="tab-pane fade" id="tab-backup">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3 text-dark"><i
+                                    class="bi bi-cloud-arrow-up me-2 text-primary"></i>Database Backup</h5>
+                            <p class="text-muted small">Your SQLite database file (`instance/medical_store.db`) is
+                                safely stored locally.</p>
+                            <!-- Replace Existing Download Button -->
+                            <a href="{{ url_for('download_db_backup') }}"
+                                class="btn btn-outline-primary fw-semibold align-self-start">
+                                <i class="bi bi-download me-2"></i>Download Local DB Backup
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tab 7: Account & Security Tab Pane -->
+                    {% if current_user.has_permission('settings', 'account') %}
+                    <div class="tab-pane fade" id="tab-account" role="tabpanel">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+
+                            <!-- Professional Header Section -->
+                            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                                <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary d-flex align-items-center justify-content-center"
+                                    style="width: 50px; height: 50px;">
+                                    <i class="bi bi-person-gear fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-dark">User Account Details</h5>
+                                    <p class="text-muted small mb-0">Manage your credentials and security preferences.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Flash Alerts Block -->
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm mb-3"
+                                role="alert">
+                                <i
+                                    class="bi {% if category == 'success' %}bi-check-circle-fill text-success{% else %}bi-exclamation-triangle-fill text-danger{% endif %} me-2 fs-5"></i>
+                                <span>{{ message }}</span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% endwith %}
+
+                            <!-- Username & Email -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">Username</label>
+                                    <input type="text" name="username" class="form-control"
+                                        value="{{ current_user.username }}" required>
+                                </div>
+                                <!-- Email Field with Verify Button -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">Email Address</label>
+                                    <div class="input-group">
+                                        <input type="email" id="email_input" name="email" class="form-control"
+                                            value="{{ current_user.email }}" required>
+                                        <button class="btn btn-outline-primary" type="button"
+                                            onclick="triggerEmailOTP()">
+                                            <i class="bi bi-shield-check me-1"></i> Verify & Update
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Changing email requires OTP verification sent to the new
+                                        email address.</div>
+                                </div>
+
+                                <!-- OTP Verification Modal -->
+                                <div class="modal fade" id="otpModal" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content rounded-4 border-0 shadow">
+                                            <div class="modal-header border-0 pb-0">
+                                                <h5 class="modal-title fw-bold text-dark"><i
+                                                        class="bi bi-envelope-check text-primary me-2"></i>Verify New
+                                                    Email</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                    aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body py-4">
+                                                <p class="text-muted small mb-3">We have sent a 6-digit verification
+                                                    code to your new email address. Enter the OTP below to confirm
+                                                    update.</p>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold small text-muted">Enter 6-Digit
+                                                        OTP</label>
+                                                    <input type="text" id="otp_code_input"
+                                                        class="form-control text-center fs-4 fw-bold letter-spacing-2"
+                                                        maxlength="6" placeholder="000000">
+                                                </div>
+                                                <div id="otp_status_msg" class="small"></div>
+                                            </div>
+                                            <div class="modal-footer border-0 pt-0">
+                                                <button type="button" class="btn btn-light rounded-3"
+                                                    data-bs-dismiss="modal">Cancel</button>
+                                                <button type="button" class="btn btn-primary px-4 rounded-3"
+                                                    onclick="submitEmailOTP()">Verify & Save</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Password Section -->
+                            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-shield-lock me-2 text-primary"></i>Change
+                                Password</h6>
+
+                            <div class="row g-3 mb-4">
+                                <!-- Current Password -->
+                                <div class="col-12">
+                                    <label class="form-label text-muted small fw-semibold">Current Password</label>
+                                    <div class="input-group">
+                                        <input type="password" id="curr_pass" name="current_password"
+                                            class="form-control"
+                                            placeholder="Enter current password to authorize change">
+                                        <button class="btn btn-outline-secondary border-start-0" type="button"
+                                            onclick="togglePass('curr_pass', 'eye_icon_1')">
+                                            <i id="eye_icon_1" class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- New Password -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">New Password</label>
+                                    <div class="input-group">
+                                        <input type="password" id="new_pass" name="new_password" class="form-control"
+                                            placeholder="Minimum 6 characters">
+                                        <button class="btn btn-outline-secondary border-start-0" type="button"
+                                            onclick="togglePass('new_pass', 'eye_icon_2')">
+                                            <i id="eye_icon_2" class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Confirm New Password -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-semibold">Confirm New Password</label>
+                                    <div class="input-group">
+                                        <input type="password" id="conf_pass" name="confirm_password"
+                                            class="form-control" placeholder="Re-type new password">
+                                        <button class="btn btn-outline-secondary border-start-0" type="button"
+                                            onclick="togglePass('conf_pass', 'eye_icon_3')">
+                                            <i id="eye_icon_3" class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DANGER ZONE: DEACTIVATE ACCOUNT -->
+                            <div class="card border-danger border-opacity-25 bg-danger-subtle rounded-4 p-3 mt-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold text-danger mb-1"><i
+                                                class="bi bi-exclamation-triangle-fill me-2"></i>Danger Zone: Deactivate
+                                            Account</h6>
+                                        <p class="text-danger opacity-75 small mb-0">
+                                            Deactivating will lock your store access and log you out. Your inventory &
+                                            billing data remains 100% safe and can be restored within 30 days.
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-danger fw-bold text-nowrap px-3 py-2 ms-3"
+                                        data-bs-toggle="modal" data-bs-target="#deactivateAccountModal">
+                                        <i class="bi bi-person-x-fill me-1"></i> Deactivate Account
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 8th Tab Content: Staff Management -->
+                    {% if current_user.has_permission('settings', 'staff') %}
+                    <div class="tab-pane fade" id="v-pills-staff" role="tabpanel">
+                        <!-- Add New Staff Member Card with Mandatory OTP -->
+                        <div class="card border-0 shadow-sm rounded-3 mb-4">
+                            <div class="card-header bg-white py-3 border-0">
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="bi bi-person-plus-fill me-2 text-primary"></i>Add New Staff Member
+                                </h5>
+                                <small class="text-muted">Mandatory email OTP verification required before account
+                                    creation.</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- Staff Name -->
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold text-dark">Staff Full Name</label>
+                                        <input type="text" id="staff_name" class="form-control"
+                                            placeholder="e.g. Rahul Sharma">
+                                    </div>
+
+                                    <!-- Email Address with Send OTP Button -->
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold text-dark">Staff Email Address</label>
+                                        <div class="input-group">
+                                            <input type="email" id="staff_email" class="form-control"
+                                                placeholder="e.g. rahul@store.com">
+                                            <button class="btn btn-outline-primary fw-bold" type="button"
+                                                id="btnSendOtp" onclick="sendStaffOtp()">
+                                                <i class="bi bi-envelope-check me-1"></i> Send OTP
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- OTP Input (Initially Hidden) -->
+                                    <div class="col-md-4 d-none" id="otpContainer">
+                                        <label class="form-label fw-semibold text-dark">Enter Email OTP</label>
+                                        <div class="input-group">
+                                            <input type="text" id="staff_otp" class="form-control text-center fw-bold"
+                                                placeholder="6-Digit OTP" maxlength="6">
+                                            <button class="btn btn-success fw-bold" type="button" id="btnVerifyOtp"
+                                                onclick="verifyStaffOtp()">
+                                                <i class="bi bi-patch-check-fill me-1"></i> Verify OTP
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Verified Email Badge -->
+                                    <div class="col-12 d-none" id="verifiedBadge">
+                                        <span
+                                            class="badge bg-success-subtle text-success border border-success px-3 py-2 fs-6">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Email Verified Successfully
+                                        </span>
+                                    </div>
+
+                                    <!-- Login Password (Disabled until OTP Verified) -->
+                                    <div class="col-md-6 mt-3">
+                                        <label class="form-label fw-semibold text-dark">Set Login Password</label>
+                                        <div class="input-group">
+                                            <input type="password" id="staff_password" class="form-control"
+                                                placeholder="Set password" disabled>
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                onclick="togglePassInput('staff_password', 'icon_new_staff_pass')">
+                                                <i class="bi bi-eye-slash" id="icon_new_staff_pass"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Create Account Final Button (Disabled initially) -->
+                                    <div class="col-md-6 mt-3 d-flex align-items-end justify-content-end">
+                                        <button type="button" id="btnCreateStaff" onclick="submitVerifiedStaff()"
+                                            class="btn btn-primary fw-bold px-4 py-2" disabled>
+                                            <i class="bi bi-person-check-fill me-1"></i> Create Staff Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Staff Accounts List -->
+                        <div class="card border-0 shadow-sm rounded-3">
+                            <div class="card-header bg-white py-3 border-0">
+                                <h5 class="fw-bold text-dark mb-0">
+                                    <i class="bi bi-shield-lock-fill me-2 text-secondary"></i>Existing Staff Accounts
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3">Name</th>
+                                                <th>Email Address</th>
+                                                <th>Role</th>
+                                                <th>Password</th>
+                                                <th class="text-end pe-3">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for member in staff_members %}
+                                            <tr>
+                                                <td class="ps-3 fw-bold text-dark">{{ member.username }}</td>
+                                                <td><code class="text-primary">{{ member.email }}</code></td>
+                                                <td><span
+                                                        class="badge bg-info-subtle text-info border border-info-subtle">Cashier</span>
+                                                </td>
+                                                <!-- Password Column with Eye Icon Toggle -->
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span id="pass_text_{{ member.id }}"
+                                                            class="fw-bold font-monospace text-muted">••••••••</span>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-link p-0 text-secondary"
+                                                            data-password="{{ member.plain_password or 'N/A' }}"
+                                                            onclick="toggleTablePassword('{{ member.id }}', this)">
+                                                            <i class="bi bi-eye-slash fs-6"
+                                                                id="pass_icon_{{ member.id }}"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end pe-3">
+                                                    <button type="button" class="btn btn-sm btn-outline-info me-1"
+                                                        onclick="openPermissionsModal('{{ member.id }}', '{{ member.username }}')">
+                                                        <i class="bi bi-shield-lock-fill"></i> Access
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                                                        onclick="openEditStaffModal('{{ member.id }}', '{{ member.username }}', '{{ member.email }}')">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </button>
+
+                                                    <button type="button" onclick="deleteStaffMember('{{ member.id }}')"
+                                                        class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">
+                                                    No staff accounts created yet.
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- SUBMIT BUTTON -->
+                <div class="mt-4 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold px-5 rounded-3 shadow-sm">
+                        <i class="bi bi-check2-circle me-2"></i>Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+    <!-- Edit Staff Modal -->
+    <div class="modal fade" id="editStaffModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-pencil-square text-primary me-2"></i>Edit Staff Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="edit_staff_id">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Full Name</label>
+                        <input type="text" id="edit_staff_name" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Email Address</label>
+                        <input type="email" id="edit_staff_email" class="form-control" required>
+                        <small class="text-muted">Update Email (No verification required)</small>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-shield-lock me-1"></i>Change Password
+                    </h6>
+
+                    <!-- Current Password -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Current Password</label>
+                        <div class="input-group">
+                            <input type="password" id="edit_staff_old_pass" class="form-control"
+                                placeholder="Enter current staff password to authorize">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="togglePassInput('edit_staff_old_pass', 'icon_old_pass')">
+                                <i class="bi bi-eye-slash" id="icon_old_pass"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- New Password -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">New Password</label>
+                        <div class="input-group">
+                            <input type="password" id="edit_staff_new_pass" class="form-control"
+                                placeholder="Minimum 6 characters">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="togglePassInput('edit_staff_new_pass', 'icon_new_pass')">
+                                <i class="bi bi-eye-slash" id="icon_new_pass"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary fw-bold" onclick="saveStaffEdits()">Save
+                        Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEACTIVATE CONFIRMATION MODAL -->
+    <div class="modal fade" id="deactivateAccountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 text-start">
+                <div class="modal-header bg-danger text-white rounded-top-4 py-3">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon-fill me-2"></i>Deactivate Your
+                        Account?</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/deactivate-account" method="POST">
+                    <div class="modal-body p-4">
+                        <p class="small text-muted mb-3">
+                            Are you sure you want to deactivate <strong>{{ current_user.username
+                                }}</strong>? You will be logged out immediately. You can
+                            reactivate anytime by logging back in with your password.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark">Enter Password to
+                                Confirm</label>
+                            <input type="password" name="password" class="form-control"
+                                placeholder="Type your account password" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-3"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm rounded-3 fw-bold">Confirm
+                            Deactivation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Granular Staff Access Modal -->
+    <div class="modal fade" id="permissionsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-light border-0">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-shield-check text-primary me-2"></i>Access & Permissions: <span
+                            id="perm_staff_name" class="text-primary"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="perm_staff_id">
+
+                    <!-- Section 1: Main Modules Access -->
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i
+                            class="bi bi-grid-fill me-2 text-primary"></i>1. Main Sidebar Modules Access</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_dashboard">
+                                <label class="form-check-label fw-semibold" for="m_dashboard">Dashboard</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_inventory">
+                                <label class="form-check-label fw-semibold" for="m_inventory">Inventory / Stocks</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_alerts">
+                                <label class="form-check-label fw-semibold" for="m_alerts">Stock Alerts</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_billing">
+                                <label class="form-check-label fw-semibold" for="m_billing">Billing & POS</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_ledger">
+                                <label class="form-check-label fw-semibold" for="m_ledger">Customer Ledger</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_symptom_tags">
+                                <label class="form-check-label fw-semibold" for="m_symptom_tags">Symptom Tags</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_assistant">
+                                <label class="form-check-label fw-semibold" for="m_assistant">Treatment
+                                    Assistant</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_add_medicine">
+                                <label class="form-check-label fw-semibold" for="m_add_medicine">Add New
+                                    Medicine</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_transactions">
+                                <label class="form-check-label fw-semibold" for="m_transactions">Transaction
+                                    History</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_distributors">
+                                <label class="form-check-label fw-semibold" for="m_distributors">Distributors
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch card p-2 ps-5 border-0 bg-light">
+                                <input class="form-check-input" type="checkbox" id="m_settings">
+                                <label class="form-check-label fw-semibold" for="m_settings">Settings Module</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Sub-Actions Permissions -->
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i
+                            class="bi bi-tools me-2 text-warning"></i>2. Sub-Actions (Add / Edit / Delete)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_inv_edit">
+                                <label class="form-check-label small fw-semibold" for="a_inv_edit">Edit
+                                    Stock/Medicine</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_inv_delete">
+                                <label class="form-check-label small fw-semibold text-danger" for="a_inv_delete">Delete
+                                    Stock/Medicine</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_bill_delete">
+                                <label class="form-check-label small fw-semibold text-danger" for="a_bill_delete">Delete
+                                    Invoices/Transactions</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_map_medicine">
+                                <label class="form-check-label small fw-semibold" for="a_map_medicine">Map Medicines to
+                                    Tags</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_delete_tag">
+                                <label class="form-check-label small fw-semibold" for="a_delete_tag">Delete
+                                    Symptom/Disease Tags</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_delete_mapping">
+                                <label class="form-check-label small fw-semibold" for="a_delete_mapping">Delete
+                                    Medicine-Tag Mappings</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_ledger_delete">
+                                <label class="form-check-label small fw-semibold" for="a_ledger_delete">Delete Ledger
+                                    Entries</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_ledger_edit">
+                                <label class="form-check-label small fw-semibold" for="a_ledger_edit">Edit Ledger
+                                    Entries</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_edit_distributor">
+                                <label class="form-check-label small fw-semibold" for="a_edit_distributor">Edit
+                                    Distributor</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="a_delete_distributor">
+                                <label class="form-check-label small fw-semibold" for="a_delete_distributor">Delete
+                                    Distributor</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Settings Specific Tabs Access -->
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i
+                            class="bi bi-gear-wide-connected me-2 text-info"></i>3. Settings Internal Tabs Access</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_store"><label class="form-check-label small fw-semibold" for="s_store">1.
+                                    Store Profile Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_billing"><label class="form-check-label small fw-semibold" for="s_billing">2.
+                                    Billing & Invoices Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_stock"><label class="form-check-label small fw-semibold" for="s_stock">3.
+                                    Stock & Alerts Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_tax"><label class="form-check-label small fw-semibold" for="s_tax">4. Tax &
+                                    Accounting Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_security"><label class="form-check-label small fw-semibold"
+                                    for="s_security">5. Security & Roles Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_backup"><label class="form-check-label small fw-semibold" for="s_backup">6.
+                                    Backup & Sync Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_account"><label class="form-check-label small fw-semibold" for="s_account">7.
+                                    Account & Security Tab</label></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="s_staff"><label class="form-check-label small fw-semibold text-danger"
+                                    for="s_staff">8. Staff Management Tab</label></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary fw-bold rounded-3 px-4"
+                        onclick="saveStaffPermissions()">
+                        <i class="bi bi-check-lg me-1"></i> Save Access Rights
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Document Confirmation Modal -->
+    <div class="modal fade" id="deleteDocModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete <strong id="delete_doc_title"></strong>? This action cannot be
+                    undone.
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteDocForm" method="POST" action="/delete-store-doc">
+                        <input type="hidden" name="doc_type" id="delete_doc_type_input">
+                        <button type="submit" class="btn btn-danger">Yes, Delete File</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmDeleteDoc(docType, docTitle) {
+            document.getElementById('delete_doc_title').innerText = docTitle;
+            document.getElementById('delete_doc_type_input').value = docType;
+            var delModal = new bootstrap.Modal(document.getElementById('deleteDocModal'));
+            delModal.show();
+        }
+    </script>
+
+    <style>
+        /* Blue Upload Button Styling */
+        .custom-file-blue::file-selector-button {
+            background-color: #0d6efd !important;
+            color: #ffffff !important;
+            border: none !important;
+            padding: 0.375rem 0.75rem !important;
+            margin-right: 10px !important;
+            border-radius: 0.375rem !important;
+            cursor: pointer !important;
+            font-weight: 500 !important;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .custom-file-blue::file-selector-button:hover {
+            background-color: #0b5ed7 !important;
+        }
+
+        /* Image / Document Delete Hover Overlay */
+        .doc-preview-wrapper {
+            position: relative;
+            display: inline-block;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .doc-preview-wrapper .delete-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(220, 53, 69, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            cursor: pointer;
+        }
+
+        .doc-preview-wrapper:hover .delete-overlay {
+            opacity: 1;
+        }
+
+        .custom-settings-nav {
+            counter-reset: settings-tab-counter;
+        }
+
+        .custom-settings-nav .list-group-item {
+            border: none;
+            padding: 12px 16px;
+            color: #475569;
+            transition: all 0.2s ease;
+            counter-increment: settings-tab-counter;
+        }
+
+        .custom-settings-nav .list-group-item i::after {
+            content: " " counter(settings-tab-counter) ". ";
+            font-weight: 600;
+        }
+
+        .custom-settings-nav .list-group-item.active {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .custom-settings-nav .list-group-item.active i {
+            color: #ffffff !important;
+        }
+
+        .extra-small {
+            font-size: 0.75rem;
+        }
+    </style>
+
+    <script>
+        function togglePass(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("bi-eye-slash");
+                icon.classList.add("bi-eye");
+            } else {
+                input.type = "password";
+                icon.classList.remove("bi-eye");
+                icon.classList.add("bi-eye-slash");
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Activate tab based on URL hash if present
+            var hash = window.location.hash;
+            if (hash) {
+                var triggerEl = document.querySelector('a[href="' + hash + '"]');
+                if (triggerEl) {
+                    var tab = new bootstrap.Tab(triggerEl);
+                    tab.show();
+                }
+            }
+        });
+
+        function triggerEmailOTP() {
+            const newEmail = document.getElementById('email_input').value.trim();
+            if (!newEmail) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+
+            fetch('/api/send-email-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_email: newEmail })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        var modal = new bootstrap.Modal(document.getElementById('otpModal'));
+                        modal.show();
+                    } else {
+                        alert("Error: " + data.message);
+                    }
+                });
+        }
+
+        function submitEmailOTP() {
+            const otp = document.getElementById('otp_code_input').value.trim();
+            if (otp.length !== 6) {
+                alert("Please enter a valid 6-digit OTP.");
+                return;
+            }
+
+            fetch('/api/verify-email-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ otp: otp })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        document.getElementById('otp_status_msg').innerHTML = `<span class="text-danger">${data.message}</span>`;
+                    }
+                });
+        }
+
+        function submitStaffAccount() {
+            let name = document.getElementById('staff_name').value.trim();
+            let email = document.getElementById('staff_email').value.trim();
+            let password = document.getElementById('staff_password').value.trim();
+
+            if (!email || !password) {
+                alert('Please fill Email and Password!');
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append('staff_name', name);
+            formData.append('staff_email', email);
+            formData.append('staff_password', password);
+
+            fetch('/create-staff', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to create staff account.');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function deleteStaffMember(userId) {
+            if (!confirm('Are you sure you want to delete this staff account?')) return;
+
+            fetch('/delete-staff/' + userId, {
+                method: 'POST'
+            })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete staff member.');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function toggleStaffPassword() {
+            let passwordInput = document.getElementById('staff_password');
+            let icon = document.getElementById('togglePasswordIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            }
+        }
+
+        // Modal opening and pre-filling details
+        function openEditStaffModal(id, name, email) {
+            document.getElementById('edit_staff_id').value = id;
+            document.getElementById('edit_staff_name').value = name;
+            document.getElementById('edit_staff_email').value = email;
+            document.getElementById('edit_staff_old_pass').value = '';
+            document.getElementById('edit_staff_new_pass').value = '';
+
+            let editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+            editModal.show();
+        }
+
+        // Saving edited details to Backend
+        function saveStaffEdits() {
+            let id = document.getElementById('edit_staff_id').value;
+            let name = document.getElementById('edit_staff_name').value.trim();
+            let email = document.getElementById('edit_staff_email').value.trim();
+            let oldPass = document.getElementById('edit_staff_old_pass').value.trim();
+            let newPass = document.getElementById('edit_staff_new_pass').value.trim();
+
+            if (!name || !email) {
+                alert('Name and Email cannot be empty!');
+                return;
+            }
+
+            // Password change verification checks
+            if (newPass) {
+                if (!oldPass) {
+                    alert('To change the password, please enter the current password!');
+                    return;
+                }
+                if (newPass.length < 6) {
+                    alert('New Password must be at least 6 characters long!');
+                    return;
+                }
+            }
+
+            let formData = new FormData();
+            formData.append('edit_name', name);
+            formData.append('edit_email', email);
+            formData.append('old_password', oldPass);
+            formData.append('new_password', newPass);
+
+            fetch('/edit-staff/' + id, {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Error updating staff details.');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function togglePassInput(inputId, iconId) {
+            let input = document.getElementById(inputId);
+            let icon = document.getElementById(iconId);
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            }
+        }
+
+        function toggleTablePassword(memberId, btn) {
+            let textSpan = document.getElementById('pass_text_' + memberId);
+            let icon = document.getElementById('pass_icon_' + memberId);
+            let actualPassword = btn.getAttribute('data-password');
+
+            if (textSpan.innerText === '••••••••') {
+                textSpan.innerText = actualPassword;
+                textSpan.classList.remove('text-muted');
+                textSpan.classList.add('text-dark');
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            } else {
+                textSpan.innerText = '••••••••';
+                textSpan.classList.remove('text-dark');
+                textSpan.classList.add('text-muted');
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            }
+        }
+
+        let isStaffEmailVerified = false;
+
+        // 1. Send OTP
+        function sendStaffOtp() {
+            let email = document.getElementById('staff_email').value.trim();
+            if (!email) {
+                alert('Please enter a valid email address!');
+                return;
+            }
+
+            let btn = document.getElementById('btnSendOtp');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+
+            let formData = new FormData();
+            formData.append('staff_email', email);
+
+            fetch('/send-staff-otp', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-envelope-check me-1"></i> Resend OTP';
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        document.getElementById('otpContainer').classList.remove('d-none');
+                    } else {
+                        alert(data.message || 'Failed to send OTP.');
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-envelope-check me-1"></i> Send OTP';
+                    console.error(err);
+                });
+        }
+
+        // 2. Strict Server Verification Call
+        function verifyStaffOtp() {
+            let email = document.getElementById('staff_email').value.trim();
+            let otp = document.getElementById('staff_otp').value.trim();
+
+            if (!otp || otp.length !== 6) {
+                alert('Please enter a 6-digit OTP!');
+                return;
+            }
+
+            let btn = document.getElementById('btnVerifyOtp');
+            btn.disabled = true;
+
+            let formData = new FormData();
+            formData.append('staff_email', email);
+            formData.append('staff_otp', otp);
+
+            fetch('/verify-staff-otp', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    if (data.status === 'success') {
+                        isStaffEmailVerified = true;
+                        document.getElementById('staff_email').readOnly = true;
+                        document.getElementById('btnSendOtp').disabled = true;
+                        document.getElementById('staff_otp').readOnly = true;
+                        btn.disabled = true;
+
+                        document.getElementById('verifiedBadge').classList.remove('d-none');
+                        document.getElementById('staff_password').disabled = false;
+                        document.getElementById('btnCreateStaff').disabled = false;
+                        alert('OTP Verified! You can now set the password.');
+                    } else {
+                        alert(data.message || 'Invalid OTP! Please try again.');
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    console.error(err);
+                });
+        }
+
+        // 3. Final Account Creation
+        function submitVerifiedStaff() {
+            if (!isStaffEmailVerified) {
+                alert('OTP Verification is mandatory!');
+                return;
+            }
+
+            let name = document.getElementById('staff_name').value.trim();
+            let email = document.getElementById('staff_email').value.trim();
+            let password = document.getElementById('staff_password').value.trim();
+
+            if (!password || password.length < 6) {
+                alert('Password must be at least 6 characters long!');
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append('staff_name', name);
+            formData.append('staff_email', email);
+            formData.append('staff_password', password);
+
+            fetch('/create-verified-staff', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Failed to create staff account.');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        function openPermissionsModal(staffId, staffName) {
+            document.getElementById('perm_staff_id').value = staffId;
+            document.getElementById('perm_staff_name').innerText = staffName;
+
+            fetch('/get-staff-permissions/' + staffId)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        let p = data.permissions;
+                        let m = p.modules || {};
+                        let a = p.actions || {};
+                        let s = p.settings || {};
+
+                        // Modules
+                        document.getElementById('m_dashboard').checked = !!m.dashboard;
+                        document.getElementById('m_inventory').checked = !!m.inventory;
+                        document.getElementById('m_alerts').checked = !!m.alerts;
+                        document.getElementById('m_billing').checked = !!m.billing;
+                        document.getElementById('m_ledger').checked = !!m.ledger;
+                        document.getElementById('m_symptom_tags').checked = !!m.symptom_tags;
+                        document.getElementById('m_assistant').checked = !!m.assistant;
+                        document.getElementById('m_add_medicine').checked = !!m.add_medicine;
+                        document.getElementById('m_transactions').checked = !!m.transactions;
+                        document.getElementById('m_distributors').checked = !!m.distributors;
+                        document.getElementById('m_settings').checked = !!m.settings;
+
+                        // Actions
+                        document.getElementById('a_inv_edit').checked = !!a.inventory_edit;
+                        document.getElementById('a_inv_delete').checked = !!a.inventory_delete;
+                        document.getElementById('a_bill_delete').checked = !!a.delete_bill;
+                        document.getElementById('a_map_medicine').checked = !!a.map_medicine;
+                        document.getElementById('a_delete_tag').checked = !!a.delete_tag;
+                        document.getElementById('a_delete_mapping').checked = !!a.delete_mapping;
+                        document.getElementById('a_ledger_delete').checked = !!a.ledger_delete;
+                        document.getElementById('a_ledger_edit').checked = !!a.ledger_edit;
+                        document.getElementById('a_edit_distributor').checked = !!a.edit_distributor;
+                        document.getElementById('a_delete_distributor').checked = !!a.delete_distributor;
+
+                        // Settings Tabs
+                        document.getElementById('s_store').checked = !!s.store;
+                        document.getElementById('s_billing').checked = !!s.billing;
+                        document.getElementById('s_stock').checked = !!s.stock;
+                        document.getElementById('s_tax').checked = !!s.tax;
+                        document.getElementById('s_security').checked = !!s.security;
+                        document.getElementById('s_backup').checked = !!s.backup;
+                        document.getElementById('s_account').checked = !!s.account;
+                        document.getElementById('s_staff').checked = !!s.staff;
+
+                        new bootstrap.Modal(document.getElementById('permissionsModal')).show();
+                    }
+                });
+        }
+
+        function saveStaffPermissions() {
+            let staffId = document.getElementById('perm_staff_id').value;
+
+            let payload = {
+                modules: {
+                    dashboard: document.getElementById('m_dashboard').checked,
+                    inventory: document.getElementById('m_inventory').checked,
+                    alerts: document.getElementById('m_alerts').checked,
+                    billing: document.getElementById('m_billing').checked,
+                    ledger: document.getElementById('m_ledger').checked,
+                    symptom_tags: document.getElementById('m_symptom_tags').checked,
+                    assistant: document.getElementById('m_assistant').checked,
+                    add_medicine: document.getElementById('m_add_medicine').checked,
+                    transactions: document.getElementById('m_transactions').checked,
+                    distributors: document.getElementById('m_distributors').checked,
+                    settings: document.getElementById('m_settings').checked
+                },
+                actions: {
+                    inventory_edit: document.getElementById('a_inv_edit').checked,
+                    inventory_delete: document.getElementById('a_inv_delete').checked,
+                    delete_bill: document.getElementById('a_bill_delete').checked,
+                    map_medicine: document.getElementById('a_map_medicine').checked,
+                    delete_tag: document.getElementById('a_delete_tag').checked,
+                    delete_mapping: document.getElementById('a_delete_mapping').checked,
+                    ledger_delete: document.getElementById('a_ledger_delete').checked,
+                    ledger_edit: document.getElementById('a_ledger_edit').checked,
+                    edit_distributor: document.getElementById('a_edit_distributor').checked,
+                    delete_distributor: document.getElementById('a_delete_distributor').checked
+
+                },
+                settings: {
+                    store: document.getElementById('s_store').checked,
+                    billing: document.getElementById('s_billing').checked,
+                    stock: document.getElementById('s_stock').checked,
+                    tax: document.getElementById('s_tax').checked,
+                    security: document.getElementById('s_security').checked,
+                    backup: document.getElementById('s_backup').checked,
+                    account: document.getElementById('s_account').checked,
+                    staff: document.getElementById('s_staff').checked
+                }
+            };
+
+            fetch('/update-staff-permissions/' + staffId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Error updating permissions.');
+                    }
+                });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Agar default active button DOM me render nahi hua (Store Profile disabled case)
+            let activeTabBtn = document.querySelector('.custom-settings-nav .list-group-item.active');
+
+            if (!activeTabBtn) {
+                let firstAvailableBtn = document.querySelector('.custom-settings-nav .list-group-item');
+                if (firstAvailableBtn) {
+                    firstAvailableBtn.classList.add('active');
+                    let targetId = firstAvailableBtn.getAttribute('href');
+                    if (targetId) {
+                        let targetPane = document.querySelector(targetId);
+                        if (targetPane) {
+                            // Turn off any stray active panes and activate the correct target pane
+                            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
+                            targetPane.classList.add('show', 'active');
+                        }
+                    }
+                }
+            }
+        });
+
+        function confirmDeleteDoc(docType, docTitle) {
+            document.getElementById('delete_doc_title').innerText = docTitle;
+            document.getElementById('delete_doc_type_input').value = docType;
+            var delModal = new bootstrap.Modal(document.getElementById('deleteDocModal'));
+            delModal.show();
+        }
+    </script>
+    {% endblock %}

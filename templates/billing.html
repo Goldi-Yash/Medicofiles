@@ -1,0 +1,616 @@
+{% extends 'base.html' %}
+
+{% block title %}Billing & POS - Medico{% endblock %}
+{% block nav_billing %}active{% endblock %}
+
+{% block content %}
+<style>
+    /* Cart Table Compact Inputs Fix */
+    #cartTableBody select.unit-select {
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+        min-width: 55px !important;
+    }
+
+    #cartTableBody input.qty-input,
+    #cartTableBody input.disc-input {
+        padding: 2px 4px !important;
+        text-align: center;
+        width: 45px !important;
+    }
+
+    #cartTableBody td {
+        padding: 6px 3px !important;
+        vertical-align: middle;
+    }
+
+    /* Billing Left Inventory Table Scroll Box */
+    .billing-inventory-scroll,
+    #medicineListContainer,
+    .billing-table-wrapper {
+        height: calc(100vh - 180px) !important;
+        max-height: calc(100vh - 180px) !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #cbd5e1 #f1f5f9 !important;
+    }
+
+    .billing-inventory-scroll::-webkit-scrollbar,
+    #medicineListContainer::-webkit-scrollbar,
+    .billing-table-wrapper::-webkit-scrollbar {
+        width: 5px !important;
+    }
+
+    .billing-inventory-scroll::-webkit-scrollbar-thumb,
+    #medicineListContainer::-webkit-scrollbar-thumb,
+    .billing-table-wrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 10px !important;
+    }
+</style>
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-2 pb-3 mb-3 border-bottom">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-0">Billing & POS</h1>
+        <p class="text-muted small mb-0">Select items, auto-calculate total, and generate customer receipts.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- LEFT PANEL: Medicine Search & Stock List -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3">
+                <!-- Search Bar -->
+                <div class="input-group mb-3">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" id="medSearch" class="form-control bg-light border-start-0"
+                        placeholder="Type medicine name or composition to add...">
+                </div>
+
+                <!-- Inventory List for Cart Selection -->
+                <div class="table-responsive billing-inventory-scroll" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Medicine</th>
+                                <th>Batch</th>
+                                <th>Expiry</th>
+                                <th>In Stock</th>
+                                <th>MRP</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medTableBody">
+                            <!-- Table Row Block in billing.html -->
+                            {%for med in medicines %}
+                            <tr>
+                                <td>
+                                    <strong class="d-block text-dark">
+                                        {{ med.name }}
+                                        {% if med.rx_required %}
+                                        <span
+                                            class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-1 py-0 align-middle"
+                                            style="font-size: 10px;">Rx</span>
+                                        {% endif %}
+                                        <!-- GENERIC / PHARMA BADGE -->
+                                        {% if med.medicine_type == 'generic' %}
+                                        <span
+                                            class="badge rounded-pill bg-success-subtle text-success border border-success-subtle ms-1"
+                                            style="font-size: 9px; padding: 2px 5px;" title="Generic Medicine">G</span>
+                                        {% elif med.medicine_type == 'pharma' %}
+                                        <span
+                                            class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-1"
+                                            style="font-size: 9px; padding: 2px 5px;"
+                                            title="Pharma / Branded Medicine">P</span>
+                                        {% endif %}
+                                    </strong>
+                                    <small class="text-muted">
+                                        {% if med.company %}<span class="fw-semibold text-primary">{{ med.company
+                                            }}</span> • {% endif %}
+                                        {{ med.category }}
+                                        {% if med.composition %} • {{ med.composition }}{% endif %}
+                                    </small>
+                                </td>
+                                <td><code class="text-muted">{{ med.batch_no }}</code></td>
+                                <td><span class="badge bg-light text-danger border">{{ med.expiry_date if
+                                        med.expiry_date else 'N/A' }}</span></td>
+                                <td class="text-center">
+                                    {% set p_size = (med.pack_size or med.strip_size or 10)|int %}
+                                    {% set cat_low = (med.category or '')|lower %}
+                                    {% set is_tab_cap = 'tablet' in cat_low or 'capsule' in cat_low %}
+
+                                    {% if is_tab_cap and p_size > 1 %}
+                                    {% set total_tabs = (med.quantity * p_size)|round|int %}
+                                    {% set full_strips = total_tabs // p_size %}
+                                    {% set loose_tabs = total_tabs % p_size %}
+                                    <span class="badge bg-secondary-subtle text-dark fw-bold">
+                                        {% if loose_tabs > 0 %}
+                                        {{ full_strips }} Str + {{ loose_tabs }} Tab
+                                        {% else %}
+                                        {{ full_strips }} Str
+                                        {% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-dark fw-bold">{{
+                                        "%.1f"|format(med.quantity) }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold">₹{{ "%.2f"|format(med.mrp) }}</td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-primary add-to-cart-btn"
+                                        data-id="{{ med.id }}" data-name="{{ med.name }}" data-age-rule="{{ age_rule }}"
+                                        data-company="{{ med.company if med.company else '' }}" data-mrp="{{ med.mrp }}"
+                                        data-category="{{ med.category }}" data-pack="{{ med.pack_size }}"
+                                        data-max="{{ med.quantity }}">
+                                        <i class="bi bi-plus-lg me-1"></i> Add
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    No medicines available in stock to bill.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL: Cart & Receipt Summary -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-cart3 me-2"></i> Current Cart</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="clearCartBtn"><i
+                        class="bi bi-trash"></i> Clear</button>
+            </div>
+            <div class="card-body p-3">
+
+                <!-- Customer Details -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <input type="text" id="custNameInput" class="form-control"
+                            placeholder="Customer Name (Optional)">
+                    </div>
+                    <div class="col-6">
+                        <input type="tel" id="custPhoneInput" class="form-control" placeholder="Phone Number">
+                    </div>
+                    <!-- Doctor Name Input Field -->
+                    {% if store_config and store_config.require_doctor_name %}
+                    <div class="col-12 mt-2">
+                        <input type="text" id="doctorNameInput" name="doctor_name" class="form-control form-control-sm"
+                            placeholder="Doctor Name (Required *)">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Cart Items Table with Disc % Column -->
+                <div class="table-responsive mb-2" style="min-height: 200px; max-height: 260px; overflow-y: auto;">
+                    <table class="table align-middle table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th style="width: 80px;">Unit</th> <!-- Strip vs Loose Tablet -->
+                                <th style="width: 60px;">Qty</th>
+                                <th style="width: 65px;">Disc %</th>
+                                <th>Price</th>
+                                <th class="text-end">Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartTableBody">
+                            <!-- Dynamically Populated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Payment, Discounts & Grand Total -->
+                <div class="border-top pt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">Overall Bill Discount (%):</span>
+                        <input type="number" id="overallDiscount" class="form-control form-control-sm text-end w-auto"
+                            placeholder="0" min="0" max="100" style="width: 90px !important;">
+                    </div>
+
+                    <!-- Payment Mode Dropdown -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">Payment Mode:</span>
+                        <select id="paymentMode" class="form-select form-select-sm w-auto"
+                            onchange="toggleCustomerCard()">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="UPI / QR">UPI / QR</option>
+                            <option value="Credit">Credit Ledger</option>
+                        </select>
+                    </div>
+
+                    <!-- Customer Selection for Udhar (Initially Hidden) -->
+                    <div id="customerUdharCard" class="card p-3 bg-light border-0 rounded-3 mb-3 style-card"
+                        style="display: none;">
+                        <label class="form-label small fw-semibold text-dark mb-1">Select Registered Customer (For
+                            Ledger)</label>
+                        <select class="form-select form-select-sm mb-2" id="customerSelect">
+                            <option value="">-- Choose Existing Customer --</option>
+                            {% for c in customers %}
+                            <option value="{{ c.id }}">{{ c.name }} ({{ c.phone }})</option>
+                            {% endfor %}
+                        </select>
+
+                        <div class="text-center text-muted small my-1" style="font-size: 0.75rem;">- OR Enter New
+                            Customer Details -</div>
+
+                        <input type="text" id="customerName" class="form-control form-control-sm mb-2"
+                            placeholder="Customer Name">
+                        <input type="tel" id="customerPhone" class="form-control form-control-sm"
+                            placeholder="10-digit Phone Number">
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="fs-5 fw-semibold d-block">Grand Total:</span>
+                            <small id="subtotalText" class="text-muted" style="font-size: 0.75rem;"></small>
+                        </div>
+                        <span class="fs-3 fw-bold text-success" id="grandTotal">₹0.00</span>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" id="quickPunchBtn"
+                                class="btn btn-warning w-100 py-2 fw-bold text-dark" disabled>
+                                <i class="bi bi-lightning-charge-fill me-1"></i> Quick Sale
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-2 fw-bold" disabled>
+                                <i class="bi bi-printer me-1"></i> Save & Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript Logic for Cart and Real-time Search -->
+<script>
+    // Direct Jinja JSON Injection without string quotes!
+    let pendingServerItems = JSON.parse('{{ pending_items | tojson | safe }}') || [];
+    let cart = [];
+
+    // Populate cart safely on page load with DUPLICATE CHECK
+    if (Array.isArray(pendingServerItems) && pendingServerItems.length > 0) {
+        pendingServerItems.forEach(pItem => {
+            let pId = parseInt(pItem.id) || 0;
+            if (pId > 0) {
+                let existing = cart.find(item => item.id === pId);
+                if (existing) {
+                    existing.quantity += parseInt(pItem.quantity || pItem.qty) || 1;
+                } else {
+                    cart.push({
+                        id: pId,
+                        name: pItem.name || 'Medicine Item',
+                        company: pItem.company || '',
+                        price: parseFloat(pItem.price || pItem.mrp) || 0,
+                        quantity: parseInt(pItem.quantity || pItem.qty) || 1,
+                        discount: 0,
+                        maxStock: parseInt(pItem.maxStock) || 999,
+                        unit: 'Strip',
+                        packSize: parseInt(pItem.packSize || pItem.pack_size) || 10,
+                        category: pItem.category || 'Tablet'
+                    });
+                }
+            }
+        });
+    }
+
+    // 3. Clear any stale LocalStorage
+    localStorage.removeItem('pos_pending_items');
+
+    // 4. Single DOMContentLoaded Event listener for rendering ONLY
+    document.addEventListener('DOMContentLoaded', function () {
+        renderCart();
+    });
+
+    // Stale storage clean-up
+    localStorage.removeItem('pos_pending_items');
+
+    // 1. Live Medicine Search
+    document.getElementById('medSearch').addEventListener('keyup', function () {
+        let term = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#medTableBody tr');
+        rows.forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+        });
+    });
+
+    // Add to Cart Event Listener
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            let id = parseInt(this.getAttribute('data-id'));
+            let name = this.getAttribute('data-name');
+            let company = this.getAttribute('data-company') || '';
+            let mrp = parseFloat(this.getAttribute('data-mrp'));
+            let maxStock = parseInt(this.getAttribute('data-max'));
+            let category = this.getAttribute('data-category') || '';
+            let packSize = parseInt(this.getAttribute('data-pack')) || 10;
+            let expiry = this.getAttribute('data-expiry') || 'N/A';
+
+            let existing = cart.find(item => item.id === id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                cart.push({ id, name, company, price: mrp, quantity: 1, discount: 0, maxStock, unit: 'Strip', packSize, category });
+            }
+            renderCart();
+        });
+    });
+
+    // 2. Render Cart with Selective Unit Selection Logic
+    function renderCart() {
+        let tbody = document.getElementById('cartTableBody');
+        tbody.innerHTML = '';
+        let itemsSubtotal = 0;
+
+        if (cart.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Cart is empty</td></tr>`;
+            document.getElementById('checkoutBtn').disabled = true;
+            document.getElementById('quickPunchBtn').disabled = true;
+            document.getElementById('grandTotal').innerText = '₹0.00';
+            return;
+        }
+
+        cart.forEach((item, index) => {
+            // Check if Category allows loose sales (Tablets & Capsules only)
+            let catLower = (item.category || '').toLowerCase();
+            let nameLower = (item.name || '').toLowerCase();
+            let isCuttable = catLower.includes('tablet') || catLower.includes('capsule') || nameLower.includes('tab') || nameLower.includes('cap');
+
+            // Base Price logic
+            let baseUnitPrice = (isCuttable && item.unit === 'Tablet') ? (item.price / item.packSize) : item.price;
+            let discountedPrice = baseUnitPrice * (1 - (item.discount || 0) / 100);
+            let itemTotal = discountedPrice * item.quantity;
+            itemsSubtotal += itemTotal;
+
+            // Unit Column HTML (Conditional rendering)
+            let unitCellHTML = '';
+            if (isCuttable) {
+                unitCellHTML = `
+            <select class="form-select form-select-sm p-0 px-1 unit-select" data-index="${index}" style="font-size: 0.75rem;">
+                    <option value="Strip" ${item.unit === 'Strip' ? 'selected' : ''}>Strip</option>
+                    <option value="Tablet" ${item.unit === 'Tablet' ? 'selected' : ''}>Tab</option>
+            </select>
+        `;
+            } else {
+                unitCellHTML = `<span class="badge bg-light text-dark border">Pack/Pcs</span>`;
+            }
+
+            tbody.innerHTML += `
+        <tr>
+            <td>
+                <strong class="small d-block">${item.name}</strong>
+                <small class="text-muted" style="font-size: 0.7rem;">
+                    ${item.company ? `<span class="text-primary fw-medium">${item.company}</span> • ` : ''}
+                    ${isCuttable ? (item.unit === 'Tablet' ? `(1 Tab = ₹${(item.price / item.packSize).toFixed(2)})` : `(Strip of ${item.packSize})`) : item.category}
+                </small>
+            </td>
+            <td>${unitCellHTML}</td>
+            <td>
+                <input type="number" class="form-control form-control-sm px-1 py-0 qty-input"
+                    value="${item.quantity}" min="1" data-index="${index}">
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm px-1 py-0 disc-input"
+                    value="${item.discount}" min="0" max="100" data-index="${index}" placeholder="0%">
+            </td>
+            <td class="small">₹${discountedPrice.toFixed(2)}</td>
+            <td class="fw-bold text-end small">₹${itemTotal.toFixed(2)}</td>
+            <td>
+                <button class="btn btn-link text-danger p-0 ms-1 remove-item" data-index="${index}">
+                    <i class="bi bi-x-circle-fill"></i>
+                </button>
+            </td>
+        </tr>
+        `;
+        });
+
+        // Subtotal & Grand Total Calculation
+        let overallDiscPct = parseFloat(document.getElementById('overallDiscount').value) || 0;
+        let rawGrandTotal = itemsSubtotal * (1 - overallDiscPct / 100);
+
+        // Round off check from backend config
+        const isRoundOffEnabled = "{{ 'true' if store_config and store_config.round_off_bills else 'false' }}" === "true";
+
+        let finalGrandTotal = isRoundOffEnabled ? Math.round(rawGrandTotal) : rawGrandTotal;
+
+        document.getElementById('grandTotal').innerText = `₹${parseFloat(finalGrandTotal).toFixed(2)}`;
+        document.getElementById('checkoutBtn').disabled = false;
+        document.getElementById('quickPunchBtn').disabled = false;
+
+        // Attach Event Listeners
+        document.querySelectorAll('.unit-select').forEach(select => {
+            select.addEventListener('change', function () {
+                let idx = this.getAttribute('data-index');
+                cart[idx].unit = this.value;
+                renderCart();
+            });
+        });
+
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('change', function () {
+                let idx = this.getAttribute('data-index');
+                cart[idx].quantity = parseInt(this.value) || 1;
+                renderCart();
+            });
+        });
+
+        document.querySelectorAll('.disc-input').forEach(input => {
+            input.addEventListener('change', function () {
+                let idx = this.getAttribute('data-index');
+                cart[idx].discount = parseFloat(this.value) || 0;
+                renderCart();
+            });
+        });
+
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', function () {
+                let idx = this.getAttribute('data-index');
+                cart.splice(idx, 1);
+                renderCart();
+            });
+        });
+    }
+
+    // Listen to Overall Bill Discount Input
+    document.getElementById('overallDiscount').addEventListener('input', renderCart);
+
+    // Clear Cart
+    document.getElementById('clearCartBtn').addEventListener('click', () => {
+        cart = [];
+        renderCart();
+    });
+
+    // 4. Checkout Sale Process AJAX
+    document.getElementById('checkoutBtn').addEventListener('click', function () {
+        if (cart.length === 0) return;
+
+        // Doctor Validation (Only check if input field exists on screen)
+        const docInput = document.getElementById('doctorNameInput');
+
+        if (docInput) {
+            const doctorVal = docInput.value.trim();
+            if (!doctorVal) {
+                alert("⚠️ Doctor Name is required according to store billing policy!");
+                docInput.focus();
+                return;
+            }
+        }
+
+        let custName = document.getElementById('custNameInput')?.value.trim() ||
+            document.getElementById('customerName')?.value.trim() ||
+            'Walk-in Customer';
+
+        let custPhone = document.getElementById('custPhoneInput')?.value.trim() ||
+            document.getElementById('customerPhone')?.value.trim() ||
+            '';
+
+        let payload = {
+            customer_id: document.getElementById('customerSelect')?.value || null,
+            customer_name: custName,
+            customer_phone: custPhone,
+            doctor_name: document.getElementById('doctorNameInput') ? document.getElementById('doctorNameInput').value.trim() : '',
+            payment_mode: document.getElementById('paymentMode').value,
+            overall_discount: parseFloat(document.getElementById('overallDiscount')?.value) || 0,
+            items: cart
+        };
+
+        fetch('/process-sale', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 1. Open thermal print receipt in new tab using returned sale_id
+                    if (data.sale_id) {
+                        window.open('/print-bill/' + data.sale_id, '_blank');
+                    } else {
+                        alert('Sale Completed Successfully!');
+                    }
+                    // 2. Reload page to update stock
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                alert('Something went wrong with the checkout.');
+                console.error(err);
+            });
+    });
+
+    // QUICK PUNCH / FAST SALE LOGIC
+    document.getElementById('quickPunchBtn').addEventListener('click', function () {
+        if (cart.length === 0) return;
+
+        // Doctor Validation (Only check if input field exists on screen)
+        const docInput = document.getElementById('doctorNameInput');
+
+        if (docInput) {
+            const doctorVal = docInput.value.trim();
+            if (!doctorVal) {
+                alert("⚠️ Doctor Name is required according to store billing policy!");
+                docInput.focus();
+                return;
+            }
+        }
+
+        let custName = document.getElementById('custNameInput')?.value.trim() ||
+            document.getElementById('customerName')?.value.trim() ||
+            'Walk-in Customer';
+
+        let custPhone = document.getElementById('custPhoneInput')?.value.trim() ||
+            document.getElementById('customerPhone')?.value.trim() ||
+            '';
+
+        let payload = {
+            customer_id: document.getElementById('customerSelect')?.value || null,
+            customer_name: custName,
+            customer_phone: custPhone,
+            doctor_name: document.getElementById('doctorNameInput') ? document.getElementById('doctorNameInput').value.trim() : '',
+            payment_mode: document.getElementById('paymentMode').value,
+            overall_discount: parseFloat(document.getElementById('overallDiscount')?.value) || 0,
+            items: cart
+        };
+
+        fetch('/process-sale', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Reset cart and reload to fetch updated stock
+                    cart = [];
+                    renderCart();
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => console.error(err));
+    });
+
+    function toggleCustomerCard() {
+        const mode = document.getElementById('paymentMode').value;
+        // HTML id (customerUdharCard) se match kar diya hai
+        const card = document.getElementById('customerUdharCard');
+
+        if (card) {
+            if (mode === 'Credit') {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        }
+    }
+
+    // Ensure load par execution (NO DUPLICATE PUSH HERE)
+    document.addEventListener('DOMContentLoaded', function () {
+        // Only refresh UI - push work script top block me ho chuka hai
+        if (typeof renderCart === 'function') {
+            renderCart();
+        }
+
+        // Clean old local storage
+        localStorage.removeItem('pos_pending_items');
+    });
+</script>
+{% endblock %}-

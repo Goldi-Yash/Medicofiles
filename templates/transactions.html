@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4" style="height: 100vh; overflow-y: auto;">
+
+    <!-- Header & Title -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-receipt me-2 text-primary"></i>Billing Transactions</h3>
+            <p class="text-muted small mb-0">Track and filter all customer sale invoices and payment logs.</p>
+        </div>
+        {% if current_user.has_permission('modules', 'billing') %}
+        <div>
+            <a href="/billing" class="btn btn-primary fw-semibold"><i class="bi bi-plus-circle me-1"></i> New Sale</a>
+        </div>
+        {% else %}
+        <div>
+            <button onclick="showAccessDeniedPopup('POS Billing')" class="btn btn-secondary opacity-50 fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i> New Sale
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Summary Cards for Filtered Range -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary-subtle text-primary rounded-3 p-3 me-3">
+                        <i class="bi bi-card-checklist fs-4"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Filtered Invoices</span>
+                        <h4 class="fw-bold mb-0 text-dark">{{ total_count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm p-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success-subtle text-success rounded-3 p-3 me-3">
+                        <i class="bi bi-currency-rupee fs-4"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Filtered Total Sales</span>
+                        <h4 class="fw-bold mb-0 text-success">₹{{ "%.2f"|format(total_revenue) }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Row -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="/transactions" class="row g-3 align-items-center">
+                <!-- Date Range Filter -->
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">Time Period</label>
+                    <select name="filter" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if filter_type=='all' %}selected{% endif %}>All Time</option>
+                        <option value="today" {% if filter_type=='today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if filter_type=='week' %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if filter_type=='month' %}selected{% endif %}>This Month</option>
+                        {% if filter_type == 'custom' %}
+                        <option value="custom" selected>Specific Date</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <!-- Calendar Date Picker -->
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-muted">Select Specific Date</label>
+                    <input type="date" id="datePicker" name="date" class="form-control" value="{{ selected_date }}"
+                        onchange="this.form.submit()">
+                </div>
+
+                <!-- Payment Filter Select Box in transactions.html -->
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">Payment Mode</label>
+                    <select name="payment" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if payment_filter=='all' %}selected{% endif %}>All Payment Modes</option>
+                        <option value="Cash" {% if payment_filter=='Cash' %}selected{% endif %}>Cash</option>
+                        <option value="UPI / QR" {% if payment_filter=='UPI / QR' or payment_filter=='UPI' %}selected{%
+                            endif %}>UPI / QR</option>
+                        <option value="Card" {% if payment_filter=='Card' %}selected{% endif %}>Card</option>
+                    </select>
+                </div>
+
+                <!-- Reset Button -->
+                <div class="col-md-4 d-flex align-items-end">
+                    <a href="/transactions" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice ID</th>
+                        <th>Date & Time</th>
+                        <th>Customer Name</th>
+                        <th>Items Included</th>
+                        <th>Total Amount</th>
+                        <th>Payment Mode</th>
+                        <th class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr>
+                        <td class="fw-bold text-primary">#INV-{{ "%04d"|format(bill.id) }}</td>
+                        <td>
+                            <small class="text-muted fw-semibold">
+                                {% if bill.created_at and bill.created_at.strftime %}
+                                {{ bill.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                                {% else %}
+                                {{ bill.created_at }}
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td class="fw-semibold">{{ bill.customer_name or 'Walk-in Customer' }}</td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
+                                {{ bill.items|length if bill.items else 1 }} Items
+                            </span>
+                        </td>
+                        <td class="fw-bold text-dark fs-6">₹{{ "%.2f"|format(bill.total_amount) }}</td>
+                        <td>
+                            {% if bill.payment_mode == 'UPI' %}
+                            <span
+                                class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">UPI</span>
+                            {% elif bill.payment_mode == 'Cash' %}
+                            <span
+                                class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1">Cash</span>
+                            {% else %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-1">{{
+                                bill.payment_mode or 'Cash' }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-sm btn-outline-primary"
+                                    onclick="viewInvoiceDetails('{{ bill.id }}')">
+                                    <i class="bi bi-eye-fill me-1"></i> View
+                                </button>
+                                {% if current_user.has_permission('actions', 'delete_bill') %}
+                                <button class="btn btn-outline-danger" onclick="openDeleteModal('{{ bill.id }}')">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                                {% else %}
+                                <button onclick="showAccessDeniedPopup('Delete Bill')"
+                                    class="btn btn-sm btn-outline-secondary opacity-50"><i
+                                        class="bi bi-trash"></i></button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            No transaction records found for the selected filter.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Delete Transaction Security Modal -->
+    <div class="modal fade" id="deleteAuthModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white py-2">
+                    <h6 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Admin Verification</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <p class="small text-muted mb-2">Enter Security PIN to delete transaction <strong
+                            id="deleteTargetInv"></strong></p>
+
+                    <input type="password" id="securityPinInput" class="form-control text-center fs-5 fw-bold mb-3"
+                        placeholder="****" maxlength="8">
+                    <input type="hidden" id="deleteTargetId">
+
+                    <div id="authErrorMessage" class="text-danger small fw-semibold mb-2" style="display: none;"></div>
+
+                    <button type="button" class="btn btn-danger w-100 fw-bold" onclick="confirmDeleteTransaction()">
+                        <i class="bi bi-trash-fill me-1"></i> Confirm Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Transaction Details Modal -->
+    <div class="modal fade" id="invoiceDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="modalInvoiceId">Invoice Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+
+                    <!-- Info Cards -->
+                    <div class="row g-3 mb-4 bg-light p-3 rounded-3 border">
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Customer Name</small>
+                            <span class="fw-semibold text-dark" id="modalCustomer">-</span>
+                            <small class="text-muted d-block">Customer Phone</small>
+                            <span class="fw-semibold text-dark" id="modalCustomerPhone">-</span>
+                            <div id="modalDoctorContainer" style="display: none;" class="mt-1">
+                                <small class="text-muted d-block" style="font-size: 0.75rem;">Prescribed By</small>
+                                <span class="fw-bold text-primary small" id="modalDoctor">-</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Date & Time</small>
+                            <span class="fw-semibold text-dark" id="modalDate">-</span>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Payment Mode</small>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold"
+                                id="modalPayment">-</span>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Total Paid</small>
+                            <span class="fw-bold text-primary fs-6" id="modalGrandTotal">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Items Breakdown Table inside invoiceDetailsModal -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-cart-check-fill me-2 text-primary"></i>Purchased Items</h6>
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Medicine Name</th>
+                                    <th>Batch No</th>
+                                    <th>Qty</th>
+                                    <th>MRP (₹)</th>
+                                    <th>Disc (%)</th>
+                                    <th>Selling Price (₹)</th>
+                                    <th>Net Amount (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalItemsTableBody">
+                                <!-- Dynamically Populated from JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+    function viewInvoiceDetails(billId) {
+        fetch('/api/bill-details/' + billId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('modalInvoiceId').innerText = 'Invoice Breakdown (' + data.bill_id + ')';
+                    document.getElementById('modalCustomer').innerText = data.customer;
+                    document.getElementById('modalCustomerPhone').innerText = data.customer_phone || data.phone || 'N/A';
+
+                    // Doctor Name Populate Check
+                    const docContainer = document.getElementById('modalDoctorContainer');
+                    const docElem = document.getElementById('modalDoctor');
+
+                    if (data.doctor_name && data.doctor_name.trim() !== '') {
+                        docElem.innerText = data.doctor_name;
+                        docContainer.style.display = 'block';
+                    } else {
+                        docContainer.style.display = 'none';
+                    }
+
+                    document.getElementById('modalDate').innerText = data.date;
+                    document.getElementById('modalPayment').innerText = data.payment_mode;
+                    document.getElementById('modalGrandTotal').innerText = '₹' + data.total_amount.toFixed(2);
+
+                    let tbody = document.getElementById('modalItemsTableBody');
+                    tbody.innerHTML = '';
+
+                    data.items.forEach(item => {
+                        let discVal = parseFloat(item.discount || 0);
+                        let discBadge = discVal > 0
+                            ? `<span class="badge bg-danger-subtle text-danger fw-bold">${discVal.toFixed(1)}% OFF</span>`
+                            : `<span class="text-muted small">0%</span>`;
+
+                        let typeBadge = '';
+                        if (item.medicine_type === 'generic') {
+                            typeBadge = `<span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 8px; padding: 1px 4px;" title="Generic">G</span>`;
+                        } else if (item.medicine_type === 'pharma') {
+                            typeBadge = `<span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 8px; padding: 1px 4px;" title="Pharma">P</span>`;
+                        }
+
+                        let rxBadge = item.rx_required ? `<span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 8px; padding: 1px 4px;">Rx</span>` : '';
+
+                        tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-dark">${item.med_name} ${rxBadge} ${typeBadge}</td>
+                    <td><span class="badge bg-light text-dark border fw-normal">${item.batch_no}</span></td>
+                    <td class="fw-semibold">${item.quantity}</td>
+                    <td class="text-muted">₹${item.mrp.toFixed(2)}</td>
+                    <td>${discBadge}</td>
+                    <td class="fw-semibold">₹${item.rate.toFixed(2)}</td>
+                    <td class="fw-bold text-primary">₹${item.total.toFixed(2)}</td>
+                </tr>
+            `;
+                    });
+
+                    let modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+                    modal.show();
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    let targetSaleIdToDelete = null;
+
+    function openDeleteModal(saleId) {
+        targetSaleIdToDelete = saleId;
+        document.getElementById('deleteTargetId').value = saleId;
+        document.getElementById('deleteTargetInv').innerText = '#INV-' + String(saleId).padStart(4, '0');
+        document.getElementById('securityPinInput').value = '';
+        document.getElementById('authErrorMessage').style.display = 'none';
+
+        let modal = new bootstrap.Modal(document.getElementById('deleteAuthModal'));
+        modal.show();
+    }
+
+    function confirmDeleteTransaction() {
+        let saleId = targetSaleIdToDelete;
+        let pin = document.getElementById('securityPinInput').value;
+        let errorDiv = document.getElementById('authErrorMessage');
+
+        if (!pin) {
+            errorDiv.innerText = "Please enter Security PIN!";
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        fetch('/api/delete-transaction/' + saleId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ passcode: pin })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload(); // Refresh to update list and sales metrics
+                } else {
+                    errorDiv.innerText = data.message || "Invalid PIN!";
+                    errorDiv.style.display = 'block';
+                }
+            })
+            .catch(err => console.error(err));
+    }
+</script>
+{% endblock %}

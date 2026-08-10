@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Overview - Medico{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<!-- Top Header Bar -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-2 pb-3 mb-4 border-bottom">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-0">Dashboard Overview</h1>
+        <p class="text-muted small mb-0">Real-time inventory analytics and sales summary.</p>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+        <!-- Sleek Theme Toggle Button -->
+        <button id="themeToggleBtn"
+            class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3"
+            style="border-radius: 8px; transition: all 0.2s ease;" title="Toggle Light/Dark Theme">
+            <i id="themeIcon" class="bi bi-moon-stars-fill"></i>
+        </button>
+        <!-- Add New Medicine -->
+        {% if current_user.has_permission('modules', 'add_medicine') %}
+        <a href="/add-stock" class="btn btn-outline-secondary">
+            <i class="bi bi-plus-lg me-1"></i> Add Stock
+        </a>
+        {% else %}
+        <button type="button" onclick="showAccessDeniedPopup('Add Stock')"
+            class="btn btn-outline-secondary btn-sm opacity-50">
+            <i class="bi bi-plus-lg me-1"></i> Add Stock
+        </button>
+        {% endif %}
+        <!-- New Sale / Bill -->
+        {% if current_user.has_permission('modules', 'billing') %}
+        <a href="/billing" class="btn btn-primary">
+            <i class="bi bi-cart-plus me-1"></i> New Sale / Bill
+        </a>
+        {% else %}
+        <button type="button" onclick="showAccessDeniedPopup('New Sale / Bill')"
+            class="btn btn-primary btn-sm opacity-50">
+            <i class="bi bi-cart-plus me-1"></i> New Sale / Bill
+        </button>
+        {% endif %}
+
+        <!-- Export Dropdown inside same button group -->
+        {% if current_user.has_permission('modules', 'transactions') %}
+        <div class="dropdown">
+            <button class="btn btn-outline-success dropdown-toggle fw-semibold" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Sales Report
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li>
+                    <h6 class="dropdown-header">Select Date Range</h6>
+                </li>
+                <li><a class="dropdown-item" href="/api/export/sales-excel?range=today"><i
+                            class="bi bi-calendar-day me-2"></i>Today's Sales</a></li>
+                <li><a class="dropdown-item" href="/api/export/sales-excel?range=week"><i
+                            class="bi bi-calendar-week me-2"></i>This Week (7 Days)</a></li>
+                <li><a class="dropdown-item" href="/api/export/sales-excel?range=month"><i
+                            class="bi bi-calendar-month me-2"></i>This Month (30 Days)</a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li><a class="dropdown-item text-primary" href="/api/export/sales-excel?range=all"><i
+                            class="bi bi-file-earmark-spreadsheet me-2"></i>All-Time Report</a></li>
+            </ul>
+        </div>
+        {% else %}
+        <button type="button" onclick="showAccessDeniedPopup('Export Sales Report')"
+            class="btn btn-outline-success btn-sm opacity-50">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export Sales Report
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 1. Key Metrics Row (5 KPI Cards) -->
+<div class="row g-3 mb-4">
+    <!-- Card 1: Total Medicines -->
+    <div class="col">
+        <div class="card border-0 shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+                <div class="bg-primary-subtle text-primary rounded-3 p-3 me-3 d-flex align-items-center justify-content-center"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-box-seam fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small d-block fw-semibold" style="font-size: 0.8rem;">Total Items</span>
+                    <h4 class="fw-bold mb-0 text-dark">{{ total_medicines }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Low Stock -->
+    <div class="col">
+        <div class="card border-0 shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+                <div class="bg-warning-subtle text-warning rounded-3 p-3 me-3 d-flex align-items-center justify-content-center"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-exclamation-triangle fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small d-block fw-semibold" style="font-size: 0.8rem;">Low Stock</span>
+                    <h4 class="fw-bold mb-0 text-warning">{{ low_stock_count }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Today's Sales -->
+    <div class="col">
+        <div class="card border-0 shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+                <div class="bg-success-subtle text-success rounded-3 p-3 me-3 d-flex align-items-center justify-content-center"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-currency-rupee fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small d-block fw-semibold" style="font-size: 0.8rem;">Today's Sales</span>
+                    <h4 class="fw-bold mb-0 text-success">₹{{ "%.2f"|format(todays_sales) }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Near Expiry -->
+    <div class="col">
+        <div class="card border-0 shadow-sm h-100 p-3">
+            <div class="d-flex align-items-center">
+                <div class="bg-danger-subtle text-danger rounded-3 p-3 me-3 d-flex align-items-center justify-content-center"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-calendar-x fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small d-block fw-semibold" style="font-size: 0.8rem;">Near Expiry</span>
+                    <h4 class="fw-bold mb-0 text-danger">{{ near_expiry_count }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 5: Est. Net Profit -->
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="bg-info-subtle text-info rounded-3 p-3 me-3 d-flex align-items-center justify-content-center"
+                        style="width: 48px; height: 48px;">
+                        <i class="bi bi-graph-up-arrow fs-4"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold d-block">Est. Net Profit</span>
+                        <h4 class="fw-bold mb-0 text-dark">₹{{ "%.2f"|format(net_profit) }}</h4>
+                    </div>
+                </div>
+                <span
+                    class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small ms-1 align-self-start">
+                    {{ margin_percent }}%
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Analytics Charts Row -->
+<div class="row g-4 mb-4">
+
+    <!-- 1. Weekly Sales Chart -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-graph-up text-primary me-2"></i>Weekly Sales Overview
+                    </h5>
+                    <span class="badge bg-light text-muted border px-2.5 py-1.5 rounded-pill small">Last 7 Days</span>
+                </div>
+                <div style="height: 260px; position: relative;">
+                    <canvas id="weeklySalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Stock Categories Chart -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-pie-chart text-primary me-2"></i>Stock Categories
+                </h5>
+                <div style="height: 260px; position: relative;"
+                    class="d-flex align-items-center justify-content-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 3. Operational Data Grid -->
+<div class="row g-4">
+    <!-- Recent Sales Table (60% Width) -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-clock-history me-2 text-primary"></i>Recent Billing Transactions
+                </h6>
+                {% if current_user.has_permission('modules', 'transactions') %}
+                <a href="/transactions" class="btn btn-sm btn-light fw-semibold">View All</a>
+                {% else %}
+                <button type="button" onclick="showAccessDeniedPopup('Transaction History')"
+                    class="btn btn-sm btn-outline-secondary opacity-50">View All</button>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Invoice ID</th>
+                            <th>Customer / Time</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bill in recent_bills %}
+                        <tr>
+                            <td>
+                                <span class="fw-bold text-primary">#INV-{{ "%04d"|format(bill.id) }}</span>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="fw-semibold">{{ bill.customer_name or 'Walk-in Customer' }}</div>
+                                    <small class="text-muted">
+                                        {% if bill.created_at %}
+                                        {% if bill.created_at.strftime %}
+                                        {{ bill.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                        {{ bill.created_at[:16] }}
+                                        {% endif %}
+                                        {% else %}
+                                        Just now
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </td>
+                            <td>{{ bill.items|length if bill.items else 1 }} Items</td>
+                            <td class="fw-bold">₹{{ "%.2f"|format(bill.total_amount) }}</td>
+                            <td>
+                                <span
+                                    class="badge bg-success-subtle text-success border border-success-subtle fw-semibold">
+                                    {{ bill.payment_mode or 'UPI' }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                No transactions recorded today yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Critical Stock & Expiry Widget (40% Width) -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Stock Action Needed
+                </h6>
+                {% if current_user.has_permission('modules', 'inventory') %}
+                <a href="/inventory" class="btn btn-sm btn-light">Manage Stock</a>
+                {% else %}
+                <button type="button" onclick="showAccessDeniedPopup('Manage Stock')"
+                    class="btn btn-sm btn-outline-secondary opacity-50">Manage Stock</button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% for item in low_stock_items %}
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">{{ item.name }}
+                            {% if item.rx_required %}
+                            <span
+                                class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle ms-1"
+                                style="font-size: 9px; padding: 2px 5px;">Rx</span>
+                            {% endif %}
+                            {% if item.medicine_type == 'generic' %}
+                            <span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle ms-1"
+                                style="font-size: 9px; padding: 2px 5px;" title="Generic Medicine">G</span>
+                            {% elif item.medicine_type == 'pharma' %}
+                            <span
+                                class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-1"
+                                style="font-size: 9px; padding: 2px 5px;" title="Pharma / Branded Medicine">P</span>
+                            {% endif %}
+                        </h6>
+                        <small class="text-muted" style="font-size: 0.75rem;">Batch: {{ item.batch_no }}</small>
+                    </div>
+                    <span class="badge bg-danger-subtle text-danger fw-bold border border-danger-subtle px-2 py-1">
+                        {{ "%.0f"|format(item.quantity) }} left
+                    </span>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-check-circle-fill text-success fs-3 mb-2 d-block"></i>
+                    <small class="fw-medium">All stock levels are healthy!</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN for Graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function initCharts() {
+        // 1. Fetch Flask Jinja Variables
+        // const weeklyLabels = JSON.parse('{{ weekly_labels | default ([]) | tojson }}');
+        // const weeklySales = JSON.parse('{{ weekly_sales | default ([]) | tojson }}');
+        // const categoryData = JSON.parse('{{ category_data | default ({}) | tojson }}');
+        const weeklyLabels = JSON.parse('{{ weekly_labels | tojson | safe }}');
+        const weeklySales = JSON.parse('{{ weekly_sales | tojson | safe }}');
+        const categoryData = JSON.parse('{{ category_data | tojson | safe }}');
+
+        // 2. Render Line Chart
+        const elSales = document.getElementById('weeklySalesChart');
+        if (elSales) {
+            new Chart(elSales, {
+                type: 'line',
+                data: {
+                    labels: weeklyLabels.length ? weeklyLabels : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Sales (₹)',
+                        data: weeklySales.length ? weeklySales : [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: '#2563eb',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // 3. Render Doughnut Chart
+        const elCat = document.getElementById('categoryChart');
+        if (elCat) {
+            const keys = Object.keys(categoryData);
+            const vals = Object.values(categoryData);
+            new Chart(elCat, {
+                type: 'doughnut',
+                data: {
+                    labels: keys.length ? keys : ['Tablets', 'Syrups', 'Capsules', 'Others'],
+                    datasets: [{
+                        data: vals.length ? vals : [1, 1, 1, 1],
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '65%'
+                }
+            });
+        }
+    })();
+</script>
+
+{% endblock %}

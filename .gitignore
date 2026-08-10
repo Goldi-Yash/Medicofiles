@@ -1,0 +1,21 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database (Private Customer Data)
+instance/
+*.db
+*.sqlite3
+
+# Environment Variables (Mail Passwords & Keys)
+.env
+
+# VS Code & System Files
+.vscode/
+.DS_Store

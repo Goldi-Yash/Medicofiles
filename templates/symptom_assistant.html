@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-3" style="height: 100vh; overflow-y: auto;">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">
+                <i class="bi bi-prescription2 me-2"></i>Smart Symptom & Disease Assistant
+            </h3>
+            <p class="text-muted small mb-0">Select symptoms/diseases to automatically find matching medicines &
+                dosages.</p>
+        </div>
+        {% if current_user.has_permission('modules', 'billing') %}
+        <a href="/billing" class="btn btn-outline-primary fw-bold">
+            <i class="bi bi-cart3 me-1"></i> Go To POS Billing
+        </a>
+        {% else %}
+        <button onclick="showAccessDeniedPopup('POS Billing')" class="btn btn-secondary opacity-50 fw-bold">
+            <i class="bi bi-cart3 me-1"></i> Go To POS Billing
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Disease / Symptom Selector Chips -->
+    <div class="card border-0 shadow-sm rounded-3 p-3 mb-4">
+        <!-- Search Bar Input Field -->
+        <!-- Search Bar & Age Dropdown Filter -->
+        <div class="row g-2 mb-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="symptomSearchInput" class="form-control border-start-0"
+                        placeholder="Type symptom name or age group (e.g. Fever, Senior, Infant)..."
+                        onkeyup="filterSymptoms()">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <label class="input-group-text bg-light text-dark fw-semibold" style="font-size: 13px;">
+                        <i class="bi bi-person-bounding-box me-1"></i> Age:
+                    </label>
+                    <select id="ageFilterSelect" class="form-select fw-semibold" style="font-size: 13px;"
+                        onchange="filterSymptoms()">
+                        <option value="all">All Age Groups</option>
+                        <option value="infant">● Infant (0-2 Yrs)</option>
+                        <option value="pediatric">● Child / Pediatric (2-12 Yrs)</option>
+                        <option value="adult">● Adult (12-60 Yrs)</option>
+                        <option value="senior">● Senior Citizen (60+ Yrs)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <label class="form-label fw-bold text-dark mb-2">
+            <i class="bi bi-check2-square text-primary me-1"></i> Select Patient's Symptoms / Conditions:
+        </label>
+
+        <div class="d-flex flex-wrap gap-2" id="symptomChipsContainer">
+            {% for tag in tags %}
+            <div class="form-check form-check-inline m-0 symptom-chip-wrapper" data-tag-name="{{ tag.name | lower }}"
+                data-tag-age="{{ tag.target_age or 'all' }}">
+                <input class="btn-check symptom-checkbox" type="checkbox" id="tag_{{ tag.id }}" value="{{ tag.id }}"
+                    onchange="fetchRecommendedMedicines()">
+                <label
+                    class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1"
+                    for="tag_{{ tag.id }}">
+                    <span>+ {{ tag.name }}</span>
+                    {% if tag.target_age and tag.target_age != 'all' %}
+                    <span class="badge rounded-pill bg-secondary-subtle text-dark border ms-1"
+                        style="font-size: 9px; padding: 2px 5px;">
+                        {{ tag.target_age | title }}
+                    </span>
+                    {% endif %}
+                </label>
+            </div>
+            {% else %}
+            <span class="text-muted small">No symptom tags created yet. <a href="/symptom-tags">Create Tags
+                    Here</a></span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recommended Medicines Results -->
+    <div class="card border-0 shadow-sm rounded-3 p-3">
+        <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+            <i class="bi bi-capsule text-success me-2"></i>Recommended Medicines / Prescriptions
+        </h5>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="resultsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Medicine Name</th>
+                        <th>Batch</th>
+                        <th>Matched Conditions</th>
+                        <th>Suggested Dosage</th>
+                        <th>In Stock</th>
+                        <th>MRP</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="medicineResultsList">
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-hand-index-thumb fs-3 d-block mb-2 text-primary opacity-50"></i>
+                            Select one or more symptoms above to view recommended medicines!
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function fetchRecommendedMedicines() {
+        const selectedCheckboxes = document.querySelectorAll('.symptom-checkbox:checked');
+        const tagIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+        const tbody = document.getElementById('medicineResultsList');
+
+        if (tagIds.length === 0) {
+            tbody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+            <i class="bi bi-hand-index-thumb fs-3 d-block mb-2 text-primary opacity-50"></i>
+            Select one or more symptoms above to view recommended medicines!
+            </td>
+        </tr>`;
+            return;
+        }
+
+        fetch('/api/get-symptom-medicines', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag_ids: tagIds })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    renderMedicines(data.medicines);
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    function renderMedicines(medicines) {
+        const tbody = document.getElementById('medicineResultsList');
+        if (medicines.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+            <td colspan="7" class="text-center text-danger py-4">
+                No medicines mapped for the selected conditions.
+            </td>
+            </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = medicines.map(m => `
+    <tr>
+        <td>
+            <strong class="text-dark">${m.name}</strong>
+            ${m.rx_required ? '<span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 9px; padding: 2px 5px;">Rx</span>' : ''}
+            ${m.medicine_type === 'generic' ? '<span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle ms-1" style="font-size: 9px; padding: 2px 5px;" title="Generic">G</span>' : ''}
+            ${m.medicine_type === 'pharma' ? '<span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9px; padding: 2px 5px;" title="Pharma">P</span>' : ''}
+        </td>
+        <td><span class="badge bg-light text-dark border">${m.batch || m.batch_no || 'N/A'}</span></td>
+        <td>
+            ${m.tags.map(t => `<span class="badge bg-info text-dark me-1">${t}</span>`).join('')}
+        </td>
+        <td><span class="text-success fw-semibold"><i class="bi bi-clock-history me-1"></i>${m.dosage}</span></td>
+        <td>
+            <span class="badge ${m.stock > 0 ? 'bg-success' : 'bg-danger'}">
+            ${m.stock} Strips
+            </span>
+        </td>
+        <td class="fw-bold">₹${m.mrp.toFixed(2)}</td>
+        <td class="text-end">
+            <button onclick="addToPosCartDirect(${m.id}, '${m.name}', ${m.mrp})" class="btn btn-sm btn-primary fw-bold">
+            <i class="bi bi-cart-plus-fill me-1"></i> Add to POS
+            </button>
+        </td>
+    </tr>
+    `).join('');
+    }
+
+    function addToPosCartDirect(id, name, mrp) {
+        // Ensure ID is passed as an Integer
+        const medIdInt = parseInt(id, 10);
+
+        fetch('/api/add-symptom-to-cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: medIdInt })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(`✅ ${name} added to POS Billing Queue!`);
+                } else {
+                    alert(`⚠️ ${data.message || 'Error adding item'}`);
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Failed to connect to server.');
+            });
+    }
+
+    function filterSymptoms() {
+        let searchInput = document.getElementById('symptomSearchInput').value.toLowerCase().trim();
+        let selectedAge = document.getElementById('ageFilterSelect') ? document.getElementById('ageFilterSelect').value.toLowerCase() : 'all';
+
+        // Step 1.2 me lagaye gaye class '.symptom-chip-wrapper' ko select karo
+        let chips = document.querySelectorAll('.symptom-chip-wrapper');
+
+        chips.forEach(chip => {
+            let tagName = chip.getAttribute('data-tag-name') || '';
+            let tagAge = chip.getAttribute('data-tag-age') || 'all';
+
+            // 1. Age Dropdown Check
+            let matchesAgeDropdown = (selectedAge === 'all') || (tagAge === selectedAge);
+
+            // 2. Search Box Query Check (Tag Name OR Age Keyword)
+            let matchesSearchText = false;
+            if (!searchInput) {
+                matchesSearchText = true;
+            } else {
+                if (tagName.includes(searchInput) || tagAge.includes(searchInput)) {
+                    matchesSearchText = true;
+                }
+                // Smart aliases
+                if ((searchInput.includes('child') || searchInput.includes('kid')) && tagAge === 'pediatric') {
+                    matchesSearchText = true;
+                }
+                if ((searchInput.includes('baby') || searchInput.includes('infant')) && tagAge === 'infant') {
+                    matchesSearchText = true;
+                }
+                if ((searchInput.includes('old') || searchInput.includes('senior')) && tagAge === 'senior') {
+                    matchesSearchText = true;
+                }
+            }
+
+            // Final Visibility
+            if (matchesAgeDropdown && matchesSearchText) {
+                chip.style.display = 'inline-block';
+            } else {
+                chip.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}

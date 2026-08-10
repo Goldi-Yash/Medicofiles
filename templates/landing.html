@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicofiles — Next-Gen Medical Store Management</title>
+
+    <!-- Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+    <!-- Google Fonts & AOS Animation Library -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        :root {
+            --bg-dark: #0a0d14;
+            --card-glass: rgba(22, 28, 45, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* Modern Gradient Background Glows */
+        .glow-sphere-1 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
+            top: -100px;
+            left: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glow-sphere-2 {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+            top: 200px;
+            right: -150px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(59, 130, 246, 0.15);
+        }
+
+        .glass-nav {
+            background: rgba(10, 13, 20, 0.75);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        /* Typography & Gradients */
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-glow {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            color: white;
+            font-weight: 700;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.35);
+            transition: all 0.3s ease;
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(139, 92, 246, 0.5);
+            color: white;
+        }
+
+        /* 3D Floating Perspective Card */
+        .perspective-container {
+            perspective: 1200px;
+        }
+
+        .hero-3d-card {
+            transform: rotateX(10deg) rotateY(-8deg) rotateZ(2deg);
+            transition: transform 0.5s ease;
+            box-shadow: -20px 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .hero-3d-card:hover {
+            transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1.02);
+        }
+
+        .feature-icon-box {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #60a5fa;
+        }
+
+        .badge-pill {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Landing Page Visibility & Contrast Fix */
+        .landing-page p,
+        .landing-page .text-muted,
+        .landing-page .sub-title,
+        .landing-page .card p,
+        .landing-page section p {
+            color: #94a3b8 !important;
+            /* High contrast soft slate white */
+            opacity: 1 !important;
+        }
+
+        .landing-page h1,
+        .landing-page h2,
+        .landing-page h3,
+        .landing-page h4,
+        .landing-page .card h3,
+        .landing-page .card h4 {
+            color: #f8fafc !important;
+            /* Bright solid white for headers */
+        }
+
+        /* Subheadings / Subtitles under Section Titles */
+        .landing-page .lead,
+        .landing-page .subtitle {
+            color: #cbd5e1 !important;
+        }
+
+        .stats-card {
+            background: rgba(30, 41, 59, 0.4) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stats-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.4) !important;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15);
+        }
+
+        @keyframes roadmapPulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+        }
+
+        .module-card {
+            background: rgba(30, 41, 59, 0.35) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .module-card:hover {
+            transform: translateY(-6px);
+            background: rgba(30, 41, 59, 0.6) !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .module-card:hover .short-arrow {
+            transform: translateX(4px);
+            transition: transform 0.2s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background Ambient Spheres -->
+    <div class="glow-sphere-1"></div>
+    <div class="glow-sphere-2"></div>
+
+    <!-- GLASS NAVBAR -->
+    <nav class="navbar navbar-expand-lg fixed-top glass-nav py-3">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" href="#">
+                <div class="bg-primary bg-gradient p-2 rounded-3 text-white d-flex align-items-center justify-content-center"
+                    style="width:38px; height:38px;">
+                    <i class="bi bi-capsule fs-5"></i>
+                </div>
+                Medicofiles
+            </a>
+
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav">
+                <i class="bi bi-list fs-2"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto text-center my-3 my-lg-0 gap-lg-4">
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                            href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                            href="#modules">Modules</a></li>
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                            href="#stats">Stats</a></li>
+                </ul>
+
+                <div class="d-flex align-items-center justify-content-center gap-3">
+                    <a href="{{ url_for('login') }}"
+                        class="btn btn-link text-white text-decoration-none fw-semibold">Log In</a>
+                    <a href="{{ url_for('signup') }}" class="btn btn-glow px-4 py-2">Get Started <i
+                            class="bi bi-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="min-vh-100 d-flex align-items-center pt-5 mt-5 position-relative">
+        <div class="container py-5">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6" data-aos="fade-right" data-aos-duration="1000">
+                    <div class="d-inline-flex align-items-center gap-2 badge-pill mb-3">
+                        <i class="bi bi-stars text-warning"></i> Next-Gen Pharma Automation
+                    </div>
+                    <h1 class="display-3 fw-extrabold mb-4 lh-sm">
+                        Smart Medical Store Operating System <span class="gradient-text">Redefined.</span>
+                    </h1>
+                    <p class="fs-5 text-muted mb-4 pe-lg-4" style="color: var(--text-muted) !important;">
+                        Replace hardcopy files and manual billing with a lightning-fast, high-security digital workspace
+                        built for modern pharmacies.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="{{ url_for('signup') }}" class="btn btn-glow btn-lg px-4 py-3">
+                            <i class="bi bi-rocket-takeoff-fill me-2"></i> Launch Application
+                        </a>
+                        <a href="#features" class="btn btn-outline-light btn-lg px-4 py-3 rounded-4 border-opacity-25"
+                            style="border-radius:14px;">
+                            <i class="bi bi-play-circle me-2"></i> Explore Features
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 3D Interactive Screen Preview -->
+                <div class="col-lg-6 perspective-container" data-aos="fade-left" data-aos-duration="1200">
+                    <div class="glass-card hero-3d-card p-3 border-opacity-25">
+                        <div
+                            class="d-flex align-items-center gap-2 px-3 py-2 border-bottom border-secondary border-opacity-25 mb-3">
+                            <div class="bg-danger rounded-circle" style="width:10px; height:10px;"></div>
+                            <div class="bg-warning rounded-circle" style="width:10px; height:10px;"></div>
+                            <div class="bg-success rounded-circle" style="width:10px; height:10px;"></div>
+                            <span class="ms-2 small text-white-50 font-monospace">medicofiles.app/dashboard</span>
+                        </div>
+                        <div
+                            class="rounded-4 overflow-hidden border border-secondary border-opacity-25 shadow-lg bg-dark">
+                            <img src="{{ url_for('static', filename='images/dashboard_preview.png') }}"
+                                alt="Medicofiles Dashboard Preview" class="img-fluid w-100 d-block"
+                                style="border-radius: 12px; object-fit: cover;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CORE FEATURES GRID -->
+    <section id="features" class="py-5 position-relative">
+        <div class="container py-5">
+            <div class="text-center max-w-700 mx-auto mb-5" data-aos="fade-up">
+                <span class="badge-pill mb-2">Everything You Need</span>
+                <h2 class="display-5 fw-bold gradient-text">Engineered For Performance</h2>
+                <p class="text-light-50">Designed to eliminate manual errors and keep your medical inventory
+                    synchronized.
+                </p>
+            </div>
+
+            <div class="row g-4">
+                <!-- Feature 1 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4">
+                            <i class="bi bi-receipt-cutoff"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Instant POS & Billing</h4>
+                        <p class="text-white-50 small">Generate thermal receipts, apply discounts, tax configurations,
+                            and
+                            manage stock deducts automatically.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4" style="color: #a78bfa;">
+                            <i class="bi bi-boxes"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Smart Inventory Control</h4>
+                        <p class="text-white-50 small">Batch expiry tracking, automated low-stock alerts, and medicine
+                            category search indexing.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4" style="color: #38bdf8;">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Distributor & Ledger</h4>
+                        <p class="text-white-50 small">Keep track of supplier purchase files, pending payments, and
+                            distributor contact logs seamlessly.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="400">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4" style="color: #f43f5e;">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Role & Staff Control</h4>
+                        <p class="text-white-50 small">Granular permission switches for staff members. Control access to
+                            billing, reports, and settings.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="500">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4" style="color: #10b981;">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Smart Treatment Assistant</h4>
+                        <p class="text-white-50 small">Symptom tag mapping and AI-assisted medicine query suggestions
+                            for
+                            accurate recommendations.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="600">
+                    <div class="glass-card p-4 h-100">
+                        <div class="feature-icon-box mb-4" style="color: #fbbf24;">
+                            <i class="bi bi-cloud-arrow-up-fill"></i>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">Automated Backup & Sync</h4>
+                        <p class="text-white-50 small">Instant database backup generation, account recovery safeguards,
+                            and
+                            password security encrypted.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Modules Section with Screenshot Modal Trigger -->
+    <section id="modules" class="py-5">
+        <div class="container py-3">
+            <!-- Section Header -->
+            <div class="text-center mb-5">
+                <span
+                    class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-1 rounded-pill small fw-semibold">
+                    SYSTEM MODULES
+                </span>
+                <h3 class="fw-bold text-white mt-2 mb-1" style="letter-spacing: -0.5px; font-size: 1.8rem;">
+                    Power-Packed Operational Modules
+                </h3>
+                <p class="text-white-50 small mx-auto mb-0" style="max-width: 550px; font-size: 0.9rem;">
+                    Everything you need to run a high-volume medical store with total control and speed.
+                </p>
+            </div>
+
+            <!-- Modules Grid -->
+            <div class="row g-4">
+
+                <!-- Module 1: POS Billing -->
+                <div class="col-md-6 col-lg-3">
+                    <div
+                        class="module-card p-4 rounded-4 border border-secondary border-opacity-25 h-100 position-relative overflow-hidden">
+                        <div class="module-icon-box mb-3 text-primary">
+                            <i class="bi bi-receipt fs-3"></i>
+                        </div>
+                        <h5 class="fw-bold text-white mb-2" style="font-size: 1.1rem;">Smart POS Billing</h5>
+                        <p class="text-white-50 small mb-4" style="font-size: 0.82rem; line-height: 1.5;">
+                            Ultra-fast checkout with tablet/strip auto-conversion math, instant receipt printing, and
+                            quick discounts.
+                        </p>
+                        <button type="button" data-title="Smart POS Billing Overview"
+                            data-img="{{ url_for('static', filename='images/pos_preview.png') }}"
+                            onclick="handleModuleClick(this)"
+                            class="btn p-0 d-flex align-items-center gap-1 text-primary small fw-semibold text-decoration-none shadow-none border-0 bg-transparent module-preview-btn">
+                            <span>Live Sync</span> <i class="bi bi-arrow-right short-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Module 2: Inventory & Expiry Engine -->
+                <div class="col-md-6 col-lg-3">
+                    <div
+                        class="module-card p-4 rounded-4 border border-secondary border-opacity-25 h-100 position-relative overflow-hidden">
+                        <div class="module-icon-box mb-3 text-warning">
+                            <i class="bi bi-box-seam fs-3"></i>
+                        </div>
+                        <h5 class="fw-bold text-white mb-2" style="font-size: 1.1rem;">Inventory Control</h5>
+                        <p class="text-white-50 small mb-4" style="font-size: 0.82rem; line-height: 1.5;">
+                            Batch-wise stock management with automated 60-day expiry radar and low-stock threshold
+                            triggers.
+                        </p>
+                        <button type="button" data-title="Smart Inventory Control"
+                            data-img="{{ url_for('static', filename='images/inventory_preview.png') }}"
+                            onclick="handleModuleClick(this)"
+                            class="btn p-0 d-flex align-items-center gap-1 text-warning small fw-semibold text-decoration-none shadow-none border-0 bg-transparent module-preview-btn">
+                            <span>Batch Tracked</span> <i class="bi bi-arrow-right short-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Module 3: Udhar Ledger -->
+                <div class="col-md-6 col-lg-3">
+                    <div
+                        class="module-card p-4 rounded-4 border border-secondary border-opacity-25 h-100 position-relative overflow-hidden">
+                        <div class="module-icon-box mb-3 text-success">
+                            <i class="bi bi-journal-bookmark fs-3"></i>
+                        </div>
+                        <h5 class="fw-bold text-white mb-2" style="font-size: 1.1rem;">Customer Ledger</h5>
+                        <p class="text-white-50 small mb-4" style="font-size: 0.82rem; line-height: 1.5;">
+                            Digital Udhar management to track pending customer balances, payment logs, and transaction
+                            histories.
+                        </p>
+                        <button type="button" data-title="Customer Ledger"
+                            data-img="{{ url_for('static', filename='images/ledger_preview.png') }}"
+                            onclick="handleModuleClick(this)"
+                            class="btn p-0 d-flex align-items-center gap-1 text-success small fw-semibold text-decoration-none shadow-none border-0 bg-transparent module-preview-btn">
+                            <span>Auto-Calculated</span> <i class="bi bi-arrow-right short-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Module 4: Smart Assistant -->
+                <div class="col-md-6 col-lg-3">
+                    <div
+                        class="module-card p-4 rounded-4 border border-secondary border-opacity-25 h-100 position-relative overflow-hidden">
+                        <div class="module-icon-box mb-3 text-info">
+                            <i class="bi bi-robot fs-3"></i>
+                        </div>
+                        <h5 class="fw-bold text-white mb-2" style="font-size: 1.1rem;">Treatment Assistant</h5>
+                        <p class="text-white-50 small mb-4" style="font-size: 0.82rem; line-height: 1.5;">
+                            Symptom-to-medicine tag mapping for quick drug lookup, dosage advice, and substitute
+                            recommendations.
+                        </p>
+                        <button type="button" data-title="Smart Treatment Assistant"
+                            data-img="{{ url_for('static', filename='images/assistant_preview.png') }}"
+                            onclick="handleModuleClick(this)"
+                            class="btn p-0 d-flex align-items-center gap-1 text-info small fw-semibold text-decoration-none shadow-none border-0 bg-transparent module-preview-btn">
+                            <span>AI-Mapped</span> <i class="bi bi-arrow-right short-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- 3D Animated Glass Modal Template -->
+    <div class="modal fade" id="modulePreviewModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div
+                class="modal-content border border-secondary border-opacity-25 rounded-4 shadow-lg overflow-hidden style-3d-modal">
+
+                <!-- Modal Header -->
+                <div
+                    class="modal-header border-bottom border-secondary border-opacity-25 px-4 py-3 bg-dark bg-opacity-75">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-danger d-inline-block" style="width:10px; height:10px;"></span>
+                        <span class="rounded-circle bg-warning d-inline-block" style="width:10px; height:10px;"></span>
+                        <span class="rounded-circle bg-success d-inline-block" style="width:10px; height:10px;"></span>
+                        <h5 class="modal-title fw-bold text-white fs-6 ms-2" id="moduleModalTitle">Module Showcase</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Body (Screenshot Image View) -->
+                <div class="modal-body p-2 bg-dark text-center position-relative">
+                    <img id="moduleModalImg" src="" alt="Module Preview" class="img-fluid rounded-3 w-100 shadow"
+                        style="max-height: 80vh; object-fit: contain;">
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Sleek & Modern Glassmorphism Stats Section -->
+    <section id="stats" class="py-5 style-stats-wrapper">
+        <div class="container py-3">
+
+            <!-- Section Header & Quote -->
+            <div class="text-center mb-4">
+                <span
+                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill small fw-semibold">
+                    PERFORMANCE METRICS
+                </span>
+                <h3 class="fw-bold text-white mt-2 mb-1" style="letter-spacing: -0.5px; font-size: 1.6rem;">
+                    Built For Speed, Precision & Reliability
+                </h3>
+                <p class="text-white-50 small mx-auto mb-0" style="max-width: 520px; font-size: 0.88rem;">
+                    "Empowering modern pharmacies with zero-latency billing, real-time stock sync, and automated batch
+                    controls."
+                </p>
+            </div>
+
+            <!-- Sleek Compact Stats Cards Grid -->
+            <div class="row g-3 justify-content-center">
+
+                <!-- Metric 1 -->
+                <div class="col-6 col-md-3">
+                    <div
+                        class="p-3 rounded-4 border border-secondary border-opacity-25 bg-dark bg-opacity-50 text-center h-100 stats-card">
+                        <div
+                            class="d-inline-flex align-items-center justify-content-center p-2 rounded-circle bg-primary bg-opacity-10 text-primary mb-2">
+                            <i class="bi bi-speedometer2 fs-5"></i>
+                        </div>
+                        <h3 class="fw-extrabold text-white mb-0" style="font-size: 1.5rem;">99.9%</h3>
+                        <div class="text-white-50" style="font-size: 0.78rem;">Billing Precision</div>
+                    </div>
+                </div>
+
+                <!-- Metric 2 -->
+                <div class="col-6 col-md-3">
+                    <div
+                        class="p-3 rounded-4 border border-secondary border-opacity-25 bg-dark bg-opacity-50 text-center h-100 stats-card">
+                        <div
+                            class="d-inline-flex align-items-center justify-content-center p-2 rounded-circle bg-success bg-opacity-10 text-success mb-2">
+                            <i class="bi bi-shield-check fs-5"></i>
+                        </div>
+                        <h3 class="fw-extrabold text-white mb-0" style="font-size: 1.5rem;">0%</h3>
+                        <div class="text-white-50" style="font-size: 0.78rem;">Expiry Losses</div>
+                    </div>
+                </div>
+
+                <!-- Metric 3 -->
+                <div class="col-6 col-md-3">
+                    <div
+                        class="p-3 rounded-4 border border-secondary border-opacity-25 bg-dark bg-opacity-50 text-center h-100 stats-card">
+                        <div
+                            class="d-inline-flex align-items-center justify-content-center p-2 rounded-circle bg-info bg-opacity-10 text-info mb-2">
+                            <i class="bi bi-lightning-charge fs-5"></i>
+                        </div>
+                        <h3 class="fw-extrabold text-white mb-0" style="font-size: 1.5rem;">&lt; 5s</h3>
+                        <div class="text-white-50" style="font-size: 0.78rem;">Checkout Speed</div>
+                    </div>
+                </div>
+
+                <!-- Metric 4 -->
+                <div class="col-6 col-md-3">
+                    <div
+                        class="p-3 rounded-4 border border-secondary border-opacity-25 bg-dark bg-opacity-50 text-center h-100 stats-card">
+                        <div
+                            class="d-inline-flex align-items-center justify-content-center p-2 rounded-circle bg-warning bg-opacity-10 text-warning mb-2">
+                            <i class="bi bi-box-seam fs-5"></i>
+                        </div>
+                        <h3 class="fw-extrabold text-white mb-0" style="font-size: 1.5rem;">100%</h3>
+                        <div class="text-white-50" style="font-size: 0.78rem;">Audit Trail Sync</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- CALL TO ACTION BANNER -->
+    <section class="py-5 my-5">
+        <div class="container" data-aos="zoom-in">
+            <div class="glass-card p-5 text-center position-relative overflow-hidden"
+                style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));">
+                <h2 class="display-5 fw-bold text-white mb-3">Ready to Modernize Your Pharmacy?</h2>
+                <p class="text-white-50 fs-5 mb-4 max-w-600 mx-auto">Get started in under 2 minutes. Experience seamless
+                    medical billing and inventory management.</p>
+                <a href="{{ url_for('signup') }}" class="btn btn-glow btn-lg px-5 py-3 fs-6">
+                    <i class="bi bi-person-plus-fill me-2"></i> Create Free Account
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sleek Future Updates & Roadmap Banner -->
+    <div class="container my-5 text-center">
+        <div class="p-4 rounded-4 border border-secondary border-opacity-25 mx-auto position-relative overflow-hidden"
+            style="max-width: 680px; background: rgba(30, 41, 59, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.4);">
+
+            <!-- Ambient Radial Glow behind -->
+            <div
+                style="position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 220px; height: 100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%); pointer-events: none;">
+            </div>
+
+            <!-- Live Pulse Badge -->
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 mb-3"
+                style="font-size: 0.78rem; font-weight: 600;">
+                <span class="d-inline-block rounded-circle bg-primary"
+                    style="width: 7px; height: 7px; box-shadow: 0 0 8px #3b82f6; animation: roadmapPulse 1.8s infinite;"></span>
+                CONTINUOUS EVOLUTION & ROADMAP
+            </div>
+
+            <!-- Title & Text -->
+            <h5 class="fw-bold text-white mb-2" style="letter-spacing: -0.3px;">
+                Medicofiles Is Evolving Fast 🚀
+            </h5>
+            <p class="text-white-50 small mx-auto mb-3" style="max-width: 520px; font-size: 0.85rem; line-height: 1.6;">
+                We are actively building the future of inventory & management workflows. Exciting new modules and
+                performance updates
+                are currently under development.
+            </p>
+
+            <!-- Upcoming Features Pills -->
+            <div class="d-flex flex-wrap justify-content-center gap-2 pt-1">
+                <span
+                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill small fw-semibold"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-cpu text-info me-1"></i> Advanced AI Analytics
+                </span>
+                <span
+                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill small fw-semibold"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-phone text-success me-1"></i> Mobile Companion App
+                </span>
+                <span
+                    class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill small fw-semibold"
+                    style="font-size: 0.75rem;">
+                    <i class="bi bi-cloud-arrow-up text-warning me-1"></i> Multi-Branch Cloud Sync
+                </span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="border-top border-secondary border-opacity-25 py-4 mt-5">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2 fw-semibold text-light-50">
+                <i class="bi bi-capsule text-primary"></i> Medicofiles Systems &copy; 2026. All rights reserved.
+            </div>
+            <div class="d-flex gap-4 small text-muted">
+                <a href="{{ url_for('login') }}" class="text-decoration-none text-muted">Login</a>
+                <a href="{{ url_for('signup') }}" class="text-decoration-none text-muted">Signup</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 3D Pop Animation CSS & Modal Script -->
+    <style>
+        /* 3D Glass Modal Styling */
+        .style-3d-modal {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        /* 3D Pop Scale Animation on Open */
+        .modal.fade .modal-dialog {
+            transform: scale(0.8) rotateX(10deg);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0;
+        }
+
+        .modal.show .modal-dialog {
+            transform: scale(1) rotateX(0deg);
+            opacity: 1;
+        }
+
+        .module-preview-btn {
+            cursor: pointer;
+        }
+
+        .module-preview-btn:hover .short-arrow {
+            transform: translateX(5px);
+            transition: transform 0.2s ease;
+        }
+    </style>
+
+    <script>
+        function handleModuleClick(btn) {
+            const title = btn.getAttribute('data-title');
+            const imageSrc = btn.getAttribute('data-img');
+
+            document.getElementById('moduleModalTitle').innerText = title;
+            document.getElementById('moduleModalImg').src = imageSrc;
+
+            var previewModal = new bootstrap.Modal(document.getElementById('modulePreviewModal'));
+            previewModal.show();
+        }
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            once: true,
+            duration: 800
+        });
+    </script>
+</body>
+
+</html>

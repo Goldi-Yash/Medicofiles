@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Medico - Medical Inventory & Billing{% endblock %}</title>
+
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='rotate(-45 32 32)'><path d='M16 20 C16 11.163 23.163 4 32 4 L32 60 C23.163 60 16 52.837 16 44 Z' fill='%232563eb'/><path d='M32 4 C40.837 4 48 11.163 48 20 L48 44 C48 52.837 40.837 60 32 60 Z' fill='%231d4ed8'/><line x1='32' y1='4' x2='32' y2='60' stroke='%23ffffff' stroke-width='4'/></g></svg>">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f9;
+            font-size: 0.88rem;
+            /* Compact text size */
+        }
+
+        /* Compact Tables & Cards */
+        .table td,
+        .table th {
+            padding: 0.5rem 0.6rem !important;
+            /* Reduces row gaps */
+        }
+
+        .card {
+            margin-bottom: 1rem !important;
+        }
+
+        .form-control,
+        .form-select,
+        .btn {
+            padding: 0.35rem 0.65rem !important;
+            font-size: 0.88rem !important;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100%;
+            height: 100%;
+            background-color: #f4f6f9;
+            overflow-x: hidden;
+        }
+
+        /* Wrapper alignment */
+        .app-wrapper {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        /* --- Modern Collapsed Sidebar Alignment --- */
+        #sidebar {
+            width: 250px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #1e293b;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        /* Collapsed Sidebar Mode */
+        #sidebar.collapsed {
+            width: 80px !important;
+        }
+
+        /* Hide Text Labels when Collapsed */
+        #sidebar.collapsed .nav-text,
+        #sidebar.collapsed .link-text,
+        #sidebar.collapsed span:not(.badge) {
+            display: none !important;
+        }
+
+        /* Center Icons when Collapsed */
+        #sidebar.collapsed .nav-link {
+            justify-content: center !important;
+            padding: 12px 0 !important;
+        }
+
+        #sidebar.collapsed .nav-link i {
+            margin-right: 0 !important;
+        }
+
+        #sidebar.collapsed .brand-header {
+            display: flex !important;
+            justify-content: center !important;
+            padding: 15px 0 !important;
+            width: 100%;
+        }
+
+        #sidebar.collapsed .logo-wrapper,
+        #sidebar.collapsed .brand-logo {
+            display: none !important;
+        }
+
+        /* 2. Collapsed state me Logout Button SVG aur text alignment fix */
+        #sidebar.collapsed .sidebar-nav button.nav-link {
+            justify-content: center !important;
+            padding: 12px 0 !important;
+        }
+
+        #sidebar.collapsed .sidebar-nav button.nav-link svg {
+            margin: 0 !important;
+        }
+
+        /* Active Nav Item Styling */
+        .sidebar-nav .nav-link.active {
+            background-color: #2563eb !important;
+            /* Premium Blue */
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+
+        .sidebar-nav .nav-link {
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            margin: 4px 12px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-nav .nav-link:hover {
+            color: #f8fafc;
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-nav .nav-link i {
+            font-size: 1.2rem;
+            margin-right: 12px;
+            transition: margin 0.2s;
+        }
+
+        /* Main Content Area */
+        #main-content {
+            margin-left: 250px;
+            /* Sidebar width space */
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            height: 100vh !important;
+            overflow-y: auto !important;
+        }
+
+        #sidebar.collapsed+#main-content,
+        body.sidebar-collapsed #main-content {
+            margin-left: 80px;
+            /* Collapsed sidebar width space */
+        }
+
+        /* Card Styling */
+        .stat-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .brand-logo {
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+
+
+        /* Logout Button Styling */
+        .btn-logout-sidebar {
+            background: transparent;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .btn-logout-sidebar:hover {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+        }
+
+        /* Sidebar jab band/collapsed ho tab TEXT HIDE karo */
+        .sidebar:not(.open) .logout-text,
+        .sidebar.collapsed .logout-text,
+        .sidebar.mini .logout-text,
+        .sidebar.close .logout-text,
+        body.sidebar-collapsed .logout-text {
+            display: none !important;
+            width: 0 !important;
+            opacity: 0 !important;
+        }
+
+        /* Collapsed state me Icon strictly centered rahe */
+        .sidebar:not(.open) .btn-logout-sidebar,
+        .sidebar.collapsed .btn-logout-sidebar,
+        .sidebar.mini .btn-logout-sidebar,
+        .sidebar.close .btn-logout-sidebar {
+            justify-content: center !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        /* 1. Sidebar Permanent Scrollbar Hide (All Pages) */
+        #sidebar,
+        .sidebar,
+        .sidebar-nav {
+            overflow-y: auto !important;
+            scrollbar-width: none !important;
+            /* Firefox */
+            -ms-overflow-style: none !important;
+            /* IE/Edge */
+        }
+
+        #sidebar::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar,
+        .sidebar-nav::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+        }
+
+        /* 2. Main Content Area & Table Containers Grey Scrollbar */
+        #main-content,
+        .main-content,
+        .table-responsive,
+        .custom-med-scroll {
+            overflow-y: auto !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f1f5f9 !important;
+        }
+
+        #main-content::-webkit-scrollbar,
+        .main-content::-webkit-scrollbar,
+        .table-responsive::-webkit-scrollbar,
+        .custom-med-scroll::-webkit-scrollbar {
+            width: 6px !important;
+            height: 6px !important;
+        }
+
+        #main-content::-webkit-scrollbar-track,
+        .main-content::-webkit-scrollbar-track,
+        .table-responsive::-webkit-scrollbar-track,
+        .custom-med-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+        }
+
+        #main-content::-webkit-scrollbar-thumb,
+        .main-content::-webkit-scrollbar-thumb,
+        .table-responsive::-webkit-scrollbar-thumb,
+        .custom-med-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            /* Sleek Grey */
+            border-radius: 10px !important;
+        }
+
+        #main-content::-webkit-scrollbar-thumb:hover,
+        .main-content::-webkit-scrollbar-thumb:hover,
+        .table-responsive::-webkit-scrollbar-thumb:hover,
+        .custom-med-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+            /* Darker Grey on Hover */
+        }
+
+        /* Sidebar Scrollbar STRICT HIDE (Chrome, Safari, Firefox, Edge) */
+        #sidebar,
+        #sidebar *,
+        .sidebar,
+        .sidebar * {
+            scrollbar-width: none !important;
+            /* Firefox */
+            -ms-overflow-style: none !important;
+            /* IE/Edge */
+        }
+
+        #sidebar::-webkit-scrollbar,
+        #sidebar *::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar,
+        .sidebar *::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        /* FORCE GREY SCROLLBAR FOR ALL DATA TABLES & MAIN PAGES */
+        .table-responsive,
+        #main-content .table-responsive,
+        .card-body .table-responsive,
+        #main-content {
+            overflow-y: auto !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f1f5f9 !important;
+        }
+
+        /* Chrome / Edge / Safari Scrollbar Styling */
+        .table-responsive::-webkit-scrollbar,
+        #main-content::-webkit-scrollbar {
+            width: 6px !important;
+            height: 6px !important;
+        }
+
+        .table-responsive::-webkit-scrollbar-track,
+        #main-content::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb,
+        #main-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            /* Neutral Grey */
+            border-radius: 10px !important;
+        }
+
+        .table-responsive::-webkit-scrollbar-thumb:hover,
+        #main-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+            /* Darker Grey on Hover */
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+    <div class="d-flex">
+
+        <!-- 1. Permanent Fixed Sidebar -->
+        <div id="sidebar" class="d-flex flex-column flex-shrink-0 text-white">
+
+            <!-- Top Brand Header -->
+            <div
+                class="p-3 d-flex align-items-center justify-content-between border-bottom border-secondary border-opacity-25 brand-header">
+                <a href="/" class="d-flex align-items-center text-white text-decoration-none logo-wrapper">
+                    <i class="bi bi-capsule fs-3 text-primary me-2"></i>
+                    <span class="fs-5 fw-bold nav-text">Medico</span>
+                </a>
+                <button id="sidebarToggle" class="btn btn-link text-white p-0 border-0 fs-4 m-0">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="overflow-auto flex-grow-1 py-3">
+                <ul class="nav nav-pills flex-column sidebar-nav mb-0">
+                    <!-- Dashboard -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'dashboard') %}
+                        <a href="/"
+                            class="nav-link {% if request.path == '/dashboard' or request.path == '/' %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Dashboard')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Inventory -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'inventory') %}
+                        <a href="/inventory" class="nav-link {% if request.path == '/inventory' %}active{% endif %}">
+                            <i class="bi bi-box-seam"></i><span class="nav-text">Inventory / Stocks</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Inventory')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-box-seam"></i><span class="nav-text">Inventory / Stocks</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Stock Alerts -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'alerts') %}
+                        <a href="/inventory/alerts"
+                            class="nav-link {% if request.path == '/inventory/alerts' %}active{% endif %}">
+                            <i class="bi bi-bell-fill"></i><span class="nav-text">Stock Alerts</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Stock Alerts')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-bell-fill"></i><span class="nav-text">Stock Alerts</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Billing & POS -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'billing') %}
+                        <a href="/billing" class="nav-link {% if request.path == '/billing' %}active{% endif %}">
+                            <i class="bi bi-receipt"></i><span class="nav-text">Billing & POS</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Billing & POS')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-receipt"></i><span class="nav-text">Billing & POS</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Customer Ledger -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'ledger') %}
+                        <a href="/ledger" class="nav-link {% if request.path == '/ledger' %}active{% endif %}">
+                            <i class="bi bi-journal-bookmark-fill"></i>
+                            <span class="nav-text">Customer Ledger </span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Customer Ledger')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-journal-bookmark-fill"></i>
+                            <span class="nav-text">Customer Ledger </span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Symptom Tags Master -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'symptom_tags') %}
+                        <a class="nav-link {% if request.path == '/symptom-tags' %}active{% endif %}"
+                            href="/symptom-tags">
+                            <i class="bi bi-tags-fill"></i>
+                            <span class="nav-text">Symptom Tags Master</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Symptom Tags Master')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-tags-fill"></i>
+                            <span class="nav-text">Symptom Tags Master</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Smart Treatment Assistant -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'assistant') %}
+                        <a class="nav-link {% if request.path == '/symptom-assistant' %}active{% endif %}"
+                            href="/symptom-assistant">
+                            <i class="bi bi-prescription2"></i>
+                            <span class="nav-text">Smart Treatment Assistant</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Smart Treatment Assistant')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-prescription2"></i>
+                            <span class="nav-text">Smart Treatment Assistant</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Add New Medicine -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'add_medicine') %}
+                        <a href="/add-stock" class="nav-link {% if request.path == '/add-stock' %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i>
+                            <span class="nav-text">Add New Medicine</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Add New Medicine')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-plus-circle"></i>
+                            <span class="nav-text">Add New Medicine</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <!-- Transaction History -->
+                    <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'transactions') %}
+                        <a href="/transactions"
+                            class="nav-link {% if request.path == '/transactions' %}active{% endif %}">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="nav-text">Transaction History</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Transaction History')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="nav-text">Transaction History</span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    <li class="nav-item">
+                        <a href="/distributors"
+                            class="nav-link {% if request.path == '/distributors' %}active{% endif %}">
+                            <i class="bi bi-truck"></i>
+                            <span class="nav-text">Distributors</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Bottom Pinned Items -->
+            <div class="border-top border-secondary border-opacity-25 sidebar-nav mt-auto py-2">
+
+                <!-- Settings (Bottom Pinned) -->
+                {% if current_user.has_permission('modules', 'settings') %}
+                <a href="{{ url_for('settings') }}" class="nav-link">
+                    <i class="bi bi-gear fs-5"></i><span class="link-text ms-2">Settings</span>
+                </a>
+                {% else %}
+                <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Settings')"
+                    class="nav-link text-white-50 opacity-50">
+                    <i class="bi bi-gear fs-5"></i><span class="link-text ms-2">Settings</span>
+                </a>
+                {% endif %}
+
+                <!-- Logout Button -->
+                <a href="#" class="nav-link text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal"
+                    title="Logout">
+                    <i class="bi bi-box-arrow-right text-danger fs-5"></i>
+                    <span class="nav-text ms-2 style-logout-text">Logout</span>
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- 2. Main Page Content Wrap (Pushed by margin-left) -->
+        <div id="main-content" class="flex-grow-1 w-100 bg-light p-4">
+            {% block content %}
+            {% endblock %}
+        </div>
+
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content"
+                style="background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 12px;">
+
+                <div class="modal-body text-center p-4">
+                    <!-- Warning Icon -->
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle"
+                        style="width: 56px; height: 56px; background-color: rgba(239, 68, 68, 0.1);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </div>
+
+                    <h5 class="modal-title fw-bold mb-2" id="logoutModalLabel">Are you sure?</h5>
+                    <p class="text-secondary small mb-4">Are you sure you want to log out of your account?</p>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-secondary w-50" data-bs-dismiss="modal"
+                            style="background-color: #334155; border: none; font-size: 0.9rem;">Cancel</button>
+                        <a href="/logout" class="btn btn-danger w-50 d-flex align-items-center justify-content-center"
+                            style="background-color: #ef4444; border: none; font-size: 0.9rem; font-weight: 600;">Yes,
+                            Logout</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Restricted Red Pop-up Modal -->
+    <div class="modal fade" id="accessDeniedModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg text-center p-4" style="border-radius: 16px;">
+                <div class="modal-body">
+                    <div class="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-3"
+                        style="width: 70px; height: 70px;">
+                        <i class="bi bi-shield-lock-fill fs-1"></i>
+                    </div>
+                    <h4 class="fw-bold text-danger mb-2">Access Restricted!</h4>
+                    <p class="text-muted mb-4" id="accessDeniedMsg">
+                        You have limited access permissions. This action or module is restricted to Admin accounts only.
+                    </p>
+                    <button type="button" class="btn btn-danger fw-bold px-4 py-2 rounded-3 shadow-sm"
+                        data-bs-dismiss="modal">
+                        Got it, Understood
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <!-- First Time Onboarding Overlay & Modal (Only Once Per Account) -->
+    <div id="onboardingOverlay" style="
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+">
+        <div style="
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        border-radius: 20px;
+        padding: 32px 28px;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        color: #f8fafc;
+        animation: onboardingPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    ">
+            <div style="
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        ">
+                <i class="bi bi-gear-wide-connected" style="font-size: 28px; color: #ffffff;"></i>
+            </div>
+
+            <h4 style="font-weight: 700; margin-bottom: 10px; font-size: 1.35rem;">Welcome to Medico!</h4>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5; margin-bottom: 24px;">
+                To ensure smooth billing receipts, tax calculations, and store setup, please complete your store profile
+                settings.
+            </p>
+
+            <a href="{{ url_for('settings') }}" id="completeProfileBtn" style="
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #ffffff;
+            font-weight: 600;
+            padding: 12px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        ">
+                Complete Profile Now <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const userId = "{{ current_user.id }}";
+            const storageKey = 'medico_onboarded_user_' + userId;
+
+            // Check if this specific user account has completed onboarding
+            if (!localStorage.getItem(storageKey)) {
+                const overlay = document.getElementById('onboardingOverlay');
+                overlay.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+
+                document.getElementById('completeProfileBtn').addEventListener('click', function () {
+                    // Save permanent flag for this user ID
+                    localStorage.setItem(storageKey, 'true');
+                });
+            }
+        });
+    </script>
+
+    <style>
+        @keyframes onboardingPop {
+            0% {
+                opacity: 0;
+                transform: scale(0.85);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+    {% endif %}
+
+    <!-- Complete Seamless Dark Theme Overrides -->
+    <style>
+        /* 1. Global Dark Background Canvas */
+        [data-bs-theme="dark"],
+        [data-bs-theme="dark"] body,
+        [data-bs-theme="dark"] #main-content {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+        }
+
+        /* 2. Headings & Typography */
+        [data-bs-theme="dark"] h1,
+        [data-bs-theme="dark"] h2,
+        [data-bs-theme="dark"] h3,
+        [data-bs-theme="dark"] h4,
+        [data-bs-theme="dark"] h5,
+        [data-bs-theme="dark"] h6,
+        [data-bs-theme="dark"] .fw-bold,
+        [data-bs-theme="dark"] .text-dark {
+            color: #f8fafc !important;
+        }
+
+        [data-bs-theme="dark"] .text-secondary,
+        [data-bs-theme="dark"] .text-muted {
+            color: #94a3b8 !important;
+        }
+
+        /* 3. Cards, Modals, & Containers */
+        [data-bs-theme="dark"] .card,
+        [data-bs-theme="dark"] .bg-white,
+        [data-bs-theme="dark"] .modal-content,
+        [data-bs-theme="dark"] .card-header,
+        [data-bs-theme="dark"] .card-footer {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+
+        /* 4. Tables & Table Header Stripes Fix */
+        [data-bs-theme="dark"] .table {
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+
+        [data-bs-theme="dark"] .table thead,
+        [data-bs-theme="dark"] .table thead tr,
+        [data-bs-theme="dark"] .table thead th,
+        [data-bs-theme="dark"] .table-light,
+        [data-bs-theme="dark"] .table-light th,
+        [data-bs-theme="dark"] .table-light td {
+            background-color: #334155 !important;
+            color: #f8fafc !important;
+            border-color: #475569 !important;
+        }
+
+        [data-bs-theme="dark"] .table-hover tbody tr:hover {
+            background-color: #2d3748 !important;
+            color: #ffffff !important;
+        }
+
+        /* 5. Inputs, Search Bars, & Dropdowns (Search Bars Fix) */
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select,
+        [data-bs-theme="dark"] .input-group-text {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+
+        [data-bs-theme="dark"] .form-control::placeholder {
+            color: #64748b !important;
+        }
+
+        [data-bs-theme="dark"] .form-control:focus,
+        [data-bs-theme="dark"] .form-select:focus {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* 6. Buttons Styling Override */
+        [data-bs-theme="dark"] .btn-outline-secondary {
+            color: #cbd5e1 !important;
+            border-color: #475569 !important;
+        }
+
+        [data-bs-theme="dark"] .btn-outline-secondary:hover {
+            background-color: #334155 !important;
+            color: #ffffff !important;
+        }
+
+        /* 1. List Groups (Symptom Tags Mapped Medicines Fix) */
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+
+        /* 2. Custom Outer Containers & Cards (Distributors Contact Info Box Fix) */
+        [data-bs-theme="dark"] .p-3.bg-light,
+        [data-bs-theme="dark"] .bg-light,
+        [data-bs-theme="dark"] div[style*="background-color: #f8f9fa"],
+        [data-bs-theme="dark"] div[style*="background: #f8f9fa"],
+        [data-bs-theme="dark"] div[style*="background-color: rgb(248, 249, 250)"],
+        [data-bs-theme="dark"] div[style*="background: white"],
+        [data-bs-theme="dark"] div[style*="background-color: white"] {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+
+        /* 3. Inline Code Tags & Badges (Stock Alerts Batch Numbers Fix) */
+        [data-bs-theme="dark"] code,
+        [data-bs-theme="dark"] code.bg-white,
+        [data-bs-theme="dark"] .badge.bg-white {
+            background-color: #334155 !important;
+            color: #38bdf8 !important;
+            /* Soft Cyan Code Highlight */
+            border-color: #475569 !important;
+        }
+
+        /* 4. Text Contrast inside Nested Light Boxes */
+        [data-bs-theme="dark"] .list-group-item *,
+        [data-bs-theme="dark"] .bg-light * {
+            color: #f8fafc !important;
+        }
+
+        [data-bs-theme="dark"] .btn-light,
+        [data-bs-theme="dark"] .btn-sm.btn-light,
+        [data-bs-theme="dark"] .btn[class*="btn-light"],
+        [data-bs-theme="dark"] a.btn-light {
+            background-color: #334155 !important;
+            color: #f8fafc !important;
+            border-color: #475569 !important;
+        }
+
+        [data-bs-theme="dark"] .btn-light:hover,
+        [data-bs-theme="dark"] a.btn-light:hover {
+            background-color: #475569 !important;
+            color: #ffffff !important;
+            border-color: #64748b !important;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const themeBtn = document.getElementById('themeToggleBtn');
+            const themeIcon = document.getElementById('themeIcon');
+
+            // Check saved preference or default to light
+            const currentTheme = localStorage.getItem('medico_theme') || 'light';
+            applyTheme(currentTheme);
+
+            if (themeBtn) {
+                themeBtn.addEventListener('click', function () {
+                    const activeTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+                    const newTheme = activeTheme === 'dark' ? 'light' : 'dark';
+                    applyTheme(newTheme);
+                    localStorage.setItem('medico_theme', newTheme);
+                });
+            }
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                if (themeIcon) {
+                    if (theme === 'dark') {
+                        themeIcon.className = 'bi bi-sun-fill text-warning';
+                    } else {
+                        themeIcon.className = 'bi bi-moon-stars-fill text-dark';
+                    }
+                }
+            }
+        });
+    </script>
+
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JavaScript for Toggle -->
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const toggleBtn = document.getElementById('sidebarToggle');
+
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                mainContent.style.marginLeft = '80px';
+            } else {
+                mainContent.style.marginLeft = '250px';
+            }
+        });
+
+        function showAccessDeniedPopup(featureName) {
+            if (featureName) {
+                document.getElementById('accessDeniedMsg').innerText = `You have limited access. Accessing "${featureName}" requires Admin permissions.`;
+            } else {
+                document.getElementById('accessDeniedMsg').innerText = "You have limited access permissions. Contact store admin for elevated rights.";
+            }
+
+            let modal = new bootstrap.Modal(document.getElementById('accessDeniedModal'));
+            modal.show();
+        }
+    </script>
+
+    <!-- Jinja Flash Message Handler (Script tag ke bahar) -->
+    {% with messages = get_flashed_messages(category_filter=["access_denied_popup"]) %}
+    {% if messages %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            showAccessDeniedPopup();
+        });
+    </script>
+    {% endif %}
+    {% endwith %}
+
+</body>
+
+</html>
