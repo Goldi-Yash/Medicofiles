@@ -326,7 +326,16 @@ def landing():
     return render_template('landing.html')
 
 # Master Cache Store (In-Memory Database for fast lookup)
-MEDICINE_CACHE = {}
+CACHE_FILE = 'medicine_cache.json'
+
+def load_cache():
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
 
 @app.route('/get_medicine_info/<path:med_name>')
 def get_medicine_info(med_name):
@@ -334,12 +343,13 @@ def get_medicine_info(med_name):
         med_key = med_name.strip().lower()
 
         # STEP 1: Agar medicine cache me pehle se hai, to seedha vahan se return karo!
-        if med_key in MEDICINE_CACHE:
-            print(f"[CACHE HIT] Serving '{med_name}' instantly without calling Gemini API!")
+        cache_data = load_cache()
+        if med_key in cache_data:
+            print(f"[FILE CACHE HIT] Serving '{med_name}' instantly from persistent file!")
             return jsonify({
                 'status': 'success',
-                'uses': MEDICINE_CACHE[med_key]['uses'],
-                'side_effects': MEDICINE_CACHE[med_key]['side_effects']
+                'uses': cache_data[med_key]['uses'],
+                'side_effects': cache_data[med_key]['side_effects']
             })
 
         # STEP 2: Agar pehli baar search ho raha hai, tabhi Gemini API call hogi
@@ -350,7 +360,7 @@ def get_medicine_info(med_name):
         client = genai.Client(api_key=api_key)
 
         prompt = f"""
-        You are a clinical pharmacy expert. 
+        You are a clinical pharmacy expert.
         Provide accurate medical information for the medicine: '{med_name}'.
         
         Respond STRICTLY in JSON format with two keys:
@@ -385,10 +395,13 @@ def get_medicine_info(med_name):
         side_effects_data = data.get('side_effects')
 
         #  STEP 3: Naya fetched data Cache me save kar lo
-        MEDICINE_CACHE[med_key] = {
-            'uses': uses_data,
-            'side_effects': side_effects_data
-        }
+        cache_data = load_cache()
+        cache_data[med_key] = {'uses': uses_data, 'side_effects': side_effects_data}
+        try:
+            with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            print(f"Cache write error: {e}")
 
         return jsonify({
             'status': 'success',
@@ -469,10 +482,30 @@ def dashboard():
     today_bills = Sale.query.filter(Sale.created_at >= today_start).all() if 'Sale' in globals() else []
     todays_sales = sum(bill.total_amount for bill in today_bills) if today_bills else 0.0
 
-    # Fetch Dynamic Store Config
-    STORE_MARGIN_PERCENT = getattr(store_config, 'profit_margin', 20.0) or 20.0
+    # 3. Today's Real Profit & Dynamic Margin Calculation
+    actual_today_profit = 0.0
 
-    est_net_profit = todays_sales * (STORE_MARGIN_PERCENT / 100.0)
+    if today_bills:
+        for bill in today_bills:
+            for item in bill.items:
+                # Match medicine from database to get purchase_price
+                med = Medicine.query.get(item.medicine_id)
+                if med:
+                    # Actual Cost = purchase_price * quantity
+                    # Selling Total = item.total
+                    cost_price = (med.purchase_price or 0.0) * item.quantity
+                    actual_today_profit += (item.total - cost_price)
+                else:
+                    # Fallback if medicine was deleted: assume 20% margin
+                    actual_today_profit += item.total * 0.20
+
+    est_net_profit = max(0.0, actual_today_profit)
+
+    # Dynamic Real Margin Percentage Calculation
+    if todays_sales > 0:
+        STORE_MARGIN_PERCENT = round((est_net_profit / todays_sales) * 100, 1)
+    else:
+        STORE_MARGIN_PERCENT = getattr(store_config, 'profit_margin', 20.0) or 20.0
 
     # 4. Weekly Sales Calculation (Last 7 Days)
     weekly_labels = []
@@ -489,20 +522,32 @@ def dashboard():
         weekly_labels.append(day_date.strftime('%a'))
         weekly_sales.append(day_total)
 
-    # 5. Stock Categories
-    tablets = Medicine.query.filter(Medicine.category == 'Tablet').count()
-    syrups = Medicine.query.filter(Medicine.category == 'Syrup').count()
-    injections = Medicine.query.filter(Medicine.category == 'Injection').count()
-    capsules = Medicine.query.filter(Medicine.category == 'Capsule').count()
-    others = Medicine.query.filter(~Medicine.category.in_(['Tablet', 'Syrup', 'Injection', 'Capsule'])).count()
+    # 5. Stock Categories & Category-wise Margin Analytics
+    all_medicines = Medicine.query.all()
+    
+    categories = ['Tablet', 'Syrup', 'Injection', 'Capsule', 'Other']
+    category_data = {c + 's' if not c.endswith('s') else c: 0 for c in categories}
+    category_analytics = {}
 
-    category_data = {
-        'Tablets': tablets,
-        'Syrups': syrups,
-        'Injections': injections,
-        'Capsules': capsules,
-        'Others': others
-    }
+    for cat in categories:
+        cat_key = cat + 's' if not cat.endswith('s') else cat
+        cat_meds = [m for m in all_medicines if (m.category or 'Other').strip().title() == cat]
+        
+        # Stock Count
+        category_data[cat_key] = len(cat_meds)
+        
+        # Margin Calculations
+        total_purchase_val = sum((m.purchase_price or 0.0) * (m.quantity or 0) for m in cat_meds)
+        total_mrp_val = sum((m.mrp or 0.0) * (m.quantity or 0) for m in cat_meds)
+        cat_profit = max(0.0, total_mrp_val - total_purchase_val)
+        cat_margin_pct = round((cat_profit / total_mrp_val * 100), 1) if total_mrp_val > 0 else 0.0
+        
+        category_analytics[cat_key] = {
+            'count': len(cat_meds),
+            'stock_value': round(total_mrp_val, 2),
+            'profit_value': round(cat_profit, 2),
+            'margin_pct': cat_margin_pct
+        }
 
     # 6. Recent Billing Transactions
     recent_bills = Sale.query.order_by(Sale.id.desc()).limit(5).all() if 'Sale' in globals() else []
@@ -517,6 +562,7 @@ def dashboard():
         margin_percent=STORE_MARGIN_PERCENT,
         low_stock_items=preview_low_stock,
         category_data=category_data,
+        category_analytics=category_analytics,
         weekly_labels=weekly_labels,
         weekly_sales=weekly_sales,
         recent_bills=recent_bills
@@ -597,7 +643,7 @@ def settings():
         
         # Inventory & Taxes
         store_config.expiry_alert_days = int(request.form.get('expiry_alert_days', 60))
-        store_config.profit_margin = float(request.form.get('profit_margin', 20.0))
+        # store_config.profit_margin = float(request.form.get('profit_margin', 20.0))
 
         # DYNAMIC CATEGORY THRESHOLDS SAVE ---
         store_config.thresh_tablet = int(request.form.get('thresh_tablet', 5))

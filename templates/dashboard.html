@@ -148,7 +148,7 @@
                         <i class="bi bi-graph-up-arrow fs-4"></i>
                     </div>
                     <div>
-                        <span class="text-muted small fw-semibold d-block">Est. Net Profit</span>
+                        <span class="text-muted small fw-semibold d-block">Today Net Profit</span>
                         <h4 class="fw-bold mb-0 text-dark">₹{{ "%.2f"|format(net_profit) }}</h4>
                     </div>
                 </div>
@@ -320,6 +320,39 @@
     </div>
 </div>
 
+<!-- Category Margin Breakdown Modal -->
+<div class="modal fade" id="categoryMarginModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4 p-3">
+                <h5 class="modal-title fw-bold" id="catModalTitle">📊 Category Profitability Breakdown</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">Live profit margin potential based on current inventory MRP vs Purchase
+                    Rate.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Category</th>
+                                <th>Items</th>
+                                <th>Total Stock Value</th>
+                                <th>Est. Profit (₹)</th>
+                                <th class="text-end">Margin %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoryMarginTableBody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Chart.js CDN for Graphs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -363,12 +396,15 @@
             });
         }
 
-        // 3. Render Doughnut Chart
+        // 3. Render Doughnut Chart with Click Handler
         const elCat = document.getElementById('categoryChart');
         if (elCat) {
             const keys = Object.keys(categoryData);
             const vals = Object.values(categoryData);
-            new Chart(elCat, {
+
+            const categoryAnalytics = JSON.parse('{{ category_analytics | tojson | safe }}');
+
+            const catChart = new Chart(elCat, {
                 type: 'doughnut',
                 data: {
                     labels: keys.length ? keys : ['Tablets', 'Syrups', 'Capsules', 'Others'],
@@ -382,7 +418,43 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom' } },
-                    cutout: '65%'
+                    cutout: '65%',
+                    onHover: (event, chartElement) => {
+                        event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                    },
+                    onClick: (e, elements) => {
+                        // Populate and show Category Margin Breakdown Modal
+                        const tbody = document.getElementById('categoryMarginTableBody');
+                        if (!tbody) return;
+
+                        tbody.innerHTML = '';
+
+                        Object.keys(categoryAnalytics).forEach(cat => {
+                            const item = categoryAnalytics[cat];
+                            const badgeClass = item.margin_pct >= 20 ? 'bg-success-subtle text-success border-success-subtle' : 'bg-warning-subtle text-warning border-warning-subtle';
+
+                            const row = `
+                        <tr>
+                            <td class="fw-bold text-dark">${cat}</td>
+                            <td><span class="badge bg-light text-dark border">${item.count} items</span></td>
+                            <td class="fw-semibold">₹${item.stock_value.toFixed(2)}</td>
+                            <td class="fw-bold text-success">₹${item.profit_value.toFixed(2)}</td>
+                            <td class="text-end">
+                                <span class="badge ${badgeClass} border px-2 py-1 fs-7">
+                                    ${item.margin_pct}%
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                            tbody.innerHTML += row;
+                        });
+
+                        const modalEl = document.getElementById('categoryMarginModal');
+                        if (modalEl) {
+                            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                            modal.show();
+                        }
+                    }
                 }
             });
         }

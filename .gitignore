@@ -19,3 +19,6 @@ instance/
 # VS Code & System Files
 .vscode/
 .DS_Store
+
+#medicine cache
+medicine_cache.json
