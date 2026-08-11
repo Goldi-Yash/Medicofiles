@@ -72,6 +72,7 @@
                         <th scope="col">Batch No.</th>
                         <th scope="col">Expiry Date</th>
                         <th scope="col">Quantity</th>
+                        <th scope="col" class="text-success">P. Rate</th>
                         <th scope="col">MRP</th>
                         <th scope="col">Status</th>
                         <th scope="col" class="text-end pe-4">Actions</th>
@@ -81,7 +82,10 @@
                     {% for med in medicines %}
                     <tr>
                         <td class="ps-4 fw-semibold text-dark">
-                            {{ med.name }}
+                            <a href="javascript:void(0)" class="fw-bold text-decoration-none text-primary med-info-link"
+                                data-name="{{ med.name }}" title="Click to view uses & info">
+                                {{ med.name }}
+                            </a>
                             {% if med.rx_required %}
                             <span
                                 class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-1 py-0 align-middle"
@@ -147,6 +151,11 @@
                                 {% endif %}
                             </span>
                         </td>
+                        <td>
+                            <span class="fw-bold text-success">
+                                ₹{{ "%.2f"|format(med.purchase_price) if med.purchase_price else "0.00" }}
+                            </span>
+                        </td>
                         <td>₹{{ "%.2f"|format(med.mrp) }}</td>
                         <td>
                             {% if med.quantity is not none and med.quantity <= 0 %} <span
@@ -188,6 +197,57 @@
     </div>
 </div>
 
+<!-- Medicine Info Modal -->
+<div class="modal fade" id="medInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4 p-3">
+                <h5 class="modal-title fw-bold" id="infoMedTitle">💊 Medicine Overview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Loader -->
+                <div id="infoLoader" class="text-center py-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <p class="text-muted fw-medium mt-3">Fetching medical indications & side effects...</p>
+                </div>
+
+                <!-- Inside #medInfoModal -->
+                <div id="infoContent" class="d-none">
+                    <!-- SECTION 1: USES -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-success-subtle text-success fs-6 p-2 rounded-circle me-2">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </span>
+                            <h6 class="fw-bold text-dark m-0 fs-6">Primary Uses & Indications</h6>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border-start border-success border-4">
+                            <p class="text-dark small mb-0 fw-normal" id="infoUsesText"
+                                style="text-align: justify; line-height: 1.6;"></p>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: SIDE EFFECTS -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-danger-subtle text-danger fs-6 p-2 rounded-circle me-2">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </span>
+                            <h6 class="fw-bold text-dark m-0 fs-6">Possible Side Effects & Warnings</h6>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border-start border-danger border-4">
+                            <p class="text-dark small mb-0 fw-normal" id="infoSideEffectsText"
+                                style="text-align: justify; line-height: 1.6;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     function filterTable() {
         let searchFilter = document.getElementById('searchInput').value.toLowerCase();
@@ -216,5 +276,41 @@
     document.getElementById('searchInput').addEventListener('keyup', filterTable);
     document.getElementById('categoryFilter').addEventListener('change', filterTable);
     document.getElementById('statusFilter').addEventListener('change', filterTable);
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const infoLinks = document.querySelectorAll('.med-info-link');
+        const modalElement = document.getElementById('medInfoModal');
+        if (!modalElement) return;
+
+        const medModal = new bootstrap.Modal(modalElement);
+
+        infoLinks.forEach(link => {
+            link.addEventListener('click', function () {
+                const rawMedName = this.getAttribute('data-name');
+
+                document.getElementById('infoMedTitle').innerText = '💊 ' + rawMedName;
+                document.getElementById('infoLoader').classList.remove('d-none');
+                document.getElementById('infoContent').classList.add('d-none');
+
+                medModal.show();
+
+                fetch(`/get_medicine_info/${encodeURIComponent(rawMedName)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('infoLoader').classList.add('d-none');
+                        document.getElementById('infoContent').classList.remove('d-none');
+
+                        document.getElementById('infoUsesText').innerText = data.uses;
+                        document.getElementById('infoSideEffectsText').innerText = data.side_effects;
+                    })
+                    .catch(err => {
+                        document.getElementById('infoLoader').classList.add('d-none');
+                        document.getElementById('infoContent').classList.remove('d-none');
+                        document.getElementById('infoUsesText').innerText = 'Standard therapeutic usage for ' + rawMedName;
+                        document.getElementById('infoSideEffectsText').innerText = 'Consult physician or pharmacist for side effects guidance.';
+                    });
+            });
+        });
+    });
 </script>
 {% endblock %}

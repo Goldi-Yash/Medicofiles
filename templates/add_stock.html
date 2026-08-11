@@ -193,10 +193,16 @@
                                 value="{{ medicine.quantity if medicine else '' }}" required>
                         </div>
 
-                        <!-- MRP -->
-                        <div class="col-md-6">
+                        <!-- Replace single MRP block with 2 columns: Purchase Price & MRP -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Purchase Price / Cost Rate (₹)</label>
+                            <input type="number" step="0.01" name="purchase_price" class="form-control"
+                                placeholder="e.g. 15.50" value="{{ medicine.purchase_price if medicine else '' }}">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">MRP (₹) *</label>
-                            <input type="number" step="0.01" name="mrp" class="form-control" placeholder="0.00"
+                            <input type="number" step="0.01" name="mrp" class="form-control" placeholder="e.g. 20.00"
                                 value="{{ medicine.mrp if medicine else '' }}" required>
                         </div>
 

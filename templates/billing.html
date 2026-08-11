@@ -87,7 +87,11 @@
                             <tr>
                                 <td>
                                     <strong class="d-block text-dark">
-                                        {{ med.name }}
+                                        <a href="javascript:void(0)"
+                                            class="fw-bold text-decoration-none text-primary med-info-link"
+                                            data-name="{{ med.name }}" title="Click to view uses & info">
+                                            {{ med.name }}
+                                        </a>
                                         {% if med.rx_required %}
                                         <span
                                             class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-1 py-0 align-middle"
@@ -269,6 +273,57 @@
                             <button type="button" id="checkoutBtn" class="btn btn-success w-100 py-2 fw-bold" disabled>
                                 <i class="bi bi-printer me-1"></i> Save & Print
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Medicine Info Modal -->
+<div class="modal fade" id="medInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4 p-3">
+                <h5 class="modal-title fw-bold" id="infoMedTitle">💊 Medicine Overview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Loader -->
+                <div id="infoLoader" class="text-center py-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <p class="text-muted fw-medium mt-3">Fetching medical indications & side effects...</p>
+                </div>
+
+                <!-- Inside #medInfoModal -->
+                <div id="infoContent" class="d-none">
+                    <!-- SECTION 1: USES -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-success-subtle text-success fs-6 p-2 rounded-circle me-2">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </span>
+                            <h6 class="fw-bold text-dark m-0 fs-6">Primary Uses & Indications</h6>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border-start border-success border-4">
+                            <p class="text-dark small mb-0 fw-normal" id="infoUsesText"
+                                style="text-align: justify; line-height: 1.6;"></p>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: SIDE EFFECTS -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-danger-subtle text-danger fs-6 p-2 rounded-circle me-2">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </span>
+                            <h6 class="fw-bold text-dark m-0 fs-6">Possible Side Effects & Warnings</h6>
+                        </div>
+                        <div class="bg-light p-3 rounded-3 border-start border-danger border-4">
+                            <p class="text-dark small mb-0 fw-normal" id="infoSideEffectsText"
+                                style="text-align: justify; line-height: 1.6;"></p>
                         </div>
                     </div>
                 </div>
@@ -611,6 +666,63 @@
 
         // Clean old local storage
         localStorage.removeItem('pos_pending_items');
+    });
+
+    // Safe Event Listeners (agar element na mile to script crash nahi hogi)
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.addEventListener('keyup', filterTable);
+
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (categoryFilter) categoryFilter.addEventListener('change', filterTable);
+
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) statusFilter.addEventListener('change', filterTable);
+
+    // Global Click Listener for Medicine Info Modal in Billing/POS
+    document.addEventListener('click', function (e) {
+        const link = e.target.closest('.med-info-link');
+        if (!link) return;
+
+        e.preventDefault();
+        const rawMedName = link.getAttribute('data-name');
+        if (!rawMedName) return;
+
+        const modalElement = document.getElementById('medInfoModal');
+        if (!modalElement) {
+            console.error("Modal element #medInfoModal missing in HTML!");
+            return;
+        }
+
+        const medModal = bootstrap.Modal.getOrCreateInstance(modalElement);
+
+        // Reset UI State
+        document.getElementById('infoMedTitle').innerText = '💊 ' + rawMedName;
+        document.getElementById('infoLoader').classList.remove('d-none');
+        document.getElementById('infoContent').classList.add('d-none');
+
+        medModal.show();
+
+        // Fetch from Gemini Backend
+        fetch(`/get_medicine_info/${encodeURIComponent(rawMedName)}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('infoLoader').classList.add('d-none');
+                document.getElementById('infoContent').classList.remove('d-none');
+
+                if (data.status === 'success') {
+                    document.getElementById('infoUsesText').innerText = data.uses;
+                    document.getElementById('infoSideEffectsText').innerText = data.side_effects;
+                } else {
+                    document.getElementById('infoUsesText').innerText = 'Uses details not found.';
+                    document.getElementById('infoSideEffectsText').innerText = 'Consult a registered practitioner.';
+                }
+            })
+            .catch(err => {
+                document.getElementById('infoLoader').classList.add('d-none');
+                document.getElementById('infoContent').classList.remove('d-none');
+                document.getElementById('infoUsesText').innerText = 'Error loading details.';
+                document.getElementById('infoSideEffectsText').innerText = 'Unable to connect to lookup service.';
+            });
     });
 </script>
 {% endblock %}-

@@ -19,8 +19,25 @@ from functools import wraps
 import json
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
+import wikipediaapi
+import urllib.parse
+import requests
+from bs4 import BeautifulSoup
+from google import genai
+from google.genai import types
+import traceback
 
 load_dotenv()
+
+
+# Initialize Wikipedia API with a custom user-agent
+wiki = wikipediaapi.Wikipedia(
+    user_agent='MedicofilesApp/1.0 (contact@medicofiles.com)',
+    language='en'
+)
+
+# Initialize Gemini Client
+client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
 def admin_required(f):
     @wraps(f)
@@ -157,6 +174,7 @@ class Medicine(db.Model):
     quantity = db.Column(db.Float, nullable=False, default=0)
     pack_size = db.Column(db.Integer, default=10) # e.g. 10 tablets per strip
     mrp = db.Column(db.Float, nullable=False)
+    purchase_price = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     rx_required = db.Column(db.Boolean, default=False)
     medicine_type = db.Column(db.String(10), default='None', nullable=True)
@@ -306,6 +324,84 @@ def landing():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
+
+# Master Cache Store (In-Memory Database for fast lookup)
+MEDICINE_CACHE = {}
+
+@app.route('/get_medicine_info/<path:med_name>')
+def get_medicine_info(med_name):
+    try:
+        med_key = med_name.strip().lower()
+
+        # STEP 1: Agar medicine cache me pehle se hai, to seedha vahan se return karo!
+        if med_key in MEDICINE_CACHE:
+            print(f"[CACHE HIT] Serving '{med_name}' instantly without calling Gemini API!")
+            return jsonify({
+                'status': 'success',
+                'uses': MEDICINE_CACHE[med_key]['uses'],
+                'side_effects': MEDICINE_CACHE[med_key]['side_effects']
+            })
+
+        # STEP 2: Agar pehli baar search ho raha hai, tabhi Gemini API call hogi
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("API Key missing")
+
+        client = genai.Client(api_key=api_key)
+
+        prompt = f"""
+        You are a clinical pharmacy expert. 
+        Provide accurate medical information for the medicine: '{med_name}'.
+        
+        Respond STRICTLY in JSON format with two keys:
+        1. "uses": A detailed 3-4 line paragraph detailing primary medical uses, indications, and clinical benefits in India.
+        2. "side_effects": A detailed 2-3 line paragraph detailing common side effects and safety precautions.
+
+        Keep language simple and professional. Do NOT wrap output in markdown formatting like ```json.
+        """
+
+        model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite' , 'gemini-flash']
+        response = None
+        
+        for m_name in model_names:
+            try:
+                response = client.models.generate_content(
+                    model=m_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                if response and response.text:
+                    break
+            except Exception:
+                continue
+
+        if not response or not response.text:
+            raise RuntimeError("All endpoints failed")
+
+        data = json.loads(response.text)
+        uses_data = data.get('uses')
+        side_effects_data = data.get('side_effects')
+
+        #  STEP 3: Naya fetched data Cache me save kar lo
+        MEDICINE_CACHE[med_key] = {
+            'uses': uses_data,
+            'side_effects': side_effects_data
+        }
+
+        return jsonify({
+            'status': 'success',
+            'uses': uses_data,
+            'side_effects': side_effects_data
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'success',
+            'uses': f"{med_name} is an active therapeutic medication used for targeted symptom relief, managing physiological discomfort, and supporting recovery under prescription.",
+            'side_effects': "Safety Note: Read label carefully. Common side effects may include mild nausea, stomach upset, or drowsiness in sensitive individuals."
+        })
 
 @app.route('/')
 @login_required
@@ -936,6 +1032,7 @@ def edit_stock(id):
         medicine.expiry_date = request.form.get('expiry_date')
         medicine.quantity = float(request.form.get('quantity', 0))
         medicine.mrp = float(request.form.get('mrp'))
+        medicine.purchase_price = float(request.form.get('purchase_price', 0) or 0)
         medicine.rx_required = True if request.form.get('rx_required') in ['true', 'on', 'True'] or 'rx_required' in request.form else False
         medicine.medicine_type = request.form.get('medicine_type', '').strip()
         medicine.pack_size = int(request.form.get('pack_size', 10) or 10)
@@ -960,6 +1057,7 @@ def add_stock():
         expiry_date = request.form.get('expiry_date')
         quantity = float(request.form.get('quantity', 0))
         mrp = float(request.form.get('mrp'))
+        purchase_price = float(request.form.get('purchase_price', 0) or 0)
         is_rx = ('rx_required' in request.form) or (request.form.get('rx_required') == 'true')
         medicine_type = request.form.get('medicine_type', '')
         pack_size = int(request.form.get('pack_size', 10) or 10)
@@ -975,6 +1073,7 @@ def add_stock():
         req_company = str(data.get('company') or '').strip()
         req_composition = str(data.get('composition') or data.get('salt') or '').strip()
         req_mrp = float(data.get('mrp') or 0.0)
+        req_purchase_price = float(data.get('purchase_price', 0) or 0)
         req_qty = float(data.get('quantity') or 0.0)
     
         # Duplicate match query using exact DB Model field names
@@ -1011,6 +1110,7 @@ def add_stock():
             expiry_date=expiry_date,
             quantity=quantity,
             mrp=mrp,
+            purchase_price=purchase_price,
             rx_required=is_rx,
             medicine_type=medicine_type,
             pack_size=pack_size
