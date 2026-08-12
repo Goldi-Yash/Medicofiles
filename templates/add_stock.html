@@ -70,11 +70,14 @@
                                                     <tr>
                                                         <th>Item Name *</th>
                                                         <th>Company</th>
-                                                        <th style="width: 130px;">Category</th>
+                                                        <th>Composition (Salt)</th>
+                                                        <th style="width: 110px;">Category</th>
                                                         <th>Batch No.</th>
-                                                        <th>Qty</th>
-                                                        <th>MRP (₹)</th>
-                                                        <th style="width: 50px;"></th>
+                                                        <th>Expiry Date</th>
+                                                        <th style="width: 80px;">Qty</th>
+                                                        <th style="width: 100px;">P. Rate (₹)</th>
+                                                        <th style="width: 100px;">MRP (₹)</th>
+                                                        <th style="width: 40px;"></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="parsedStockTableBody">
@@ -223,10 +226,24 @@
     </div>
 </div>
 
+<!-- AI Processing Loader Modal -->
+<div class="modal fade" id="aiLoadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+            <div class="spinner-border text-primary mx-auto my-3" style="width: 3.5rem; height: 3.5rem;" role="status">
+            </div>
+            <h5 class="fw-bold text-dark mt-2">Parsing Invoice with AI...</h5>
+            <p class="text-muted small mb-0">Extracting medicine names, composition, PTR, PTS rates, and batch details.
+            </p>
+        </div>
+    </div>
+</div>
+
 <script>
     let parsedItems = [];
 
-    // 1. PDF Upload & Parse Trigger
+    // 1. Clean PDF/Excel Upload Handler (No Blocking Overlay Modals)
     document.getElementById('pdfFileInput').addEventListener('change', function () {
         let file = this.files[0];
         if (!file) return;
@@ -234,24 +251,37 @@
         let formData = new FormData();
         formData.append('bill_pdf', file);
 
+        // Simple cursor spinner so user knows backend is working
+        document.body.style.cursor = 'wait';
+
         fetch('/upload-pdf-bill', {
             method: 'POST',
             body: formData
         })
             .then(res => res.json())
             .then(data => {
+                document.body.style.cursor = 'default';
+
                 if (data.status === 'success' && data.items.length > 0) {
                     parsedItems = data.items;
                     renderParsedTable();
 
-                    // Show Modal
-                    let stockModal = new bootstrap.Modal(document.getElementById('parsedStockModal'));
+                    // Direct show stock review table modal
+                    const stockModalEl = document.getElementById('parsedStockModal');
+                    const stockModal = bootstrap.Modal.getOrCreateInstance(stockModalEl);
                     stockModal.show();
                 } else {
-                    alert('Could not parse items. Please check the PDF invoice layout.');
+                    alert('Could not parse items: ' + (data.message || 'Please check file layout.'));
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                document.body.style.cursor = 'default';
+                console.error(err);
+                alert('Error processing file.');
+            })
+            .finally(() => {
+                this.value = '';
+            });
     });
 
     // 2. Render Parsed Items into Modal Editable Grid
@@ -278,39 +308,48 @@
                 }
             }
             tbody.innerHTML += `
-        <tr>
-            <td>
-            <input type="text" class="form-control form-control-sm" value="${item.name}" onchange="parsedItems[${index}].name = this.value">
-            </td>
-            <td>
-            <input type="text" class="form-control form-control-sm" value="${item.company || ''}" placeholder="e.g. Cipla" onchange="parsedItems[${index}].company = this.value">
-            </td>
-            <td>
-            <select class="form-select form-select-sm" onchange="parsedItems[${index}].category = this.value">
-                <option value="Tablet" ${item.category === 'Tablet' ? 'selected' : ''}>Tablet</option>
-                <option value="Capsule" ${item.category === 'Capsule' ? 'selected' : ''}>Capsule</option>
-                <option value="Syrup" ${item.category === 'Syrup' ? 'selected' : ''}>Syrup</option>
-                <option value="Injection" ${item.category === 'Injection' ? 'selected' : ''}>Injection</option>
-                <option value="Ointment" ${item.category === 'Ointment' ? 'selected' : ''}>Ointment</option>
-                <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
-            </select>
-            </td>
-            <td>
-            <input type="text" class="form-control form-control-sm" value="${item.batch_no}" onchange="parsedItems[${index}].batch_no = this.value">
-            </td>
-            <td>
-            <input type="number" step="0.1" class="form-control form-control-sm" value="${item.quantity}" onchange="parsedItems[${index}].quantity = parseFloat(this.value)">
-            </td>
-            <td>
-            <input type="number" step="0.01" class="form-control form-control-sm" value="${item.mrp}" onchange="parsedItems[${index}].mrp = parseFloat(this.value)">
-            </td>
-            <td class="text-center">
-            <button class="btn btn-link text-danger p-0" onclick="removeParsedItem(${index})">
-                <i class="bi bi-trash-fill"></i>
-            </button>
-            </td>
-        </tr>
-    `;
+            <tr>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${item.name || ''}" onchange="parsedItems[${index}].name = this.value">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${item.company || ''}" placeholder="e.g. Cipla" onchange="parsedItems[${index}].company = this.value">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${item.composition || ''}" placeholder="e.g. Paracetamol" onchange="parsedItems[${index}].composition = this.value">
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" onchange="parsedItems[${index}].category = this.value">
+                        <option value="Tablet" ${item.category === 'Tablet' ? 'selected' : ''}>Tablet</option>
+                        <option value="Capsule" ${item.category === 'Capsule' ? 'selected' : ''}>Capsule</option>
+                        <option value="Syrup" ${item.category === 'Syrup' ? 'selected' : ''}>Syrup</option>
+                        <option value="Injection" ${item.category === 'Injection' ? 'selected' : ''}>Injection</option>
+                        <option value="Ointment" ${item.category === 'Ointment' ? 'selected' : ''}>Ointment</option>
+                        <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${item.batch_no || 'BATCH-01'}" onchange="parsedItems[${index}].batch_no = this.value">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${item.expiry_date || '12/2028'}" placeholder="MM/YYYY" onchange="parsedItems[${index}].expiry_date = this.value">
+                </td>
+                <td>
+                    <input type="number" step="0.1" class="form-control form-control-sm" value="${item.quantity || 1}" onchange="parsedItems[${index}].quantity = parseFloat(this.value)">
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm text-success fw-bold" value="${item.purchase_price || 0}" placeholder="0.00" onchange="parsedItems[${index}].purchase_price = parseFloat(this.value)">
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm fw-bold" value="${item.mrp || 0}" placeholder="0.00" onchange="parsedItems[${index}].mrp = parseFloat(this.value)">
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-link text-danger p-0" onclick="removeParsedItem(${index})">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </td>
+            </tr>
+            `;
         });
 
         document.getElementById('parsedItemCountText').innerText = `${parsedItems.length} items ready to import`;

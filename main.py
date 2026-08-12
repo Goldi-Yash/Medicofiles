@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup
 from google import genai
 from google.genai import types
 import traceback
+import base64
 
 load_dotenv()
 
@@ -736,173 +737,402 @@ def settings():
 @app.route('/upload-pdf-bill', methods=['POST'])
 def upload_pdf_bill():
     if 'bill_pdf' not in request.files:
-        return {'status': 'error', 'message': 'No file uploaded'}, 400
-        
+        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+
     file = request.files['bill_pdf']
     if file.filename == '':
-        return {'status': 'error', 'message': 'No selected file'}, 400
+        return jsonify({'status': 'error', 'message': 'No selected file'}), 400
 
-    extracted_items = []
     filename = file.filename.lower()
 
-    try:
-        # ==========================================
-        # 1. EXCEL / CSV FILE PROCESSING
-        # ==========================================
-        if filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv'):
+    # ========================================================
+    # OPTION A: EXCEL / CSV FILE HANDLING (Pandas Fast Parse)
+    # ========================================================
+    if filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv'):
+        try:
             if filename.endswith('.csv'):
                 df = pd.read_csv(file)
             else:
                 df = pd.read_excel(file)
 
-            # Column names ko clean & lowercase karo
             df.columns = [str(c).strip().lower() for c in df.columns]
-
-            # Dynamic Header Mapping
-            name_col = next((c for c in df.columns if 'item' in c or 'med' in c or 'name' in c or 'particular' in c or 'description' in c), None)
-            company_col = next((c for c in df.columns if 'company' in c or 'mfg' in c or 'brand' in c), None)
-            batch_col = next((c for c in df.columns if 'batch' in c), None)
-            exp_col = next((c for c in df.columns if 'exp' in c), None)
-            qty_col = next((c for c in df.columns if 'qty' in c or 'quantity' in c or 'pack' in c), None)
-            mrp_col = next((c for c in df.columns if 'mrp' in c or 'price' in c or 'rate' in c), None)
-
-            # Fallback by column index if headers not explicitly matched
-            cols = list(df.columns)
-            if not name_col and len(cols) > 0: name_col = cols[0]
-            if not company_col and len(cols) > 1: company_col = cols[1]
-            if not batch_col and len(cols) > 2: batch_col = cols[2]
-            if not exp_col and len(cols) > 3: exp_col = cols[3]
-            if not qty_col and len(cols) > 4: qty_col = cols[4]
-            if not mrp_col and len(cols) > 5: mrp_col = cols[5]
-
+            
+            # Ultra-Comprehensive Keyword Matching for Indian Pharma Invoices / Bills
+            name_col = next((c for c in df.columns if any(k in c for k in ['item', 'med', 'product', 'particular', 'description', 'trade', 'drug', 'title', 'name'])), df.columns[0])
+            company_col = next((c for c in df.columns if any(k in c for k in ['company', 'mfg', 'brand', 'maker', 'manufacturer', 'comp_name', 'mfr', 'lab', 'pharma'])), None)
+            
+            # Salt/Composition (Strict check: excludes plain 'c' to prevent mapping company column)
+            comp_col = next((c for c in df.columns if any(k in c for k in ['salt', 'composition', 'formula', 'generic', 'molecule', 'active', 'ingred']) and c != company_col), None)
+            
+            cat_col = next((c for c in df.columns if any(k in c for k in ['category', 'group', 'form', 'dosage', 'cat', 'type'])), None)
+            batch_col = next((c for c in df.columns if any(k in c for k in ['batch', 'b.no', 'b_no', 'lot', 'bno', 'b. n', 'b.no.'])), None)
+            exp_col = next((c for c in df.columns if any(k in c for k in ['exp', 'expiry', 'exp_date', 'exp.date', 'validity', 'mfg_exp'])), None)
+            qty_col = next((c for c in df.columns if any(k in c for k in ['qty', 'pack', 'quantity', 'count', 'units', 'nos', 'strip', 'box', 'free_qty'])), None)
+    
+            # Indian Pharmacy Pricing Resolution (PTS, P.Rate, PTR, MRP)
+            prate_col = next((c for c in df.columns if any(k in c for k in ['pts', 'cost', 'p.rate', 'p_rate', 'pur', 'purchase', 'p.price', 'cost_rate', 'buy_price', 'net_rate', 'net_cost', 'p.rate(₹)', 'p_rate(₹)', 'rate'])), None)
+            mrp_col = next((c for c in df.columns if any(k in c for k in ['mrp', 'ptr', 'sale', 'retail', 'price', 's.rate', 's_rate', 'mrp(₹)'] ) and c != prate_col), None)
+    
+            extracted_items = []
             for _, row in df.iterrows():
-                raw_name = str(row.get(name_col, '')).strip()
-                if not raw_name or raw_name.lower() in ['nan', 'none', '', 'total', 'subtotal', 'item name']:
+                raw_name = str(row.get(name_col, '')).strip() if name_col else ''
+                if not raw_name or raw_name.lower() in ['nan', 'none', '', 'total', 'subtotal', 'grand total']:
                     continue
-
-                clean_name = re.sub(r'^\s*Rx[\s\-:]+', '', raw_name, flags=re.I).split('\n')[0].strip()
-                company_val = str(row.get(company_col, '')).strip() if company_col else ''
-                if company_val.lower() in ['nan', 'none']: company_val = ''
-
-                batch_val = str(row.get(batch_col, 'BATCH-01')).strip()
-                if batch_val.lower() in ['nan', 'none', '']: batch_val = 'BATCH-01'
-
-                expiry_val = str(row.get(exp_col, '12/28')).strip()
-                if expiry_val.lower() in ['nan', 'none', '']: expiry_val = '12/28'
-
-                # Clean Qty
-                try:
-                    qty_clean = re.sub(r'[^0-9.]', '', str(row.get(qty_col, 1)))
-                    qty_val = float(qty_clean) if qty_clean else 1.0
-                except:
-                    qty_val = 1.0
-
-                # Clean MRP
-                try:
-                    mrp_clean = re.sub(r'[^0-9.]', '', str(row.get(mrp_col, 0)))
-                    mrp_val = float(mrp_clean) if mrp_clean else 0.0
-                except:
-                    mrp_val = 0.0
-
-                # Auto-Category Detection
-                cat = 'Tablet'
-                name_lower = clean_name.lower()
-                if 'capsule' in name_lower or 'cap' in name_lower: cat = 'Capsule'
-                elif 'syrup' in name_lower or 'syr' in name_lower or 'gel' in name_lower or 'drop' in name_lower or 'suspension' in name_lower: cat = 'Syrup'
-                elif 'inj' in name_lower or 'injection' in name_lower: cat = 'Injection'
-                elif 'ointment' in name_lower or 'cream' in name_lower: cat = 'Ointment'
-
+    
+                clean_name = re.sub(r'^\d+[\s\.\)]*', '', raw_name).strip()
+                
+                # Safe Numeric Converter
+                def parse_float(val, fallback=0.0):
+                    if pd.isna(val): return fallback
+                    s = re.sub(r'[^\d\.]', '', str(val))
+                    try: return float(s) if s else fallback
+                    except: return fallback
+    
+                qty_val = parse_float(row.get(qty_col), 1.0) if qty_col else 1.0
+                prate_val = parse_float(row.get(prate_col), 0.0) if prate_col else 0.0
+                mrp_val = parse_float(row.get(mrp_col), prate_val) if mrp_col else prate_val
+    
+                cat = str(row.get(cat_col, 'Tablet')).strip() if cat_col and pd.notna(row.get(cat_col)) else 'Tablet'
+                if 'syrup' in clean_name.lower(): cat = 'Syrup'
+                elif 'capsule' in clean_name.lower(): cat = 'Capsule'
+                elif 'injection' in clean_name.lower(): cat = 'Injection'
+                elif 'ointment' in clean_name.lower() or 'cream' in clean_name.lower(): cat = 'Ointment'
+    
                 extracted_items.append({
                     'name': clean_name,
-                    'company': company_val,
+                    'company': str(row.get(company_col, '')).strip() if company_col and pd.notna(row.get(company_col)) else '',
+                    'composition': str(row.get(comp_col, 'N/A')).strip() if comp_col and pd.notna(row.get(comp_col)) else 'N/A',
                     'category': cat,
-                    'batch_no': batch_val,
-                    'expiry_date': expiry_val,
+                    'batch_no': str(row.get(batch_col, 'BATCH-01')).strip() if batch_col and pd.notna(row.get(batch_col)) else 'BATCH-01',
+                    'expiry_date': str(row.get(exp_col, '12/28')).strip() if exp_col and pd.notna(row.get(exp_col)) else '12/28',
                     'quantity': qty_val,
+                    'purchase_price': prate_val,
                     'mrp': mrp_val
                 })
+    
+            return jsonify({'status': 'success', 'items': extracted_items})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f"Excel Parse Error: {str(e)}"}), 500
 
-            return {'status': 'success', 'items': extracted_items}
+    # ========================================================
+    # OPTION B: PDF / IMAGE FILE HANDLING (Gemini AI Vision)
+    # ========================================================
+    try:
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({'status': 'error', 'message': 'GEMINI_API_KEY missing'}), 500
 
-        # ==========================================
-        # 2. PDF FILE PROCESSING (EXISTING WORKING CODE)
-        # ==========================================
-        else:
-            with pdfplumber.open(file) as pdf:
-                for page in pdf.pages:
-                    tables = page.extract_tables()
-                    for table in tables:
-                        if not table or len(table) < 2:
+        client = genai.Client(api_key=api_key)
+
+        file_bytes = file.read()
+        mime_type = "application/pdf" if filename.endswith('.pdf') else "image/jpeg"
+
+        prompt = """
+        You are an expert Indian Pharmacy Invoice / Bill Parser.
+        Extract all medicine items listed in the invoice table and respond STRICTLY with a valid JSON array.
+
+        Each object in the array must contain these exact keys:
+        1. "name": Exact trade/brand medicine name (e.g. "Dolo 650", "Cipcal 500").
+        2. "company": Manufacturer or Brand/Company name if present (e.g. "Cipla", "Alembic"). Otherwise "".
+        3. "composition": Chemical composition / Salt / Generic name (e.g. "Paracetamol 650mg"). If missing, return "N/A".
+        4. "category": Auto-detect among "Tablet", "Capsule", "Syrup", "Injection", "Ointment", or "Other".
+        5. "batch_no": Batch Number (e.g. "CP6012"). If missing, return "BATCH-01".
+        6. "expiry_date": Expiry date formatted as "MM/YY" or "MM/YYYY" (e.g. "10/27"). If missing, return "12/28".
+        7. "quantity": Total billed quantity as a number (e.g. 50, 30).
+        8. "purchase_price": Exact Cost Price / PTS (Price to Stockist / Cost Rate to dukan) as a number (e.g., 62.00, 95.00). If PTS is missing, use PTR.
+        9. "mrp": Exact PTR (Price to Retailer / Base Selling Rate) or MRP as a number (e.g., 70.00, 108.00). Must be equal to or greater than purchase_price.
+
+        CRITICAL INSTRUCTIONS:
+        - Exclude invoice header details (Billed To, Shipped To, Invoice No, GSTIN).
+        - Exclude invoice footer details (GST Summary, Bank Details, Total Amount).
+        - Extract ONLY actual medicine rows from the table.
+        - Do NOT wrap output in markdown formatting like ```json.
+        """
+
+        # model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite' , 'gemini-flash']
+        # EXACT SAME FALLBACK LOOP AS GET_MEDICINE_INFO
+        model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash']
+        response = None
+
+        for m_name in model_names:
+            try:
+                response = client.models.generate_content(
+                    model=m_name,
+                    contents=[
+                        types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
+                        prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                if response and response.text:
+                    break
+            except Exception:
+                continue
+
+        if not response or not response.text:
+            return jsonify({'status': 'error', 'message': 'API endpoints failed. Please try again.'}), 500
+
+        raw_text = response.text
+        
+        raw_text = raw_text.strip()
+        
+        raw_text = raw_text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+        raw_text = raw_text.strip()
+
+        # Fix missing commas, trailing commas, and truncated JSON arrays
+        cleaned_json_text = re.sub(r',\s*([\]}])', r'\1', raw_text)
+        
+        # Repair unclosed array if AI response was truncated
+        if cleaned_json_text.startswith('[') and not cleaned_json_text.rstrip().endswith(']'):
+            cleaned_json_text = cleaned_json_text.rstrip().rstrip(',') + ']'
+
+        try:
+            items = json.loads(cleaned_json_text)
+        except Exception:
+            # Fallback repair using regex extraction
+            json_match = re.search(r'\[.*\]', cleaned_json_text, re.DOTALL)
+            if json_match:
+                try:
+                    items = json.loads(json_match.group(0))
+                except Exception:
+                    # Partial extract objects if valid syntax fails
+                    items = []
+                    for obj in re.finditer(r'\{[^{}]*\}', cleaned_json_text):
+                        try:
+                            items.append(json.loads(obj.group(0)))
+                        except Exception:
                             continue
+            else:
+                return jsonify({'status': 'error', 'message': 'Bill response formatting error. Please try uploading again.'}), 500
 
-                        header_idx = -1
-                        col_map = {}
+        # Cleanup & Safety Types
+        for item in items:
+            item['quantity'] = float(item.get('quantity', 1) or 1)
+            item['purchase_price'] = float(item.get('purchase_price', 0) or 0)
+            item['mrp'] = float(item.get('mrp', item['purchase_price']) or item['purchase_price'])
 
-                        for row_i, row in enumerate(table):
-                            row_str = " ".join([str(c).upper() for c in row if c]).replace('\n', ' ')
-                            if 'ITEM' in row_str or 'MEDICINE' in row_str or 'PARTICULARS' in row_str:
-                                header_idx = row_i
-                                for col_i, cell in enumerate(row):
-                                    if not cell: continue
-                                    c_upper = str(cell).upper().strip()
-                                    if 'ITEM' in c_upper or 'DESCRIPTION' in c_upper or 'PARTICULAR' in c_upper:
-                                        col_map['name'] = col_i
-                                    elif 'BATCH' in c_upper:
-                                        col_map['batch'] = col_i
-                                    elif 'EXP' in c_upper:
-                                        col_map['expiry'] = col_i
-                                    elif 'QTY' in c_upper or 'QUANTITY' in c_upper:
-                                        col_map['qty'] = col_i
-                                    elif 'MRP' in c_upper:
-                                        col_map['mrp'] = col_i
-                                break
-
-                        if 'name' not in col_map: col_map['name'] = 1
-                        if 'batch' not in col_map: col_map['batch'] = 3
-                        if 'expiry' not in col_map: col_map['expiry'] = 4
-                        if 'qty' not in col_map: col_map['qty'] = 5
-                        if 'mrp' not in col_map: col_map['mrp'] = 6
-
-                        start_row = header_idx + 1 if header_idx != -1 else 0
-                        for row in table[start_row:]:
-                            if not row or len(row) < 3:
-                                continue
-
-                            raw_name = str(row[col_map['name']]).strip() if col_map['name'] < len(row) and row[col_map['name']] else ''
-                            if not raw_name or raw_name.upper() in ['NONE', 'ITEM NAME / COMPOSITION', '#', 'TOTAL', 'SUB TOTAL']:
-                                continue
-
-                            clean_name = re.sub(r'^\s*Rx[\s\-:]+', '', raw_name, flags=re.I).split('\n')[0].strip()
-                            batch_val = str(row[col_map['batch']]).strip().split('\n')[0] if col_map['batch'] < len(row) and row[col_map['batch']] else 'BATCH-01'
-                            expiry_val = str(row[col_map['expiry']]).strip().split('\n')[0] if col_map['expiry'] < len(row) and row[col_map['expiry']] else '12/28'
-
-                            qty_str = str(row[col_map['qty']]).strip() if col_map['qty'] < len(row) and row[col_map['qty']] else '1'
-                            qty_clean = re.sub(r'[^0-9.]', '', qty_str.split('\n')[0])
-                            qty_val = float(qty_clean) if qty_clean else 1.0
-
-                            mrp_str = str(row[col_map['mrp']]).strip() if col_map['mrp'] < len(row) and row[col_map['mrp']] else '0.0'
-                            mrp_clean = re.sub(r'[^0-9.]', '', mrp_str.split('\n')[0])
-                            mrp_val = float(mrp_clean) if mrp_clean else 0.0
-
-                            cat = 'Tablet'
-                            name_lower = clean_name.lower()
-                            if 'capsule' in name_lower: cat = 'Capsule'
-                            elif 'syrup' in name_lower or 'gel' in name_lower or 'drop' in name_lower: cat = 'Syrup'
-
-                            extracted_items.append({
-                                'name': clean_name,
-                                'company': '',
-                                'category': cat,
-                                'batch_no': batch_val,
-                                'expiry_date': expiry_val,
-                                'quantity': qty_val,
-                                'mrp': mrp_val
-                            })
-
-            return {'status': 'success', 'items': extracted_items}
+        return jsonify({'status': 'success', 'items': items})
 
     except Exception as e:
-        return {'status': 'error', 'message': str(e)}, 500
+        print(f"AI Bill Extraction Error: {e}")
+        return jsonify({'status': 'error', 'message': 'API limit/network delay. Please wait 10 seconds and try again.'}), 500
+
+# @app.route('/upload-pdf-bill', methods=['POST'])
+# def upload_pdf_bill():
+#     if 'bill_pdf' not in request.files:
+#         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+
+#     file = request.files['bill_pdf']
+#     if file.filename == '':
+#         return jsonify({'status': 'error', 'message': 'No selected file'}), 400
+
+#     extracted_items = []
+#     filename = file.filename.lower()
+
+#     # Broad Synonyms Mapping
+#     SYNONYMS = {
+#         'name': ['item description', 'item name', 'product', 'particular', 'medicine', 'drug', 'description', 'item'],
+#         'company': ['company', 'brand', 'mfg', 'manufacturer', 'marketed by', 'lab'],
+#         'batch': ['batch', 'batch no', 'batch.no', 'b.no', 'lot', 'batch/lot'],
+#         'expiry': ['exp', 'expiry', 'exp.date', 'exp date', 'expiry date', 'exp.'],
+#         'qty': ['packs', 'qty', 'quantity', 'billed qty', 'packs qty'],
+#         'p_rate': ['pts', 'ptr', 'p.rate', 'purchase rate', 'cost', 'p.price', 'rate', 'pur price', 'pur.rate'],
+#         'mrp': ['mrp', 'm.r.p.', 'mrp (₹)', 'max retail price', 'm.r.p']
+#     }
+
+#     def match_header(cell_text):
+#         if not cell_text:
+#             return None
+#         clean_text = str(cell_text).upper().replace('\n', ' ').strip()
+#         for key, aliases in SYNONYMS.items():
+#             for alias in aliases:
+#                 if alias.upper() in clean_text:
+#                     return key
+#         return None
+
+#     try:
+#         # ==========================================
+#         # 1. EXCEL / CSV FILE PROCESSING
+#         # ==========================================
+#         if filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv'):
+#             if filename.endswith('.csv'):
+#                 df = pd.read_csv(file)
+#             else:
+#                 df = pd.read_excel(file)
+
+#             df.columns = [str(c).strip() for c in df.columns]
+#             col_map = {}
+#             for col in df.columns:
+#                 matched_key = match_header(col)
+#                 if matched_key and matched_key not in col_map:
+#                     col_map[matched_key] = col
+
+#             for _, row in df.iterrows():
+#                 raw_name = str(row.get(col_map.get('name'), '')).strip() if 'name' in col_map else ''
+#                 if not raw_name or raw_name.lower() in ['nan', 'none', 'total', 'subtotal', 'item name', 'gst summary']:
+#                     continue
+
+#                 # Ignore non-medicine junk lines
+#                 if any(junk in raw_name.upper() for junk in ['SHIPPED TO', 'BILLED TO', 'TAXABLE', 'CGST', 'SGST', 'TOTAL']):
+#                     continue
+
+#                 lines = [l.strip() for l in raw_name.split('\n') if l.strip()]
+#                 clean_name = re.sub(r'^\d+[\s\.\)]*', '', lines[0]).strip()
+#                 company_val = lines[1] if len(lines) > 1 else str(row.get(col_map.get('company'), '')).strip()
+
+#                 batch_val = str(row.get(col_map.get('batch'), 'BATCH-01')).strip()
+#                 expiry_val = str(row.get(col_map.get('expiry'), '12/28')).strip()
+
+#                 # Clean numeric Qty, P.Rate, MRP
+#                 qty_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('qty'), '1')))
+#                 qty_val = float(qty_clean) if qty_clean else 1.0
+
+#                 p_rate_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('p_rate'), '0')))
+#                 p_rate_val = float(p_rate_clean) if p_rate_clean else 0.0
+
+#                 mrp_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('mrp'), '0')))
+#                 mrp_val = float(mrp_clean) if mrp_clean else p_rate_val
+
+#                 cat = 'Tablet'
+#                 if 'syrup' in clean_name.lower() or 'suspension' in clean_name.lower():
+#                     cat = 'Syrup'
+#                 elif 'capsule' in clean_name.lower():
+#                     cat = 'Capsule'
+#                 elif 'injection' in clean_name.lower() or 'inj' in clean_name.lower():
+#                     cat = 'Injection'
+#                 elif 'ointment' in clean_name.lower() or 'cream' in clean_name.lower() or 'gel' in clean_name.lower():
+#                     cat = 'Ointment'
+
+#                 extracted_items.append({
+#                     'name': clean_name,
+#                     'company': company_val if company_val != 'nan' else '',
+#                     'composition': 'N/A',
+#                     'category': cat,
+#                     'batch_no': batch_val if batch_val != 'nan' else 'BATCH-01',
+#                     'expiry_date': expiry_val if expiry_val != 'nan' else '12/28',
+#                     'quantity': qty_val,
+#                     'purchase_price': p_rate_val,
+#                     'mrp': mrp_val
+#                 })
+
+#         # ==========================================
+#         # 2. PDF FILE PROCESSING (pdfplumber)
+#         # ==========================================
+#         else:
+#             with pdfplumber.open(file) as pdf:
+#                 for page in pdf.pages:
+#                     tables = page.extract_tables()
+#                     for table in tables:
+#                         if not table or len(table) < 2:
+#                             continue
+
+#                         header_idx = -1
+#                         col_map = {}
+
+#                         # Find Table Header Row dynamically
+#                         for row_i, row in enumerate(table):
+#                             row_str = " ".join([str(c).upper() for c in row if c])
+#                             if any(k in row_str for k in ['ITEM', 'DESCRIPTION', 'PARTICULAR', 'PRODUCT']):
+#                                 header_idx = row_i
+#                                 for col_i, cell in enumerate(row):
+#                                     m_key = match_header(cell)
+#                                     if m_key and m_key not in col_map:
+#                                         col_map[m_key] = col_i
+#                                 break
+
+#                         if header_idx == -1 or 'name' not in col_map:
+#                             continue
+
+#                         # Read Data Rows
+#                         for row in table[header_idx + 1:]:
+#                             if not row or len(row) < 3:
+#                                 continue
+
+#                             raw_name_cell = str(row[col_map['name']]).strip() if col_map['name'] < len(row) else ''
+#                             if not raw_name_cell or raw_name_cell.upper() in ['NONE', 'NAN', '']:
+#                                 continue
+
+#                             # Stop / Skip Junk Rows outside item table
+#                             upper_cell = raw_name_cell.upper()
+#                             if any(junk in upper_cell for junk in [
+#                                 'GST SUMMARY', 'TAXABLE', 'TOTAL', 'BANK ACCOUNT', 'AMOUNT IN WORDS', 
+#                                 'SHIPPED TO', 'BILLED TO', 'CGST', 'SGST', 'FREIGHT', 'ROUND OFF'
+#                             ]):
+#                                 continue
+
+#                             # Split Cell: Line 1 -> Medicine Name, Line 2 -> Company Name
+#                             lines = [l.strip() for l in raw_name_cell.split('\n') if l.strip()]
+#                             clean_name = re.sub(r'^\d+[\s\.\)]*', '', lines[0]).strip()
+                            
+#                             company_from_cell = ''
+#                             if len(lines) > 1:
+#                                 company_from_cell = lines[1]
+#                             elif 'company' in col_map and col_map['company'] < len(row):
+#                                 company_from_cell = str(row[col_map['company']]).strip()
+
+#                             # Batch & Expiry
+#                             batch_val = str(row[col_map['batch']]).strip().split('\n')[0] if 'batch' in col_map and col_map['batch'] < len(row) else 'BATCH-01'
+#                             expiry_val = str(row[col_map['expiry']]).strip().split('\n')[0] if 'expiry' in col_map and col_map['expiry'] < len(row) else '12/28'
+
+#                             # Quantity
+#                             qty_str = str(row[col_map['qty']]).strip().split('\n')[0] if 'qty' in col_map and col_map['qty'] < len(row) else '1'
+#                             qty_clean = re.sub(r'[^0-9\.]', '', qty_str)
+#                             qty_val = float(qty_clean) if qty_clean else 1.0
+
+#                             # Purchase Rate (PTR / PTS / P.Rate / Cost)
+#                             p_rate_val = 0.0
+#                             if 'p_rate' in col_map and col_map['p_rate'] < len(row):
+#                                 pr_str = str(row[col_map['p_rate']]).strip().split('\n')[0]
+#                                 pr_clean = re.sub(r'[^0-9\.]', '', pr_str)
+#                                 p_rate_val = float(pr_clean) if pr_clean else 0.0
+
+#                             # MRP
+#                             mrp_val = 0.0
+#                             if 'mrp' in col_map and col_map['mrp'] < len(row):
+#                                 mrp_str = str(row[col_map['mrp']]).strip().split('\n')[0]
+#                                 mrp_clean = re.sub(r'[^0-9\.]', '', mrp_str)
+#                                 mrp_val = float(mrp_clean) if mrp_clean else 0.0
+
+#                             # Fallback if MRP missing in invoice, set MRP equal to PTR
+#                             if mrp_val == 0.0 and p_rate_val > 0.0:
+#                                 mrp_val = p_rate_val
+
+#                             # Auto Category
+#                             cat = 'Tablet'
+#                             name_lower = clean_name.lower()
+#                             if 'syrup' in name_lower or 'suspension' in name_lower or 'ml' in name_lower:
+#                                 cat = 'Syrup'
+#                             elif 'capsule' in name_lower or 'cap' in name_lower:
+#                                 cat = 'Capsule'
+#                             elif 'injection' in name_lower or 'inj' in name_lower:
+#                                 cat = 'Injection'
+#                             elif 'ointment' in name_lower or 'cream' in name_lower or 'gel' in name_lower:
+#                                 cat = 'Ointment'
+
+#                             extracted_items.append({
+#                                 'name': clean_name,
+#                                 'company': company_from_cell,
+#                                 'composition': 'N/A',
+#                                 'category': cat,
+#                                 'batch_no': batch_val if batch_val not in ['None', ''] else 'BATCH-01',
+#                                 'expiry_date': expiry_val if expiry_val not in ['None', ''] else '12/28',
+#                                 'quantity': qty_val,
+#                                 'purchase_price': p_rate_val,
+#                                 'mrp': mrp_val
+#                             })
+
+#         return jsonify({'status': 'success', 'items': extracted_items})
+
+#     except Exception as e:
+#         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/transactions')
 def transactions():
@@ -1059,7 +1289,7 @@ def delete_stock(id):
     medicine = Medicine.query.get_or_404(id)
     db.session.delete(medicine)
     db.session.commit()
-    return redirect(url_for('inventory'))
+    return redirect(url_for('inventory') + f'#med-{id}')
 
 @app.route('/edit-stock/<int:id>', methods=['GET', 'POST'])
 def edit_stock(id):
@@ -1084,7 +1314,7 @@ def edit_stock(id):
         medicine.pack_size = int(request.form.get('pack_size', 10) or 10)
 
         db.session.commit()
-        return redirect(url_for('inventory'))
+        return redirect(url_for('inventory') + f'#med-{id}')
     return render_template('add_stock.html', medicine=medicine)
 
 @app.route('/add-stock', methods=['GET', 'POST'])
@@ -1126,14 +1356,17 @@ def add_stock():
         existing_med = Medicine.query.filter(
                 func.lower(Medicine.name) == req_name.lower(),
                 func.lower(Medicine.batch_no) == req_batch.lower(),
-                Medicine.mrp == req_mrp
+                Medicine.mrp == req_mrp,
+                Medicine.expiry_date == request.form.get('expiry_date', '').strip(),
+                Medicine.purchase_price == float(request.form.get('purchase_price', 0) or 0)
         ).first()
     
         if existing_med:
                 same_company = (getattr(existing_med, 'company', '') or '').strip().lower() == req_company.lower()
                 same_comp = (getattr(existing_med, 'composition', '') or '').strip().lower() == req_composition.lower()
+                same_pack = getattr(existing_med, 'pack_size', 10) == int(request.form.get('pack_size', 10) or 10)
     
-                if same_company and same_comp:
+                if same_company and same_comp and same_pack:
                     # EXACT MATCH FOUND: Quantity increment kar do existing row me!
                     existing_med.quantity = round(float(existing_med.quantity or 0) + req_qty, 2)
                     db.session.commit()
@@ -1178,19 +1411,52 @@ def bulk_save_stock():
         items = data.get('items', [])
 
         for item in items:
-            new_med = Medicine(
-                name=item['name'],
-                company=item.get('company', ''),
-                category=item.get('category', 'Tablet'),
-                composition=item.get('composition', 'N/A'),
-                batch_no=item['batch_no'],
-                expiry_date=item.get('expiry_date', '12/2028'),
-                quantity=float(item['quantity']),
-                mrp=float(item['mrp']),
-                pack_size=10,
-                rx_required=item.get('rx_required', False)
-            )
-            db.session.add(new_med)
+            # Clean item field values for strict check
+            req_name = str(item.get('name', '')).strip()
+            req_batch = str(item.get('batch_no', 'BATCH-01')).strip()
+            req_company = str(item.get('company', '')).strip()
+            req_comp = str(item.get('composition', 'N/A')).strip()
+            req_expiry = str(item.get('expiry_date', '12/28')).strip()
+            req_mrp = float(item.get('mrp', 0.0) or 0.0)
+            req_pprice = float(item.get('purchase_price', 0.0) or 0.0)
+            req_qty = float(item.get('quantity', 1) or 1)
+    
+            # STRICT DB QUERY: Match Name, Batch, MRP, Expiry & Purchase Price
+            existing_med = Medicine.query.filter(
+                func.lower(Medicine.name) == req_name.lower(),
+                func.lower(Medicine.batch_no) == req_batch.lower(),
+                Medicine.mrp == req_mrp,
+                Medicine.expiry_date == req_expiry,
+                Medicine.purchase_price == req_pprice
+            ).first()
+    
+            if existing_med:
+                # Check Company and Composition too
+                same_company = (getattr(existing_med, 'company', '') or '').strip().lower() == req_company.lower()
+                same_comp = (getattr(existing_med, 'composition', '') or '').strip().lower() == req_comp.lower()
+                same_pack = getattr(existing_med, 'pack_size', 10) == int(request.form.get('pack_size', 10) or 10)
+    
+                if same_company and same_comp and same_pack:
+                    # 100% MATCH FOUND: Quantity Increment Karo!
+                    existing_med.quantity = round(float(existing_med.quantity or 0) + req_qty, 2)
+                else:
+                    # Discrepancy in Company/Salt: Create NEW Row
+                    new_med = Medicine(
+                        name=req_name, company=req_company, category=item.get('category', 'Tablet'),
+                        composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
+                        quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
+                        pack_size=10, rx_required=item.get('rx_required', False)
+                    )
+                    db.session.add(new_med)
+            else:
+                # NO MATCH: Create NEW Row
+                new_med = Medicine(
+                    name=req_name, company=req_company, category=item.get('category', 'Tablet'),
+                    composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
+                    quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
+                    pack_size=10, rx_required=item.get('rx_required', False)
+                )
+                db.session.add(new_med)
 
         db.session.commit()
         return {'status': 'success', 'message': 'Bulk stock imported successfully!'}

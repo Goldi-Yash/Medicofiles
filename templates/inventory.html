@@ -22,19 +22,30 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-3">
         <div class="row g-3">
-            <!-- Search Input -->
-            <div class="col-md-6">
+            <!-- Main Search Input (Name, Batch, Company) -->
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0 text-muted">
                         <i class="bi bi-search"></i>
                     </span>
                     <input type="text" id="searchInput" class="form-control bg-light border-start-0"
-                        placeholder="Search medicine by name or batch number...">
+                        placeholder="Search name, batch, company...">
+                </div>
+            </div>
+
+            <!-- Dedicated Salt Search Input -->
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted">
+                        <i class="bi bi-capsule"></i>
+                    </span>
+                    <input type="text" id="saltSearchInput" class="form-control bg-light border-start-0"
+                        placeholder="Search by Salt / Composition...">
                 </div>
             </div>
 
             <!-- Filter Category -->
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select id="categoryFilter" class="form-select bg-light">
                     <option value="All" selected>All Categories</option>
                     <option value="Tablet">Tablets</option>
@@ -80,7 +91,7 @@
                 </thead>
                 <tbody>
                     {% for med in medicines %}
-                    <tr>
+                    <tr id="med-{{ med.id }}">
                         <td class="ps-4 fw-semibold text-dark">
                             <a href="javascript:void(0)" class="fw-bold text-decoration-none text-dark med-info-link"
                                 data-name="{{ med.name }}" title="Click to view uses & info">
@@ -251,20 +262,34 @@
 <script>
     function filterTable() {
         let searchFilter = document.getElementById('searchInput').value.toLowerCase();
+        let saltFilter = document.getElementById('saltSearchInput').value.toLowerCase();
         let categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
         let statusFilter = document.getElementById('statusFilter').value.toLowerCase();
         let rows = document.querySelectorAll('tbody tr');
 
         rows.forEach(row => {
-            let rowText = row.innerText.toLowerCase();
+            let cells = row.querySelectorAll('td');
+            if (cells.length < 3) return;
 
-            // Checking individual conditions
-            let matchesSearch = rowText.includes(searchFilter);
-            let matchesCategory = (categoryFilter === 'all') || rowText.includes(categoryFilter);
-            let matchesStatus = (statusFilter === 'all') || rowText.includes(statusFilter);
+            // Cell 0: Products/Name, Cell 1: Company, Cell 2: Salt/Composition
+            let nameColText = (cells[0] ? cells[0].innerText : '').toLowerCase();
+            let companyColText = (cells[1] ? cells[1].innerText : '').toLowerCase();
+            let saltColText = (cells[2] ? cells[2].innerText : '').toLowerCase();
+            let fullRowText = row.innerText.toLowerCase();
 
-            // Show row only if all three filters match
-            if (matchesSearch && matchesCategory && matchesStatus) {
+            // Main Search: Matches Name, Batch, Company (EXCLUDES Salt Column)
+            let matchesSearch = !searchFilter ||
+                nameColText.includes(searchFilter) ||
+                companyColText.includes(searchFilter) ||
+                fullRowText.replace(saltColText, '').includes(searchFilter);
+
+            // Dedicated Salt Search: Only checks Composition/Salt Column
+            let matchesSalt = !saltFilter || saltColText.includes(saltFilter);
+
+            let matchesCategory = (categoryFilter === 'all') || fullRowText.includes(categoryFilter);
+            let matchesStatus = (statusFilter === 'all') || fullRowText.includes(statusFilter);
+
+            if (matchesSearch && matchesSalt && matchesCategory && matchesStatus) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -272,12 +297,24 @@
         });
     }
 
-    // Event Listeners for Search, Category, and Stock Status
+    // Event Listeners for Filters
     document.getElementById('searchInput').addEventListener('keyup', filterTable);
+    document.getElementById('saltSearchInput').addEventListener('keyup', filterTable);
     document.getElementById('categoryFilter').addEventListener('change', filterTable);
     document.getElementById('statusFilter').addEventListener('change', filterTable);
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Auto-Scroll to edited medicine row on redirect
+        if (window.location.hash) {
+            let targetRow = document.querySelector(window.location.hash);
+            if (targetRow) {
+                setTimeout(function () {
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetRow.classList.add('table-warning');
+                    setTimeout(() => targetRow.classList.remove('table-warning'), 2500);
+                }, 100);
+            }
+        }
         const infoLinks = document.querySelectorAll('.med-info-link');
         const modalElement = document.getElementById('medInfoModal');
         if (!modalElement) return;
