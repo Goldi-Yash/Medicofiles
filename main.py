@@ -104,9 +104,19 @@ class AnonymousUser(AnonymousUserMixin):
 login_manager.anonymous_user = AnonymousUser
 
 # SQLite Database Setup
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///medico.db'
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'medico.db')
+# basedir = os.path.abspath(os.path.dirname(__file__))
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'medico.db')
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# db = SQLAlchemy(app)
+
+# Database Setup (Supabase PostgreSQL with Local SQLite Fallback)
+db_url = os.getenv('DATABASE_URL', 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'medico.db'))
+
+# Fix Supabase/Heroku pooler prefix (postgres:// -> postgresql://)
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -166,6 +176,7 @@ class Distributor(db.Model):
 # Medicine / Inventory Model
 class Medicine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     company = db.Column(db.String(100), nullable=True)
     category = db.Column(db.String(50), nullable=False)
@@ -1222,8 +1233,8 @@ def inventory():
     }
 
     # Fetch all records first to apply custom threshold logic
-    # all_medicines = Medicine.query.all()
-    all_medicines = Medicine.query.order_by(Medicine.created_at.desc()).all()
+    # all_medicines = Medicine.query.order_by(Medicine.created_at.desc()).all()
+    all_medicines = Medicine.query.filter_by(user_id=current_user.id).order_by(Medicine.created_at.desc()).all()
 
     # Pre-calculate category-wise low stock using live thresholds
     total_low_stock_count = 0
@@ -1354,6 +1365,7 @@ def add_stock():
     
         # Duplicate match query using exact DB Model field names
         existing_med = Medicine.query.filter(
+                Medicine.user_id == current_user.id,
                 func.lower(Medicine.name) == req_name.lower(),
                 func.lower(Medicine.batch_no) == req_batch.lower(),
                 Medicine.mrp == req_mrp,
@@ -1381,6 +1393,7 @@ def add_stock():
 
         # DB Model object banana
         new_med = Medicine(
+            user_id=current_user.id,
             name=name,
             company=company,
             category=category,
@@ -1423,6 +1436,7 @@ def bulk_save_stock():
     
             # STRICT DB QUERY: Match Name, Batch, MRP, Expiry & Purchase Price
             existing_med = Medicine.query.filter(
+                Medicine.user_id == current_user.id,
                 func.lower(Medicine.name) == req_name.lower(),
                 func.lower(Medicine.batch_no) == req_batch.lower(),
                 Medicine.mrp == req_mrp,
@@ -1442,6 +1456,7 @@ def bulk_save_stock():
                 else:
                     # Discrepancy in Company/Salt: Create NEW Row
                     new_med = Medicine(
+                        user_id=current_user.id,
                         name=req_name, company=req_company, category=item.get('category', 'Tablet'),
                         composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
                         quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
@@ -1451,6 +1466,7 @@ def bulk_save_stock():
             else:
                 # NO MATCH: Create NEW Row
                 new_med = Medicine(
+                    user_id=current_user.id,
                     name=req_name, company=req_company, category=item.get('category', 'Tablet'),
                     composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
                     quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
