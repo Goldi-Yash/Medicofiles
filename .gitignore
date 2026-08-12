@@ -22,3 +22,6 @@ instance/
 
 #medicine cache
 medicine_cache.json
+
+#Migration To Cloud
+migrate_to_cloud.py

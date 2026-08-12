@@ -27,6 +27,8 @@ from google import genai
 from google.genai import types
 import traceback
 import base64
+import sqlite3
+import tempfile
 
 load_dotenv()
 
@@ -36,6 +38,14 @@ wiki = wikipediaapi.Wikipedia(
     user_agent='MedicofilesApp/1.0 (contact@medicofiles.com)',
     language='en'
 )
+
+def user_query(model):
+    """Auto-filters DB model for store owner OR staff member's store owner"""
+    if hasattr(model, 'user_id') and current_user.is_authenticated:
+        # Agar active user staff (cashier) hai, to store owner ki ID use karo
+        owner_id = current_user.owner_id if getattr(current_user, 'owner_id', None) else current_user.id
+        return model.query.filter_by(user_id=owner_id)
+    return model.query
 
 # Initialize Gemini Client
 client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
@@ -131,6 +141,7 @@ class User(db.Model, UserMixin):
     permissions = db.Column(db.Text, nullable=True) # Granular JSON permissions
     is_deactivated = db.Column(db.Boolean, default=False)
     deactivated_at = db.Column(db.DateTime, nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
     def get_permissions(self):
         if self.role == 'admin':
@@ -166,21 +177,22 @@ class User(db.Model, UserMixin):
 
 class Distributor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     name = db.Column(db.String(150), nullable=False)
     contact_person = db.Column(db.String(100), nullable=True)
-    phone = db.Column(db.String(20), nullable=False)
+    phone = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=True)
-    supplies_category = db.Column(db.String(200), nullable=True) # e.g., Generic, Pharma, Surgical, Injections
+    supplies_category = db.Column(db.String(255), nullable=True) # e.g., Generic, Pharma, Surgical, Injections
     notes = db.Column(db.String(255), nullable=True)
 
 # Medicine / Inventory Model
 class Medicine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    name = db.Column(db.String(255), nullable=False)
     company = db.Column(db.String(100), nullable=True)
     category = db.Column(db.String(50), nullable=False)
-    composition = db.Column(db.String(150))
+    composition = db.Column(db.String(255))
     batch_no = db.Column(db.String(50), nullable=False)
     expiry_date = db.Column(db.String(20), nullable=False)
     quantity = db.Column(db.Float, nullable=False, default=0)
@@ -197,8 +209,9 @@ class Medicine(db.Model):
 # Sale / Bill Summary Model
 class Sale(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     customer_name = db.Column(db.String(100), nullable=True)
-    customer_phone = db.Column(db.String(15), nullable=True)
+    customer_phone = db.Column(db.String(50), nullable=True)
     total_amount = db.Column(db.Float, nullable=False)
     payment_mode = db.Column(db.String(20), default='Cash')  # Cash, UPI, Card
     doctor_name = db.Column(db.String(100), nullable=True)
@@ -211,9 +224,10 @@ class Sale(db.Model):
 # Sale Item Details Model
 class SaleItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     sale_id = db.Column(db.Integer, db.ForeignKey('sale.id'), nullable=False)
     medicine_id = db.Column(db.Integer, db.ForeignKey('medicine.id'), nullable=False)
-    medicine_name = db.Column(db.String(100), nullable=False)
+    medicine_name = db.Column(db.String(255), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
     discount_percent = db.Column(db.Float, default=0.0)
@@ -221,12 +235,13 @@ class SaleItem(db.Model):
 
 class StoreSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # 1. Store Profile
-    shop_name = db.Column(db.String(150), default="Medicofiles Pharmacy")
-    address = db.Column(db.String(255), default="Near Main Market, Gurgaon")
-    phone = db.Column(db.String(20), default="+91 9876543210")
-    gstin = db.Column(db.String(50), default="06AAAAA0000A1Z5")
-    dl_number = db.Column(db.String(50), default="HR-GUG-123456")
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    # 1. Store Profile Defaults
+    shop_name = db.Column(db.String(150), default="My Medical Store")
+    address = db.Column(db.String(255), default="Store Address Here")
+    phone = db.Column(db.String(100), default="+91 XXXXXXXXXX")
+    gstin = db.Column(db.String(50), default="06XXXXX0000X1ZX")
+    dl_number = db.Column(db.String(150), default="HR-GUG-XXXXXX")
     footer_note = db.Column(db.String(255), default="Goods once sold will not be taken back without original bill.")
 
     # --- NEW ADDED STORE & FILE FIELDS ---
@@ -278,7 +293,8 @@ class StoreSettings(db.Model):
 # Disease / Symptom Tag Master
 class DiseaseTag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False) # e.g. "Fever", "Acidity"
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    name = db.Column(db.String(100), nullable=False) # e.g. "Fever", "Acidity"
     description = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=get_ist_time)
     target_age = db.Column(db.String(50), nullable=True, default='all')
@@ -289,6 +305,7 @@ class DiseaseTag(db.Model):
 # Tag to Medicine Mapping Table
 class TagMedicineMap(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('disease_tag.id'), nullable=False)
     medicine_id = db.Column(db.Integer, db.ForeignKey('medicine.id'), nullable=False)
     dosage_note = db.Column(db.String(100)) # e.g. "1 Tablet BD (Subah-Shaam)"
@@ -299,8 +316,9 @@ class TagMedicineMap(db.Model):
 class Customer(db.Model):
     __tablename__ = 'customer'
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(15), unique=True, nullable=False)
+    phone = db.Column(db.String(50), nullable=False)
     address = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
     
@@ -310,6 +328,7 @@ class Customer(db.Model):
 class CustomerLedger(db.Model):
     __tablename__ = 'customer_ledger'
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     
     # 'credit' = udhar medicine di, 'debit' = customer ne paise jama kiye
@@ -320,12 +339,15 @@ class CustomerLedger(db.Model):
     date = db.Column(db.DateTime, default=get_ist_time)
 
 def get_settings():
-    settings = StoreSettings.query.first()
-    if not settings:
-        settings = StoreSettings()
-        db.session.add(settings)
-        db.session.commit()
-    return settings
+    if current_user.is_authenticated:
+        owner_id = current_user.owner_id if getattr(current_user, 'owner_id', None) else current_user.id
+        settings = StoreSettings.query.filter_by(user_id=owner_id).first()
+        if not settings:
+            settings = StoreSettings(user_id=owner_id)
+            db.session.add(settings)
+            db.session.commit()
+        return settings
+    return StoreSettings.query.first()
 
 # Database create karne ke liye wrapper
 with app.app_context():
@@ -435,12 +457,12 @@ def dashboard():
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(url_for('billing'))
     
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
     # 1. Basic Stats
-    total_medicines = Medicine.query.count()
+    total_medicines = user_query(Medicine).count()
 
     # 2. Near Expiry Count
-    all_meds = Medicine.query.all()
+    all_meds = user_query(Medicine).all()
     near_expiry_count = 0
     today = get_ist_time()
     alert_days = getattr(store_config, 'expiry_alert_days', 60) or 60
@@ -491,7 +513,7 @@ def dashboard():
 
     # 3. Today's Sales & Profit
     today_start = get_ist_time().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_bills = Sale.query.filter(Sale.created_at >= today_start).all() if 'Sale' in globals() else []
+    today_bills = user_query(Sale).filter(Sale.created_at >= today_start).all() if 'Sale' in globals() else []
     todays_sales = sum(bill.total_amount for bill in today_bills) if today_bills else 0.0
 
     # 3. Today's Real Profit & Dynamic Margin Calculation
@@ -528,14 +550,14 @@ def dashboard():
         day_start = day_date.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         
-        day_bills = Sale.query.filter(Sale.created_at >= day_start, Sale.created_at <= day_end).all() if 'Sale' in globals() else []
+        day_bills = user_query(Sale).filter(Sale.created_at >= day_start, Sale.created_at <= day_end).all() if 'Sale' in globals() else []
         day_total = sum(s.total_amount for s in day_bills) if day_bills else 0.0
         
         weekly_labels.append(day_date.strftime('%a'))
         weekly_sales.append(day_total)
 
     # 5. Stock Categories & Category-wise Margin Analytics
-    all_medicines = Medicine.query.all()
+    all_medicines = user_query(Medicine).all()
     
     categories = ['Tablet', 'Syrup', 'Injection', 'Capsule', 'Other']
     category_data = {c + 's' if not c.endswith('s') else c: 0 for c in categories}
@@ -562,7 +584,7 @@ def dashboard():
         }
 
     # 6. Recent Billing Transactions
-    recent_bills = Sale.query.order_by(Sale.id.desc()).limit(5).all() if 'Sale' in globals() else []
+    recent_bills = user_query(Sale).order_by(Sale.id.desc()).limit(5).all() if 'Sale' in globals() else []
 
     return render_template(
         'dashboard.html',
@@ -588,7 +610,16 @@ def settings():
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('billing'))
     
-    store_config = get_settings()
+    # store_config = get_settings()
+
+    # 1. Fetch Logged-in User's Isolated Store Configuration
+    store_config = user_query(StoreSettings).first()
+
+    # Self-Healing: Agar naye user ki settings row missing hai to auto-create karo
+    if not store_config:
+        store_config = StoreSettings(user_id=current_user.id)
+        db.session.add(store_config)
+        db.session.commit()
     
     if request.method == 'POST':
 
@@ -630,21 +661,21 @@ def settings():
         # Logo Image Upload
         if 'store_logo' in request.files and request.files['store_logo'].filename != '':
             file = request.files['store_logo']
-            fname = secure_filename(f"logo_{file.filename}")
+            fname = secure_filename(f"user_{current_user.id}_logo_{file.filename}")
             file.save(os.path.join(upload_folder, fname))
             store_config.logo_path = f"uploads/store_docs/{fname}"
 
         # Owner KYC Doc Upload
         if 'owner_doc' in request.files and request.files['owner_doc'].filename != '':
             file = request.files['owner_doc']
-            fname = secure_filename(f"owner_{file.filename}")
+            fname = secure_filename(f"user_{current_user.id}_owner_{file.filename}")
             file.save(os.path.join(upload_folder, fname))
             store_config.owner_doc_path = f"uploads/store_docs/{fname}"
 
         # Legal / License Doc Upload
         if 'legal_doc' in request.files and request.files['legal_doc'].filename != '':
             file = request.files['legal_doc']
-            fname = secure_filename(f"legal_{file.filename}")
+            fname = secure_filename(f"user_{current_user.id}_legal_{file.filename}")
             file.save(os.path.join(upload_folder, fname))
             store_config.legal_doc_path = f"uploads/store_docs/{fname}"
         
@@ -740,12 +771,13 @@ def settings():
         flash('Configurations saved successfully!', 'success')
         return redirect(url_for('settings'))
 
-    # Fetch all cashiers directly for template display
-    staff_members = User.query.filter_by(role='cashier').all()
+    # Naya Isolated Code (Jo sirf current logged-in owner ke cashiers uthayega)
+    staff_members = User.query.filter_by(role='cashier', owner_id=current_user.id).all()
 
     return render_template('settings.html', config=store_config ,current_user=current_user , staff_members=staff_members)
 
 @app.route('/upload-pdf-bill', methods=['POST'])
+@login_required
 def upload_pdf_bill():
     if 'bill_pdf' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
@@ -936,216 +968,8 @@ def upload_pdf_bill():
         print(f"AI Bill Extraction Error: {e}")
         return jsonify({'status': 'error', 'message': 'API limit/network delay. Please wait 10 seconds and try again.'}), 500
 
-# @app.route('/upload-pdf-bill', methods=['POST'])
-# def upload_pdf_bill():
-#     if 'bill_pdf' not in request.files:
-#         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
-
-#     file = request.files['bill_pdf']
-#     if file.filename == '':
-#         return jsonify({'status': 'error', 'message': 'No selected file'}), 400
-
-#     extracted_items = []
-#     filename = file.filename.lower()
-
-#     # Broad Synonyms Mapping
-#     SYNONYMS = {
-#         'name': ['item description', 'item name', 'product', 'particular', 'medicine', 'drug', 'description', 'item'],
-#         'company': ['company', 'brand', 'mfg', 'manufacturer', 'marketed by', 'lab'],
-#         'batch': ['batch', 'batch no', 'batch.no', 'b.no', 'lot', 'batch/lot'],
-#         'expiry': ['exp', 'expiry', 'exp.date', 'exp date', 'expiry date', 'exp.'],
-#         'qty': ['packs', 'qty', 'quantity', 'billed qty', 'packs qty'],
-#         'p_rate': ['pts', 'ptr', 'p.rate', 'purchase rate', 'cost', 'p.price', 'rate', 'pur price', 'pur.rate'],
-#         'mrp': ['mrp', 'm.r.p.', 'mrp (₹)', 'max retail price', 'm.r.p']
-#     }
-
-#     def match_header(cell_text):
-#         if not cell_text:
-#             return None
-#         clean_text = str(cell_text).upper().replace('\n', ' ').strip()
-#         for key, aliases in SYNONYMS.items():
-#             for alias in aliases:
-#                 if alias.upper() in clean_text:
-#                     return key
-#         return None
-
-#     try:
-#         # ==========================================
-#         # 1. EXCEL / CSV FILE PROCESSING
-#         # ==========================================
-#         if filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv'):
-#             if filename.endswith('.csv'):
-#                 df = pd.read_csv(file)
-#             else:
-#                 df = pd.read_excel(file)
-
-#             df.columns = [str(c).strip() for c in df.columns]
-#             col_map = {}
-#             for col in df.columns:
-#                 matched_key = match_header(col)
-#                 if matched_key and matched_key not in col_map:
-#                     col_map[matched_key] = col
-
-#             for _, row in df.iterrows():
-#                 raw_name = str(row.get(col_map.get('name'), '')).strip() if 'name' in col_map else ''
-#                 if not raw_name or raw_name.lower() in ['nan', 'none', 'total', 'subtotal', 'item name', 'gst summary']:
-#                     continue
-
-#                 # Ignore non-medicine junk lines
-#                 if any(junk in raw_name.upper() for junk in ['SHIPPED TO', 'BILLED TO', 'TAXABLE', 'CGST', 'SGST', 'TOTAL']):
-#                     continue
-
-#                 lines = [l.strip() for l in raw_name.split('\n') if l.strip()]
-#                 clean_name = re.sub(r'^\d+[\s\.\)]*', '', lines[0]).strip()
-#                 company_val = lines[1] if len(lines) > 1 else str(row.get(col_map.get('company'), '')).strip()
-
-#                 batch_val = str(row.get(col_map.get('batch'), 'BATCH-01')).strip()
-#                 expiry_val = str(row.get(col_map.get('expiry'), '12/28')).strip()
-
-#                 # Clean numeric Qty, P.Rate, MRP
-#                 qty_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('qty'), '1')))
-#                 qty_val = float(qty_clean) if qty_clean else 1.0
-
-#                 p_rate_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('p_rate'), '0')))
-#                 p_rate_val = float(p_rate_clean) if p_rate_clean else 0.0
-
-#                 mrp_clean = re.sub(r'[^0-9\.]', '', str(row.get(col_map.get('mrp'), '0')))
-#                 mrp_val = float(mrp_clean) if mrp_clean else p_rate_val
-
-#                 cat = 'Tablet'
-#                 if 'syrup' in clean_name.lower() or 'suspension' in clean_name.lower():
-#                     cat = 'Syrup'
-#                 elif 'capsule' in clean_name.lower():
-#                     cat = 'Capsule'
-#                 elif 'injection' in clean_name.lower() or 'inj' in clean_name.lower():
-#                     cat = 'Injection'
-#                 elif 'ointment' in clean_name.lower() or 'cream' in clean_name.lower() or 'gel' in clean_name.lower():
-#                     cat = 'Ointment'
-
-#                 extracted_items.append({
-#                     'name': clean_name,
-#                     'company': company_val if company_val != 'nan' else '',
-#                     'composition': 'N/A',
-#                     'category': cat,
-#                     'batch_no': batch_val if batch_val != 'nan' else 'BATCH-01',
-#                     'expiry_date': expiry_val if expiry_val != 'nan' else '12/28',
-#                     'quantity': qty_val,
-#                     'purchase_price': p_rate_val,
-#                     'mrp': mrp_val
-#                 })
-
-#         # ==========================================
-#         # 2. PDF FILE PROCESSING (pdfplumber)
-#         # ==========================================
-#         else:
-#             with pdfplumber.open(file) as pdf:
-#                 for page in pdf.pages:
-#                     tables = page.extract_tables()
-#                     for table in tables:
-#                         if not table or len(table) < 2:
-#                             continue
-
-#                         header_idx = -1
-#                         col_map = {}
-
-#                         # Find Table Header Row dynamically
-#                         for row_i, row in enumerate(table):
-#                             row_str = " ".join([str(c).upper() for c in row if c])
-#                             if any(k in row_str for k in ['ITEM', 'DESCRIPTION', 'PARTICULAR', 'PRODUCT']):
-#                                 header_idx = row_i
-#                                 for col_i, cell in enumerate(row):
-#                                     m_key = match_header(cell)
-#                                     if m_key and m_key not in col_map:
-#                                         col_map[m_key] = col_i
-#                                 break
-
-#                         if header_idx == -1 or 'name' not in col_map:
-#                             continue
-
-#                         # Read Data Rows
-#                         for row in table[header_idx + 1:]:
-#                             if not row or len(row) < 3:
-#                                 continue
-
-#                             raw_name_cell = str(row[col_map['name']]).strip() if col_map['name'] < len(row) else ''
-#                             if not raw_name_cell or raw_name_cell.upper() in ['NONE', 'NAN', '']:
-#                                 continue
-
-#                             # Stop / Skip Junk Rows outside item table
-#                             upper_cell = raw_name_cell.upper()
-#                             if any(junk in upper_cell for junk in [
-#                                 'GST SUMMARY', 'TAXABLE', 'TOTAL', 'BANK ACCOUNT', 'AMOUNT IN WORDS', 
-#                                 'SHIPPED TO', 'BILLED TO', 'CGST', 'SGST', 'FREIGHT', 'ROUND OFF'
-#                             ]):
-#                                 continue
-
-#                             # Split Cell: Line 1 -> Medicine Name, Line 2 -> Company Name
-#                             lines = [l.strip() for l in raw_name_cell.split('\n') if l.strip()]
-#                             clean_name = re.sub(r'^\d+[\s\.\)]*', '', lines[0]).strip()
-                            
-#                             company_from_cell = ''
-#                             if len(lines) > 1:
-#                                 company_from_cell = lines[1]
-#                             elif 'company' in col_map and col_map['company'] < len(row):
-#                                 company_from_cell = str(row[col_map['company']]).strip()
-
-#                             # Batch & Expiry
-#                             batch_val = str(row[col_map['batch']]).strip().split('\n')[0] if 'batch' in col_map and col_map['batch'] < len(row) else 'BATCH-01'
-#                             expiry_val = str(row[col_map['expiry']]).strip().split('\n')[0] if 'expiry' in col_map and col_map['expiry'] < len(row) else '12/28'
-
-#                             # Quantity
-#                             qty_str = str(row[col_map['qty']]).strip().split('\n')[0] if 'qty' in col_map and col_map['qty'] < len(row) else '1'
-#                             qty_clean = re.sub(r'[^0-9\.]', '', qty_str)
-#                             qty_val = float(qty_clean) if qty_clean else 1.0
-
-#                             # Purchase Rate (PTR / PTS / P.Rate / Cost)
-#                             p_rate_val = 0.0
-#                             if 'p_rate' in col_map and col_map['p_rate'] < len(row):
-#                                 pr_str = str(row[col_map['p_rate']]).strip().split('\n')[0]
-#                                 pr_clean = re.sub(r'[^0-9\.]', '', pr_str)
-#                                 p_rate_val = float(pr_clean) if pr_clean else 0.0
-
-#                             # MRP
-#                             mrp_val = 0.0
-#                             if 'mrp' in col_map and col_map['mrp'] < len(row):
-#                                 mrp_str = str(row[col_map['mrp']]).strip().split('\n')[0]
-#                                 mrp_clean = re.sub(r'[^0-9\.]', '', mrp_str)
-#                                 mrp_val = float(mrp_clean) if mrp_clean else 0.0
-
-#                             # Fallback if MRP missing in invoice, set MRP equal to PTR
-#                             if mrp_val == 0.0 and p_rate_val > 0.0:
-#                                 mrp_val = p_rate_val
-
-#                             # Auto Category
-#                             cat = 'Tablet'
-#                             name_lower = clean_name.lower()
-#                             if 'syrup' in name_lower or 'suspension' in name_lower or 'ml' in name_lower:
-#                                 cat = 'Syrup'
-#                             elif 'capsule' in name_lower or 'cap' in name_lower:
-#                                 cat = 'Capsule'
-#                             elif 'injection' in name_lower or 'inj' in name_lower:
-#                                 cat = 'Injection'
-#                             elif 'ointment' in name_lower or 'cream' in name_lower or 'gel' in name_lower:
-#                                 cat = 'Ointment'
-
-#                             extracted_items.append({
-#                                 'name': clean_name,
-#                                 'company': company_from_cell,
-#                                 'composition': 'N/A',
-#                                 'category': cat,
-#                                 'batch_no': batch_val if batch_val not in ['None', ''] else 'BATCH-01',
-#                                 'expiry_date': expiry_val if expiry_val not in ['None', ''] else '12/28',
-#                                 'quantity': qty_val,
-#                                 'purchase_price': p_rate_val,
-#                                 'mrp': mrp_val
-#                             })
-
-#         return jsonify({'status': 'success', 'items': extracted_items})
-
-#     except Exception as e:
-#         return jsonify({'status': 'error', 'message': str(e)}), 500
-
 @app.route('/transactions')
+@login_required
 def transactions():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'transactions'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -1155,7 +979,7 @@ def transactions():
     payment_filter = request.args.get('payment', 'all')  # Cash, UPI, Card, all
     selected_date = request.args.get('date', '') # Format: YYYY-MM-DD
 
-    query = Sale.query
+    query = user_query(Sale)
 
     # 1. Custom Calendar Date Filter (Takes precedence if user picks a date)
     if selected_date:
@@ -1209,12 +1033,13 @@ def transactions():
     )
 
 @app.route('/inventory')
+@login_required
 def inventory():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'inventory'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('billing'))
     
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
     # Database se saare stocks retrieve kar rahe hain
     # all_medicines = Medicine.query.order_by(Medicine.created_at.desc()).all()
 
@@ -1234,7 +1059,7 @@ def inventory():
 
     # Fetch all records first to apply custom threshold logic
     # all_medicines = Medicine.query.order_by(Medicine.created_at.desc()).all()
-    all_medicines = Medicine.query.filter_by(user_id=current_user.id).order_by(Medicine.created_at.desc()).all()
+    all_medicines = user_query(Medicine).order_by(Medicine.created_at.desc()).all()
 
     # Pre-calculate category-wise low stock using live thresholds
     total_low_stock_count = 0
@@ -1291,24 +1116,26 @@ def inventory():
     )
 
 @app.route('/delete-stock/<int:id>')
+@login_required
 def delete_stock(id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'inventory_delete'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('inventory'))
     
     # ID ke basis pe stock delete karna
-    medicine = Medicine.query.get_or_404(id)
+    medicine = user_query(Medicine).filter_by(id=id).first_or_404()
     db.session.delete(medicine)
     db.session.commit()
     return redirect(url_for('inventory') + f'#med-{id}')
 
 @app.route('/edit-stock/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_stock(id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'inventory_edit'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('inventory'))
     
-    medicine = Medicine.query.get_or_404(id)
+    medicine = user_query(Medicine).filter_by(id=id).first_or_404()
     
     if request.method == 'POST':
         medicine.name = request.form.get('name')
@@ -1329,6 +1156,7 @@ def edit_stock(id):
     return render_template('add_stock.html', medicine=medicine)
 
 @app.route('/add-stock', methods=['GET', 'POST'])
+@login_required
 def add_stock():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'add_medicine'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -1417,6 +1245,7 @@ def add_stock():
     return render_template('add_stock.html')
 
 @app.route('/bulk-save-stock', methods=['POST'])
+@login_required
 def bulk_save_stock():
     
     try:
@@ -1482,6 +1311,7 @@ def bulk_save_stock():
         return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/api/delete-transaction/<int:sale_id>', methods=['POST'])
+@login_required
 def delete_transaction(sale_id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'delete_bill'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -1490,17 +1320,17 @@ def delete_transaction(sale_id):
     try:
         data = request.get_json() or {}
         passcode = data.get('passcode', '')
-        store_config = get_settings()
+        store_config = user_query(StoreSettings).first()
 
         if passcode != store_config.admin_pin:
             return {'status': 'error', 'message': 'Incorrect Security PIN! Authorization denied.'}, 403
 
-        sale = Sale.query.get_or_404(sale_id)
+        sale = user_query(Sale).filter_by(id=sale_id).first_or_404()
         # Restore stock logic...
         items = getattr(sale, 'items', None) or getattr(sale, 'sale_items', [])
         for item in items:
             if hasattr(item, 'medicine_id') and item.medicine_id:
-                medicine = Medicine.query.get(item.medicine_id)
+                medicine = user_query(Medicine).filter_by(id=item.medicine_id).first()
                 if medicine:
                     pack_size = int(getattr(medicine, 'pack_size', 10) or getattr(medicine, 'strip_size', 10) or 10)
                     med_display = str(getattr(item, 'medicine_name', '') or '')
@@ -1532,15 +1362,16 @@ def delete_transaction(sale_id):
 
 # 1. BILLING PAGE VIEW
 @app.route('/billing')
+@login_required
 def billing():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'billing'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('dashboard'))
     
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
     # Only show medicines that are in stock (>0)
-    medicines = Medicine.query.filter(Medicine.quantity > 0).all()
-    customers = Customer.query.all() #For Ledger
+    medicines = user_query(Medicine).filter(Medicine.quantity > 0).all()
+    customers = user_query(Customer).all() #For Ledger
 
     # Session se pending cart items fetch karke clear karo
     pending_items = session.pop('pending_cart', [])
@@ -1549,8 +1380,9 @@ def billing():
 
 # 2. CHECKOUT & STOCK DEDUCTION LOGIC
 @app.route('/process-sale', methods=['POST'])
+@login_required
 def process_sale():
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
     try:
         data = request.get_json() or {}
         items = data.get('items', [])
@@ -1568,6 +1400,7 @@ def process_sale():
 
         # Create main Sale instance
         new_sale = Sale(
+            user_id=current_user.id,
             customer_name=customer_name or 'Walk-in Customer',
             customer_phone=customer_phone,
             doctor_name=doctor_name,
@@ -1584,7 +1417,7 @@ def process_sale():
             qty = float(cart_item.get('qty', cart_item.get('quantity', 1)))
             unit = cart_item.get('unit', 'Strip') # Get selected unit ('Tab' or 'Strip')
     
-            medicine = Medicine.query.get(med_id) if med_id else None
+            medicine = user_query(Medicine).filter_by(id=med_id).first() if med_id else None
             med_name = cart_item.get('name') or cart_item.get('medicine_name') or (medicine.name if medicine else 'Medicine Item')
     
             # Base MRP per Strip
@@ -1615,6 +1448,7 @@ def process_sale():
 
             # 3. Create SaleItem with Exact Tablet/Strip Effective Unit Price
             sale_item = SaleItem(
+                user_id=current_user.id,
                 sale_id=new_sale.id,
                 medicine_id=med_id if med_id else (medicine.id if medicine else None),
                 medicine_name=display_name,
@@ -1665,11 +1499,11 @@ def process_sale():
             
             # Step A: Find Customer by ID or Phone
             if customer_id:
-                customer = Customer.query.get(customer_id)
+                customer = user_query(Customer).filter_by(id=customer_id).first()
             elif customer_phone:
-                customer = Customer.query.filter_by(phone=customer_phone).first()
+                customer = user_query(Customer).filter_by(phone=customer_phone).first()
                 if not customer and customer_name and customer_name != 'Walk-in Customer':
-                    customer = Customer(name=customer_name, phone=customer_phone)
+                    customer = Customer(user_id=current_user.id,name=customer_name, phone=customer_phone)
                     db.session.add(customer)
                     db.session.flush()
 
@@ -1680,6 +1514,7 @@ def process_sale():
                 curr_bal = credits - debits
                 
                 ledger_entry = CustomerLedger(
+                    user_id=current_user.id,
                     customer_id=customer.id,
                     txn_type='credit',
                     amount=new_sale.total_amount,
@@ -1702,9 +1537,10 @@ def process_sale():
         return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/api/bill-details/<int:bill_id>')
+@login_required
 def bill_details_api(bill_id):
     # Fetch sale using Sale model
-    sale = Sale.query.get_or_404(bill_id)
+    sale = user_query(Sale).filter_by(id=bill_id).first_or_404()
     items_data = []
 
     # Iterate over linked SaleItem records
@@ -1712,7 +1548,7 @@ def bill_details_api(bill_id):
     
     for item in items:
         # Fetch linked Medicine to get original MRP
-        medicine = Medicine.query.get(item.medicine_id) if getattr(item, 'medicine_id', None) else None
+        medicine = user_query(Medicine).filter_by(id=item.medicine_id).first() if getattr(item, 'medicine_id', None) else None
         med_name = getattr(item, 'medicine_name', None) or (medicine.name if medicine else 'Medicine Item')
 
         # Original MRP (Inventory Full Strip MRP)
@@ -1754,9 +1590,10 @@ def bill_details_api(bill_id):
     }
 
 @app.route('/print-bill/<int:sale_id>')
+@login_required
 def print_bill(sale_id):
-    sale = Sale.query.get_or_404(sale_id)
-    store_config = get_settings() # Auto-fetches Shop Name, Address, DL No, Footer
+    sale = user_query(Sale).filter_by(id=sale_id).first_or_404()
+    store_config = user_query(StoreSettings).first() # Auto-fetches Shop Name, Address, DL No, Footer
     
     return render_template(
         'print_receipt.html',
@@ -1791,13 +1628,14 @@ def parse_expiry(expiry_str):
     return None
 
 @app.route('/inventory/alerts')
+@login_required
 def inventory_alerts():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'alerts'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('billing'))
     
     # Store settings fetch (aapka model store_setting / StoreSetting object)
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
     alert_days = getattr(store_config, 'expiry_alert_days', 60) or 60
     
     # Direct database se saved editable thresholds load karo
@@ -1813,7 +1651,7 @@ def inventory_alerts():
     today = datetime.now().date()
     threshold_date = today + timedelta(days=alert_days)
     
-    all_medicines = Medicine.query.all()
+    all_medicines = user_query(Medicine).all()
     
     expired_list = []
     near_expiry_list = []
@@ -1855,12 +1693,13 @@ def inventory_alerts():
     )
 
 @app.route('/ledger')
+@login_required
 def customer_ledger():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'ledger'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('billing'))
     
-    customers = Customer.query.all()
+    customers = user_query(Customer).all()
     customer_data = []
     
     total_udhar_market = 0.0
@@ -1886,13 +1725,14 @@ def customer_ledger():
         total_market_due=total_udhar_market)
 
 @app.route('/ledger/settle', methods=['POST'])
+@login_required
 def settle_customer_payment():
     customer_id = request.form.get('customer_id')
     amount_paid = float(request.form.get('amount_paid', 0.0))
     note = request.form.get('note', 'Cash Settlement')
     
     if customer_id and amount_paid > 0:
-        c = Customer.query.get(customer_id)
+        c = user_query(Customer).filter_by(id=customer_id).first()
         if c:
             # Add Debit entry (Payment received)
             credits = sum(l.amount for l in c.ledger_entries if l.txn_type == 'credit')
@@ -1900,6 +1740,7 @@ def settle_customer_payment():
             curr_bal = credits - debits
             
             new_entry = CustomerLedger(
+                user_id=current_user.id,
                 customer_id=c.id,
                 txn_type='debit',
                 amount=amount_paid,
@@ -1912,6 +1753,7 @@ def settle_customer_payment():
     return redirect('/ledger')
 
 @app.route('/ledger/customer/add', methods=['POST'])
+@login_required
 def add_customer():
     name = request.form.get('name', '').strip()
     phone = request.form.get('phone', '').strip()
@@ -1919,15 +1761,16 @@ def add_customer():
     opening_balance = float(request.form.get('opening_balance', 0.0) or 0.0)
     
     if name and phone:
-        existing = Customer.query.filter_by(phone=phone).first()
+        existing = user_query(Customer).filter_by(phone=phone).first()
         if not existing:
-            new_cust = Customer(name=name, phone=phone, address=address)
+            new_cust = Customer(user_id=current_user.id, name=name, phone=phone, address=address)
             db.session.add(new_cust)
             db.session.flush() # ID generate karne ke liye
             
             # Agar initial udhar daala hai toh automatically credit entry create karo
             if opening_balance > 0:
                 initial_entry = CustomerLedger(
+                    user_id=current_user.id,
                     customer_id=new_cust.id,
                     txn_type='credit',
                     amount=opening_balance,
@@ -1941,6 +1784,7 @@ def add_customer():
     return redirect('/ledger')
 
 @app.route('/ledger/customer/edit', methods=['POST'])
+@login_required
 def edit_customer():
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'ledger_edit'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -1953,7 +1797,7 @@ def edit_customer():
     opening_balance_str = request.form.get('opening_balance', '')
     
     if customer_id:
-        c = Customer.query.get(customer_id)
+        c = user_query(Customer).filter_by(id=customer_id).first()
         if c:
             c.name = name
             c.phone = phone
@@ -1974,6 +1818,7 @@ def edit_customer():
                 if diff > 0:
                     # Udhar badhana hai
                     adj_entry = CustomerLedger(
+                        user_id=current_user.id,
                         customer_id=c.id,
                         txn_type='credit',
                         amount=diff,
@@ -1984,6 +1829,7 @@ def edit_customer():
                 elif diff < 0:
                     # Udhar kam karna hai
                     adj_entry = CustomerLedger(
+                        user_id=current_user.id,
                         customer_id=c.id,
                         txn_type='debit',
                         amount=abs(diff),
@@ -1998,12 +1844,13 @@ def edit_customer():
 
 # Delete Customer Ledger Route
 @app.route('/ledger/customer/delete/<int:customer_id>', methods=['POST'])
+@login_required
 def delete_customer(customer_id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'ledger_delete'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('ledger'))
     
-    customer = Customer.query.get_or_404(customer_id)
+    customer = user_query(Customer).filter_by(id=customer_id).first_or_404()
     
     # Customer model me cascade="all, delete-orphan" ki wajah se
     # iski saari ledger entries bhi auto-delete ho jayengi
@@ -2014,6 +1861,7 @@ def delete_customer(customer_id):
 
 # 1. Disease Tags Management Page
 @app.route('/symptom-tags', methods=['GET', 'POST'])
+@login_required
 def symptom_tags():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'symptom_tags'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -2024,21 +1872,21 @@ def symptom_tags():
         description = request.form.get('description', '').strip()
         
         if tag_name:
-            existing = DiseaseTag.query.filter_by(name=tag_name).first()
+            existing = user_query(DiseaseTag).filter_by(name=tag_name).first()
             if not existing:
-                new_tag = DiseaseTag(name=tag_name, description=description)
+                new_tag = DiseaseTag(user_id=current_user.id, name=tag_name, description=description)
                 db.session.add(new_tag)
                 db.session.commit()
         return redirect('/symptom-tags')
 
-    tags = DiseaseTag.query.all()
-    medicines = Medicine.query.all()
+    tags = user_query(DiseaseTag).all()
+    medicines = user_query(Medicine).all()
     return render_template('symptom_tags.html', tags=tags, medicines=medicines)
 
 @app.route('/edit_symptom_tag/<int:tag_id>', methods=['POST'])
 @login_required
 def edit_symptom_tag(tag_id):
-    tag = DiseaseTag.query.get_or_404(tag_id)
+    tag = user_query(DiseaseTag).filter_by(id=tag_id).first_or_404()
     tag.name = request.form.get('name')
     tag.description = request.form.get('description')
     
@@ -2048,6 +1896,7 @@ def edit_symptom_tag(tag_id):
 
 # 2. Add Medicine to Disease Tag
 @app.route('/symptom-tags/add-medicine', methods=['POST'])
+@login_required
 def add_medicine_to_tag():
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'map_medicine'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -2059,10 +1908,14 @@ def add_medicine_to_tag():
     target_age = request.form.get('target_age', 'all')
 
     if tag_id and medicine_id:
-        # Check if already mapped
-        existing = TagMedicineMap.query.filter_by(tag_id=tag_id, medicine_id=medicine_id).first()
+        # Verify ownership of tag & medicine
+        v_tag = user_query(DiseaseTag).filter_by(id=tag_id).first()
+        v_med = user_query(Medicine).filter_by(id=medicine_id).first()
+    
+        if v_tag and v_med:
+            existing = user_query(TagMedicineMap).filter_by(tag_id=tag_id, medicine_id=medicine_id).first()
         if not existing:
-            mapping = TagMedicineMap(tag_id=tag_id, medicine_id=medicine_id, dosage_note=dosage_note, target_age=target_age)
+            mapping = TagMedicineMap(user_id=current_user.id, tag_id=tag_id, medicine_id=medicine_id, dosage_note=dosage_note, target_age=target_age)
             db.session.add(mapping)
         else:
             # Agar pehle se mapped hai to update kar do
@@ -2080,7 +1933,7 @@ def update_tag_age(tag_id):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(url_for('symptom_tags'))
 
-    tag = DiseaseTag.query.get_or_404(tag_id)
+    tag = user_query(DiseaseTag).filter_by(id=tag_id).first_or_404()
     tag.target_age = request.form.get('target_age', 'all')
     db.session.commit()
     flash(f'Target Age for "{tag.name}" updated successfully!', 'success')
@@ -2089,7 +1942,7 @@ def update_tag_age(tag_id):
 @app.route('/symptom-tags/update-mapping/<int:map_id>', methods=['POST'])
 @login_required
 def update_tag_mapping(map_id):
-    mapping = TagMedicineMap.query.get_or_404(map_id)
+    mapping = user_query(TagMedicineMap).filter_by(id=map_id).first_or_404()
     mapping.dosage_note = request.form.get('dosage_note', '').strip()
     db.session.commit()
     flash('Dosage updated successfully!', 'success')
@@ -2097,39 +1950,43 @@ def update_tag_mapping(map_id):
 
 # 3. Delete Mapping / Delete Tag
 @app.route('/symptom-tags/delete-mapping/<int:map_id>')
+@login_required
 def delete_tag_mapping(map_id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'delete_mapping'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('symptom_tags'))
     
-    mapping = TagMedicineMap.query.get_or_404(map_id)
+    mapping = user_query(TagMedicineMap).filter_by(id=map_id).first_or_404()
     db.session.delete(mapping)
     db.session.commit()
     return redirect('/symptom-tags')
 
 @app.route('/symptom-tags/delete-tag/<int:tag_id>')
+@login_required
 def delete_disease_tag(tag_id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'delete_tag'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('symptom_tags'))
     
-    tag = DiseaseTag.query.get_or_404(tag_id)
+    tag = user_query(DiseaseTag).filter_by(id=tag_id).first_or_404()
     db.session.delete(tag)
     db.session.commit()
     return redirect('/symptom-tags')
 
 # 1. Smart Symptom Assistant Counter Page
 @app.route('/symptom-assistant')
+@login_required
 def symptom_assistant():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'assistant'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
         return redirect(request.referrer or url_for('billing'))
     
-    tags = DiseaseTag.query.all()
+    tags = user_query(DiseaseTag).all()
     return render_template('symptom_assistant.html', tags=tags)
 
 # 2. API to get medicines based on selected Tag IDs
 @app.route('/api/get-symptom-medicines', methods=['POST'])
+@login_required
 def get_symptom_medicines():
     data = request.get_json() or {}
     tag_ids = data.get('tag_ids', [])
@@ -2138,12 +1995,12 @@ def get_symptom_medicines():
         return {'status': 'success', 'medicines': []}
 
     # Fetch mappings for all selected tags
-    mappings = TagMedicineMap.query.filter(TagMedicineMap.tag_id.in_(tag_ids)).all()
+    mappings = user_query(TagMedicineMap).filter(TagMedicineMap.tag_id.in_(tag_ids)).all()
     
     med_dict = {}
     for m in mappings:
         med = m.medicine
-        if med and med.id not in med_dict:
+        if med and getattr(med, 'user_id', None) == current_user.id and med.id not in med_dict:
             med_dict[med.id] = {
                 'id': med.id,
                 'name': med.name,
@@ -2164,6 +2021,7 @@ def get_symptom_medicines():
 
 # API route jab user Assistant page se "Add to POS" dabayega
 @app.route('/api/add-symptom-to-cart', methods=['POST'])
+@login_required
 def add_symptom_to_cart():
     data = request.get_json() or {}
     raw_id = data.get('id')
@@ -2175,7 +2033,7 @@ def add_symptom_to_cart():
             med_id = None
 
         if med_id:
-            medicine = Medicine.query.get(med_id)
+            medicine = user_query(Medicine).filter_by(id=med_id).first()
             if medicine:
                 # Session cart fetch karo
                 pending_cart = session.get('pending_cart', [])
@@ -2211,6 +2069,7 @@ def add_symptom_to_cart():
 
 # Excel Sales & Profit Export API Route
 @app.route('/api/export/sales-excel', methods=['GET'])
+@login_required
 @admin_required
 def export_sales_excel():
     # Filter type: 'today', 'week', 'month', ya custom range
@@ -2227,7 +2086,7 @@ def export_sales_excel():
         start_date = datetime(2000, 1, 1)
 
     # Database query for transactions/sales
-    sales = Sale.query.filter(Sale.created_at >= start_date).all()
+    sales = user_query(Sale).filter(Sale.created_at >= start_date).all()
     
     data = []
     for s in sales:
@@ -2248,7 +2107,7 @@ def export_sales_excel():
         cost_price_sum = 0.0
         for item in items:
             med_id = getattr(item, 'medicine_id', None)
-            med = Medicine.query.get(med_id) if med_id else None
+            med = user_query(Medicine).filter_by(id=med_id).first() if med_id else None
             qty = float(getattr(item, 'quantity', 1) or 1)
             billed_total = float(getattr(item, 'total', 0) or 0)
             
@@ -2591,22 +2450,198 @@ def verify_email_otp():
 @admin_required
 def download_db_backup():
     try:
-        # SQLite DB path in instance folder
-        db_path = os.path.join(app.instance_path, 'medical_store.db')
-        
-        # Fallback if named medico.db
-        if not os.path.exists(db_path):
-            db_path = os.path.join(app.instance_path, 'medico.db')
+        # 1. Dynamic temporary SQLite database file create karo
+        temp_dir = tempfile.gettempdir()
+        backup_filename = f"medico_backup_user_{current_user.id}_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db"
+        temp_db_path = os.path.join(temp_dir, backup_filename)
 
-        if os.path.exists(db_path):
-            return send_file(
-                db_path,
-                as_attachment=True,
-                download_name=f"medico_backup_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db"
-            )
-        else:
-            flash('Database file not found on server!', 'danger')
-            return redirect(url_for('settings'))
+        if os.path.exists(temp_db_path):
+            os.remove(temp_db_path)
+
+        conn = sqlite3.connect(temp_db_path)
+        cursor = conn.cursor()
+
+        # 2. Schema Create karo temp database me
+        cursor.executescript('''
+            CREATE TABLE IF NOT EXISTS store_settings (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                store_name TEXT,
+                address TEXT,
+                phone TEXT,
+                dl_number TEXT,
+                gstin TEXT,
+                admin_pin TEXT,
+                expiry_alert_days INTEGER,
+                thresh_tablet INTEGER,
+                thresh_syrup INTEGER,
+                thresh_injection INTEGER,
+                thresh_ointment INTEGER,
+                thresh_capsule INTEGER,
+                thresh_other INTEGER,
+                round_off_bills BOOLEAN
+            );
+
+            CREATE TABLE IF NOT EXISTS medicine (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                medicine_name TEXT,
+                company_name TEXT,
+                category TEXT,
+                pack_size INTEGER,
+                strip_size INTEGER,
+                quantity REAL,
+                mrp REAL,
+                purchase_price REAL,
+                batch_no TEXT,
+                expiry_date TEXT,
+                medicine_type TEXT,
+                rx_required BOOLEAN
+            );
+
+            CREATE TABLE IF NOT EXISTS customer (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                name TEXT,
+                phone TEXT,
+                address TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS customer_ledger (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                customer_id INTEGER,
+                txn_type TEXT,
+                amount REAL,
+                balance_after REAL,
+                note TEXT,
+                created_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS sale (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                customer_name TEXT,
+                customer_phone TEXT,
+                doctor_name TEXT,
+                payment_mode TEXT,
+                total_amount REAL,
+                discount_percent REAL,
+                created_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS sale_item (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                sale_id INTEGER,
+                medicine_id INTEGER,
+                medicine_name TEXT,
+                quantity REAL,
+                price REAL,
+                total REAL,
+                discount_percent REAL,
+                mrp REAL
+            );
+
+            CREATE TABLE IF NOT EXISTS disease_tag (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                name TEXT,
+                description TEXT,
+                target_age TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS tag_medicine_map (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                tag_id INTEGER,
+                medicine_id INTEGER,
+                dosage_note TEXT,
+                target_age TEXT
+            );
+        ''')
+
+        # 3. SIRF CURRENT LOGGED-IN USER KA DATA FETCH & INSERT KARO (A to Z)
+
+        # Store Settings
+        settings = user_query(StoreSettings).all()
+        for s in settings:
+            cursor.execute('''INSERT INTO store_settings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
+                s.id, getattr(s, 'user_id', current_user.id), getattr(s, 'store_name', ''), getattr(s, 'address', ''),
+                getattr(s, 'phone', ''), getattr(s, 'dl_number', ''), getattr(s, 'gstin', ''), getattr(s, 'admin_pin', ''),
+                getattr(s, 'expiry_alert_days', 60), getattr(s, 'thresh_tablet', 5), getattr(s, 'thresh_syrup', 2),
+                getattr(s, 'thresh_injection', 2), getattr(s, 'thresh_ointment', 3), getattr(s, 'thresh_capsule', 5),
+                getattr(s, 'thresh_other', 2), getattr(s, 'round_off_bills', False)
+            ))
+
+        # Medicines
+        meds = user_query(Medicine).all()
+        for m in meds:
+            cursor.execute('''INSERT INTO medicine VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
+                m.id, getattr(m, 'user_id', current_user.id), getattr(m, 'medicine_name', ''), getattr(m, 'company_name', ''),
+                getattr(m, 'category', ''), getattr(m, 'pack_size', 10), getattr(m, 'strip_size', 10), getattr(m, 'quantity', 0),
+                getattr(m, 'mrp', 0), getattr(m, 'purchase_price', 0), getattr(m, 'batch_no', ''), str(getattr(m, 'expiry_date', '')),
+                getattr(m, 'medicine_type', ''), getattr(m, 'rx_required', False)
+            ))
+
+        # Customers
+        custs = user_query(Customer).all()
+        for c in custs:
+            cursor.execute('''INSERT INTO customer VALUES (?,?,?,?,?)''', (
+                c.id, getattr(c, 'user_id', current_user.id), getattr(c, 'name', ''), getattr(c, 'phone', ''), getattr(c, 'address', '')
+            ))
+
+        # Customer Ledgers
+        ledgers = user_query(CustomerLedger).all()
+        for l in ledgers:
+            cursor.execute('''INSERT INTO customer_ledger VALUES (?,?,?,?,?,?,?,?)''', (
+                l.id, getattr(l, 'user_id', current_user.id), getattr(l, 'customer_id', None), getattr(l, 'txn_type', ''),
+                getattr(l, 'amount', 0), getattr(l, 'balance_after', 0), getattr(l, 'note', ''), str(getattr(l, 'created_at', ''))
+            ))
+
+        # Sales
+        sales = user_query(Sale).all()
+        for s in sales:
+            cursor.execute('''INSERT INTO sale VALUES (?,?,?,?,?,?,?,?,?)''', (
+                s.id, getattr(s, 'user_id', current_user.id), getattr(s, 'customer_name', ''), getattr(s, 'customer_phone', ''),
+                getattr(s, 'doctor_name', ''), getattr(s, 'payment_mode', ''), getattr(s, 'total_amount', 0),
+                getattr(s, 'discount_percent', 0), str(getattr(s, 'created_at', ''))
+            ))
+
+        # Sale Items
+        sale_items = user_query(SaleItem).all()
+        for si in sale_items:
+            cursor.execute('''INSERT INTO sale_item VALUES (?,?,?,?,?,?,?,?,?,?)''', (
+                si.id, getattr(si, 'user_id', current_user.id), getattr(si, 'sale_id', None), getattr(si, 'medicine_id', None),
+                getattr(si, 'medicine_name', ''), getattr(si, 'quantity', 0), getattr(si, 'price', 0), getattr(si, 'total', 0),
+                getattr(si, 'discount_percent', 0), getattr(si, 'mrp', 0)
+            ))
+
+        # Disease Tags
+        tags = user_query(DiseaseTag).all()
+        for t in tags:
+            cursor.execute('''INSERT INTO disease_tag VALUES (?,?,?,?,?)''', (
+                t.id, getattr(t, 'user_id', current_user.id), getattr(t, 'name', ''), getattr(t, 'description', ''), getattr(t, 'target_age', 'all')
+            ))
+
+        # Tag Medicine Maps
+        maps = user_query(TagMedicineMap).all()
+        for mp in maps:
+            cursor.execute('''INSERT INTO tag_medicine_map VALUES (?,?,?,?,?,?)''', (
+                mp.id, getattr(mp, 'user_id', current_user.id), getattr(mp, 'tag_id', None), getattr(mp, 'medicine_id', None),
+                getattr(mp, 'dosage_note', ''), getattr(mp, 'target_age', 'all')
+            ))
+
+        conn.commit()
+        conn.close()
+
+        # 4. Strictly Isolate Filtered `.db` File Download Bhejo
+        return send_file(
+            temp_db_path,
+            as_attachment=True,
+            download_name=f"medico_backup_{current_user.username}_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db"
+        )
+
     except Exception as e:
         flash(f'Backup Error: {str(e)}', 'danger')
         return redirect(url_for('settings'))
@@ -2630,7 +2665,8 @@ def create_verified_staff():
         username=name or email.split('@')[0],
         email=email,
         role='cashier',
-        plain_password=password
+        plain_password=password,
+        owner_id=current_user.id
     )
     new_staff.set_password(password)
     
@@ -2649,7 +2685,7 @@ def create_verified_staff():
 @login_required
 @admin_required
 def delete_staff(user_id):
-    staff_user = User.query.get_or_404(user_id)
+    staff_user = User.query.filter_by(id=user_id, owner_id=current_user.id).first_or_404()
     if staff_user.role != 'admin':
         db.session.delete(staff_user)
         db.session.commit()
@@ -2662,7 +2698,7 @@ def delete_staff(user_id):
 @login_required
 @admin_required
 def edit_staff(user_id):
-    staff_user = User.query.get_or_404(user_id)
+    staff_user = User.query.filter_by(id=user_id, owner_id=current_user.id).first_or_404()
     
     if staff_user.role == 'admin':
         return jsonify({'status': 'error', 'message': 'Cannot edit admin from here'}), 400
@@ -2762,14 +2798,14 @@ def verify_staff_otp():
 @login_required
 @admin_required
 def get_staff_permissions(user_id):
-    staff = User.query.get_or_404(user_id)
+    staff = User.query.filter_by(id=user_id, owner_id=current_user.id).first_or_404()
     return jsonify({'status': 'success', 'permissions': staff.get_permissions()})
 
 @app.route('/update-staff-permissions/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
 def update_staff_permissions(user_id):
-    staff = User.query.get_or_404(user_id)
+    staff = User.query.filter_by(id=user_id, owner_id=current_user.id).first_or_404()
     if staff.role == 'admin':
         return jsonify({'status': 'error', 'message': 'Cannot modify Admin permissions'}), 400
 
@@ -2790,7 +2826,7 @@ def delete_store_doc():
         return redirect(url_for('settings'))
 
     doc_type = request.form.get('doc_type')
-    store_config = get_settings()
+    store_config = user_query(StoreSettings).first()
 
     target_attr = None
     if doc_type == 'store_logo':
@@ -2819,15 +2855,17 @@ def delete_store_doc():
     return redirect(url_for('settings'))
 
 @app.route('/distributors')
+@login_required
 def distributors():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'distributors'):
             flash('ACCESS_RESTRICTED', 'access_denied_popup')
             return redirect(request.referrer or url_for('billing'))
     
-    all_distributors = Distributor.query.order_by(Distributor.id.desc()).all()
+    all_distributors = user_query(Distributor).order_by(Distributor.id.desc()).all()
     return render_template('distributors.html', distributors=all_distributors)
 
 @app.route('/distributors/add', methods=['POST'])
+@login_required
 def add_distributor():
     name = request.form.get('name')
     phone = request.form.get('phone')
@@ -2836,6 +2874,7 @@ def add_distributor():
     supplies_category = request.form.get('supplies_category')
 
     new_dist = Distributor(
+        user_id=current_user.id,
         name=name,
         phone=phone,
         email=email,
@@ -2848,12 +2887,13 @@ def add_distributor():
     return redirect(url_for('distributors'))
 
 @app.route('/distributors/edit/<int:id>', methods=['POST'])
+@login_required
 def edit_distributor(id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'edit_distributor'):
                 flash('ACCESS_RESTRICTED', 'access_denied_popup')
                 return redirect(request.referrer or url_for('distributors'))
     
-    dist = Distributor.query.get_or_404(id)
+    dist = user_query(Distributor).filter_by(id=id).first_or_404()
     dist.name = request.form.get('name')
     dist.phone = request.form.get('phone')
     dist.email = request.form.get('email')
@@ -2865,12 +2905,13 @@ def edit_distributor(id):
     return redirect(url_for('distributors'))
 
 @app.route('/distributors/delete/<int:id>')
+@login_required
 def delete_distributor(id):
     if current_user.role != 'admin' and not current_user.has_permission('actions', 'delete_distributor'):
                 flash('ACCESS_RESTRICTED', 'access_denied_popup')
                 return redirect(request.referrer or url_for('distributors'))
     
-    dist = Distributor.query.get_or_404(id)
+    dist = user_query(Distributor).filter_by(id=id).first_or_404()
     db.session.delete(dist)
     db.session.commit()
     flash('Distributor removed!', 'danger')
