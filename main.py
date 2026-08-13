@@ -130,6 +130,14 @@ if db_url and db_url.startswith("postgres://"):
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Stale SSL Connection dropping fix
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,       # Query chalane se pehle check karega ki connection alive hai ya nahi
+    "pool_recycle": 280,         # Purane stale connections ko recycle kar dega (Render Timeout se pehle)
+    "pool_timeout": 30,
+}
+
 db = SQLAlchemy(app)
 
 class User(db.Model, UserMixin):
