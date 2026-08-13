@@ -97,6 +97,7 @@
                                 data-name="{{ med.name }}" title="Click to view uses & info">
                                 {{ med.name }}
                             </a>
+                            <!-- Prescription Required BADGE -->
                             {% if med.rx_required %}
                             <span
                                 class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 px-1 py-0 align-middle"
@@ -111,6 +112,14 @@
                             <span
                                 class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-1"
                                 style="font-size: 9px; padding: 2px 5px;" title="Pharma / Branded Medicine">P</span>
+                            {% endif %}
+                            <!-- DISTRIBUTOR / SUPPLIER TAG BADGE -->
+                            {% if med.distributor_code %}
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1"
+                                style="font-size: 9px; padding: 2px 5px;"
+                                title="Distributor Tag: {{ med.distributor_code }}">
+                                {{ med.distributor_code }}
+                            </span>
                             {% endif %}
                             <span class="d-block text-muted small fw-normal">
                                 {{ med.category }}

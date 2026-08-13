@@ -202,6 +202,7 @@ class Medicine(db.Model):
     created_at = db.Column(db.DateTime, default=get_ist_time)
     rx_required = db.Column(db.Boolean, default=False)
     medicine_type = db.Column(db.String(10), default='None', nullable=True)
+    distributor_code = db.Column(db.String(20), nullable=True, default='')
 
     def __repr__(self):
         return f'<Medicine {self.name}>'
@@ -779,6 +780,8 @@ def settings():
 @app.route('/upload-pdf-bill', methods=['POST'])
 @login_required
 def upload_pdf_bill():
+    dist_code = request.form.get('distributor_code', '').strip().upper()
+
     if 'bill_pdf' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
 
@@ -850,7 +853,8 @@ def upload_pdf_bill():
                     'expiry_date': str(row.get(exp_col, '12/28')).strip() if exp_col and pd.notna(row.get(exp_col)) else '12/28',
                     'quantity': qty_val,
                     'purchase_price': prate_val,
-                    'mrp': mrp_val
+                    'mrp': mrp_val,
+                    'distributor_code': dist_code
                 })
     
             return jsonify({'status': 'success', 'items': extracted_items})
@@ -961,6 +965,7 @@ def upload_pdf_bill():
             item['quantity'] = float(item.get('quantity', 1) or 1)
             item['purchase_price'] = float(item.get('purchase_price', 0) or 0)
             item['mrp'] = float(item.get('mrp', item['purchase_price']) or item['purchase_price'])
+            item['distributor_code'] = dist_code
 
         return jsonify({'status': 'success', 'items': items})
 
@@ -1150,6 +1155,7 @@ def edit_stock(id):
         medicine.rx_required = True if request.form.get('rx_required') in ['true', 'on', 'True'] or 'rx_required' in request.form else False
         medicine.medicine_type = request.form.get('medicine_type', '').strip()
         medicine.pack_size = int(request.form.get('pack_size', 10) or 10)
+        medicine.distributor_code = request.form.get('distributor_code', '').strip().upper()
 
         db.session.commit()
         return redirect(url_for('inventory') + f'#med-{id}')
@@ -1176,6 +1182,7 @@ def add_stock():
         is_rx = ('rx_required' in request.form) or (request.form.get('rx_required') == 'true')
         medicine_type = request.form.get('medicine_type', '')
         pack_size = int(request.form.get('pack_size', 10) or 10)
+        dist_code = request.form.get('distributor_code', '').strip().upper()
 
         # -------------------------------------------------------------
         # DUPLICATE BATCH CHECK LOGIC
@@ -1233,7 +1240,8 @@ def add_stock():
             purchase_price=purchase_price,
             rx_required=is_rx,
             medicine_type=medicine_type,
-            pack_size=pack_size
+            pack_size=pack_size,
+            distributor_code=dist_code
         )
 
         # Database me Save karna

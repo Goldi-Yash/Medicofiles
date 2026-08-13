@@ -46,6 +46,37 @@
                                 </button>
                             </div>
                         </div>
+                        <!-- Modern Distributor Input Modal Before Upload -->
+                        <div class="modal fade" id="distributorInputModal" data-bs-backdrop="static" tabindex="-1"
+                            aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content border-0 shadow-lg rounded-4">
+                                    <div
+                                        class="modal-header border-0 pb-0 bg-primary bg-gradient text-white rounded-top-4">
+                                        <h6 class="modal-title fw-bold" id="distributorInputModalLabel">
+                                            <i class="bi bi-tag-fill me-2"></i>Distributor Tag
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                            aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <p class="text-muted small mb-3">Enter supplier code/tag to auto-tag all parsed
+                                            medicines in this bill.</p>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small text-dark">Distributor Code /
+                                                Tag</label>
+                                            <input type="text" id="preUploadDistCode"
+                                                class="form-control text-uppercase fw-bold border-primary"
+                                                placeholder="e.g. ARY, GUP, SWA" maxlength="10">
+                                        </div>
+                                        <button type="button" id="proceedUploadBtn"
+                                            class="btn btn-primary w-100 fw-bold rounded-3">
+                                            Continue to Upload <i class="bi bi-arrow-right ms-1"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <!-- Review & Edit Parsed PDF Stock Modal -->
                         <div class="modal fade" id="parsedStockModal" tabindex="-1"
                             aria-labelledby="parsedStockModalLabel" aria-hidden="true" data-bs-backdrop="static">
@@ -71,6 +102,7 @@
                                                         <th>Item Name *</th>
                                                         <th>Company</th>
                                                         <th>Composition (Salt)</th>
+                                                        <th style="width: 100px;">Distributor</th>
                                                         <th style="width: 110px;">Category</th>
                                                         <th>Batch No.</th>
                                                         <th>Expiry Date</th>
@@ -174,6 +206,15 @@
                             </select>
                         </div>
 
+                        <!-- Distributor Code / Tag -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Distributor / Supplier Tag</label>
+                            <input type="text" name="distributor_code" class="form-control text-uppercase"
+                                placeholder="e.g. ARY, GUP, SWA"
+                                value="{{ medicine.distributor_code if medicine else '' }}" maxlength="10">
+                            <div class="form-text small">Short tag/code for the supplier (e.g. ARY for Aryan)</div>
+                        </div>
+
                         <!-- Batch Number -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Batch No. *</label>
@@ -226,16 +267,24 @@
     </div>
 </div>
 
-<!-- AI Processing Loader Modal -->
-<div class="modal fade" id="aiLoadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-    aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<!-- Enhanced AI Loader with Progress Bar -->
+<div class="modal fade" id="aiLoadingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
-            <div class="spinner-border text-primary mx-auto my-3" style="width: 3.5rem; height: 3.5rem;" role="status">
+            <!-- Exact Center Spinner Alignment -->
+            <div class="d-flex justify-content-center my-2">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
             </div>
-            <h5 class="fw-bold text-dark mt-2">Parsing Invoice with AI...</h5>
-            <p class="text-muted small mb-0">Extracting medicine names, composition, PTR, PTS rates, and batch details.
-            </p>
+
+            <h6 class="fw-bold text-dark mt-2 mb-1" id="aiLoaderTitle">Parsing Invoice with AI...</h6>
+            <p class="text-muted extra-small mb-3" id="aiLoaderSubtext">Extracting medicines, PTR, PTS, and batches</p>
+
+            <!-- Progress Bar Bar & Percentage -->
+            <div class="progress mb-2" style="height: 10px; border-radius: 6px;">
+                <div id="aiProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                    role="progressbar" style="width: 5%;"></div>
+            </div>
+            <span id="aiProgressPercent" class="fw-bold text-primary small">5%</span>
         </div>
     </div>
 </div>
@@ -243,16 +292,52 @@
 <script>
     let parsedItems = [];
 
-    // 1. Clean PDF/Excel Upload Handler (No Blocking Overlay Modals)
+    // Global variable for selected bill file
+    let selectedBillFile = null;
+
+    // 1. File pick hone par modal kholega
     document.getElementById('pdfFileInput').addEventListener('change', function () {
-        let file = this.files[0];
-        if (!file) return;
+        if (!this.files || !this.files[0]) return;
+        selectedBillFile = this.files[0];
+
+        // Distributor input clear karke modal show karo
+        document.getElementById('preUploadDistCode').value = '';
+        const distModal = new bootstrap.Modal(document.getElementById('distributorInputModal'));
+        distModal.show();
+    });
+
+    // 2. Modal me Continue dabane par actual upload start hoga
+    document.getElementById('proceedUploadBtn').addEventListener('click', function () {
+        const distTagInput = document.getElementById('preUploadDistCode').value.trim().toUpperCase();
+
+        // Hide Distributor Modal
+        const distModalEl = document.getElementById('distributorInputModal');
+        const distModal = bootstrap.Modal.getInstance(distModalEl);
+        if (distModal) distModal.hide();
+
+        if (!selectedBillFile) return;
+
+        // File extension check (PDF vs Excel/CSV)
+        const isPdfOrImg = selectedBillFile.name.toLowerCase().endsWith('.pdf') ||
+            selectedBillFile.name.toLowerCase().endsWith('.png') ||
+            selectedBillFile.name.toLowerCase().endsWith('.jpg') ||
+            selectedBillFile.name.toLowerCase().endsWith('.jpeg');
+
+        const aiLoaderModalEl = document.getElementById('aiLoadingModal');
+        let aiLoaderModal = null;
+
+        // Sirf PDF/Images ke liye AI Loader dikhao
+        if (isPdfOrImg && aiLoaderModalEl) {
+            aiLoaderModal = bootstrap.Modal.getOrCreateInstance(aiLoaderModalEl);
+            aiLoaderModal.show();
+            startFakeProgress();
+        } else {
+            document.body.style.cursor = 'wait';
+        }
 
         let formData = new FormData();
-        formData.append('bill_pdf', file);
-
-        // Simple cursor spinner so user knows backend is working
-        document.body.style.cursor = 'wait';
+        formData.append('bill_pdf', selectedBillFile);
+        formData.append('distributor_code', distTagInput);
 
         fetch('/upload-pdf-bill', {
             method: 'POST',
@@ -260,13 +345,27 @@
         })
             .then(res => res.json())
             .then(data => {
+                // Hide AI Loader Modal safely if it was opened
+                finishProgress(() => {
+                    if (aiLoaderModal) aiLoaderModal.hide();
+                });
+                // Double safety: Force hide spinner backdrop if still present
+                const loaderEl = document.getElementById('aiLoadingModal');
+                if (loaderEl) {
+                    const modalInst = bootstrap.Modal.getInstance(loaderEl);
+                    if (modalInst) modalInst.hide();
+                }
                 document.body.style.cursor = 'default';
 
                 if (data.status === 'success' && data.items.length > 0) {
-                    parsedItems = data.items;
+                    // Saare parsed items me distributor code auto-attach karo
+                    parsedItems = data.items.map(item => ({
+                        ...item,
+                        distributor_code: item.distributor_code || distTagInput
+                    }));
                     renderParsedTable();
 
-                    // Direct show stock review table modal
+                    // Open Parsed Review Modal
                     const stockModalEl = document.getElementById('parsedStockModal');
                     const stockModal = bootstrap.Modal.getOrCreateInstance(stockModalEl);
                     stockModal.show();
@@ -275,12 +374,14 @@
                 }
             })
             .catch(err => {
+                if (aiLoaderModal) aiLoaderModal.hide();
                 document.body.style.cursor = 'default';
                 console.error(err);
                 alert('Error processing file.');
             })
             .finally(() => {
-                this.value = '';
+                document.getElementById('pdfFileInput').value = '';
+                selectedBillFile = null;
             });
     });
 
@@ -317,6 +418,11 @@
                 </td>
                 <td>
                     <input type="text" class="form-control form-control-sm" value="${item.composition || ''}" placeholder="e.g. Paracetamol" onchange="parsedItems[${index}].composition = this.value">
+                </td>
+                <td>
+                        <input type="text" class="form-control form-control-sm text-uppercase fw-bold" 
+                            value="${item.distributor_code || ''}"
+                            onchange="parsedItems[${index}].distributor_code = this.value.toUpperCase()">
                 </td>
                 <td>
                     <select class="form-select form-select-sm" onchange="parsedItems[${index}].category = this.value">
@@ -383,5 +489,71 @@
             })
             .catch(err => console.error(err));
     });
+
+    let progressInterval = null;
+
+    function startFakeProgress() {
+        let percent = 5;
+        const progressBar = document.getElementById('aiProgressBar');
+        const progressText = document.getElementById('aiProgressPercent');
+        const subtext = document.getElementById('aiLoaderSubtext');
+
+        // Reset UI to initial state
+        if (progressBar) {
+            progressBar.style.width = '5%';
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.add('bg-primary');
+        }
+        if (progressText) {
+            progressText.innerText = '5%';
+            progressText.classList.remove('text-success');
+            progressText.classList.add('text-primary');
+        }
+        if (subtext) subtext.innerText = "Extracting medicines, PTR, PTS, and batches...";
+
+        // Clear previous interval if any
+        if (progressInterval) clearInterval(progressInterval);
+
+        progressInterval = setInterval(() => {
+            if (percent < 88) {
+                // Gradually increase speed slow down near end
+                percent += Math.floor(Math.random() * 3) + 1;
+                if (percent > 88) percent = 88;
+
+                if (progressBar) progressBar.style.width = percent + '%';
+                if (progressText) progressText.innerText = percent + '%';
+
+                // Change status text dynamically
+                if (percent > 25 && percent <= 55) {
+                    if (subtext) subtext.innerText = "Analyzing PDF layout with Gemini AI...";
+                } else if (percent > 55) {
+                    if (subtext) subtext.innerText = "Extracting PTR, PTS rates & Expiry dates...";
+                }
+            }
+        }, 450); // Progress updates every 400ms
+    }
+
+    function finishProgress(callback) {
+        if (progressInterval) clearInterval(progressInterval);
+
+        const progressBar = document.getElementById('aiProgressBar');
+        const progressText = document.getElementById('aiProgressPercent');
+
+        // Jump straight to 100% on success
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('bg-primary');
+            progressBar.classList.add('bg-success');
+        }
+        if (progressText) {
+            progressText.innerText = '100%';
+            progressText.classList.remove('text-primary');
+            progressText.classList.add('text-success');
+        }
+
+        setTimeout(() => {
+            callback();
+        }, 300); // 300ms pause at 100% for user feedback
+    }
 </script>
 {% endblock %}
