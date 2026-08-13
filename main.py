@@ -29,6 +29,7 @@ import traceback
 import base64
 import sqlite3
 import tempfile
+import resend
 
 load_dotenv()
 
@@ -86,15 +87,20 @@ google = oauth.register(
 )
 
 # Flask-Mail Configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')  # Google App Password (16-digit code)
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+# app.config['MAIL_PORT'] = 465
+# app.config['MAIL_USE_TLS'] = False
+# app.config['MAIL_USE_SSL'] = True
+# app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+# app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')  # Google App Password (16-digit code)
+# app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
 
-mail = Mail(app)
+# mail = Mail(app)
+
+# Resend API Setup (Fast HTTP-based Mailer)
+resend.api_key = os.getenv('RESEND_API_KEY')
+
+
 serializer = URLSafeTimedSerializer(app.secret_key)
 
 login_manager = LoginManager()
@@ -2315,23 +2321,27 @@ def forgot_password():
             token = serializer.dumps(email, salt='reset-password-token')
             reset_url = url_for('reset_password', token=token, _external=True)
 
-            # Gmail Send Logic
-            msg = Message('Password Reset Link - Medico',
-                        sender=app.config['MAIL_USERNAME'],
-                        recipients=[email])
-            
-            msg.body = f'''Hello,
-
-Click on the following link to reset your password for Medico:
-{reset_url}
-
-If you did not request this, simply ignore this email.
-Link expires in 30 minutes.
-'''
-            mail.send(msg)
-            flash('Reset link sent! Please check your Gmail inbox.', 'info')
-        else:
-            flash('Email address not found in system!', 'danger')
+        # Resend API Password Reset Logic
+            try:
+                resend.Emails.send({
+                    "from": "Medicofiles <onboarding@resend.dev>",
+                    "to": [email],
+                    "subject": "Password Reset Link - Medico",
+                    "html": f"""
+                        <div style="font-family: Arial, sans-serif; padding: 20px;">
+                            <h2>Password Reset Request</h2>
+                            <p>Hello,</p>
+                            <p>Click on the button below to reset your password for Medico:</p>
+                            <a href="{reset_url}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #0d6efd; border-radius: 5px; text-decoration: none; font-weight: bold;">Reset Password</a>
+                            <br><br>
+                            <p style="font-size: 12px; color: #6c757d;">If you did not request this, simply ignore this email. Link expires in 30 minutes.</p>
+                        </div>
+                    """
+                })
+                flash('Reset link sent! Please check your Gmail inbox.', 'info')
+            except Exception as e:
+                print(f"Resend Forgot Password Error: {str(e)}")
+                flash('Failed to send reset email. Please try again.', 'danger')
 
         return redirect(url_for('forgot_password'))
 
@@ -2435,15 +2445,15 @@ def send_email_otp():
     session['pending_new_email'] = new_email
 
     try:
-        msg = Message(
-            subject="Medico Account - Email Verification OTP",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[new_email]
-        )
-        msg.body = f"Hello {current_user.username},\n\nYour OTP to verify and update your new email address on Medico is: {otp}\n\nIf you did not request this, please ignore."
-        mail.send(msg)
+        resend.Emails.send({
+            "from": "Medicofiles <onboarding@resend.dev>",
+            "to": [new_email],
+            "subject": "Medico Account - Email Verification OTP",
+            "html": f"<p>Hello {current_user.username},<br><br>Your OTP to verify and update your new email address on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
+        })
         return {'status': 'success', 'message': f'OTP sent successfully to {new_email}!'}
     except Exception as e:
+        print(f"Resend Email Change Error: {str(e)}")
         return {'status': 'error', 'message': f'Failed to send OTP email: {str(e)}'}, 500
 
 
@@ -2490,15 +2500,15 @@ def send_signup_otp():
     session['signup_email'] = email
 
     try:
-        msg = Message(
-            subject="Medico Signup - Email Verification OTP",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-        msg.body = f"Hello,\n\nYour OTP to verify your email for creating a new account on Medico is: {otp}\n\nIf you did not request this, please ignore."
-        mail.send(msg)
+        resend.Emails.send({
+            "from": "Medicofiles <onboarding@resend.dev>",
+            "to": [email],
+            "subject": "Medico Signup - Email Verification OTP",
+            "html": f"<p>Hello,<br><br>Your OTP for creating a new account on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
+        })
         return {'status': 'success', 'message': f'OTP sent successfully to {email}!'}
     except Exception as e:
+        print(f"Resend Signup Error: {str(e)}")
         return {'status': 'error', 'message': f'Failed to send OTP email: {str(e)}'}, 500
 
 
@@ -3119,22 +3129,15 @@ def send_staff_otp():
     session['staff_creation_email'] = email
 
     try:
-        from flask_mail import Message
-        
-        # Dynamic sender: Pick logged-in user email or Flask-Mail App Config username
-        sender_email = app.config.get('MAIL_USERNAME') or current_user.email
-        
-        msg = Message(
-            subject="Staff Registration OTP Verification",
-            sender=sender_email,
-            recipients=[email],
-            body=f"Your OTP for staff account registration is: {otp}. Valid for 10 minutes."
-        )
-        mail.send(msg)
-
+        resend.Emails.send({
+            "from": "Medicofiles <onboarding@resend.dev>",
+            "to": [email],
+            "subject": "Staff Registration OTP Verification",
+            "html": f"<p>Your OTP for staff account registration is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b>. Valid for 10 minutes.</p>"
+        })
         return jsonify({'status': 'success', 'message': f'OTP sent successfully to {email}'})
     except Exception as e:
-        print("Mail Sending Exception:", str(e))
+        print("Resend Staff Mail Error:", str(e))
         return jsonify({'status': 'error', 'message': f'Failed to send OTP: {str(e)}'}), 500
 
 # 2. Strict Server-Side OTP Verification Endpoint
