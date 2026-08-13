@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medicofiles — Next-Gen Medical Store Management</title>
 
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='rotate(-45 32 32)'><path d='M16 20 C16 11.163 23.163 4 32 4 L32 60 C23.163 60 16 52.837 16 44 Z' fill='%232563eb'/><path d='M32 4 C40.837 4 48 11.163 48 20 L48 44 C48 52.837 40.837 60 32 60 Z' fill='%231d4ed8'/><line x1='32' y1='4' x2='32' y2='60' stroke='%23ffffff' stroke-width='4'/></g></svg>">
+
     <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -219,6 +222,17 @@
             transform: translateX(4px);
             transition: transform 0.2s ease;
         }
+
+        /* AI Cards 3D Tilt & Glow Hover Effects */
+        .ai-glass-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 12px 30px -10px rgba(13, 202, 240, 0.25);
+            border-color: rgba(13, 202, 240, 0.6) !important;
+        }
+
+        .ai-glass-card {
+            will-change: transform, box-shadow;
+        }
     </style>
 </head>
 
@@ -252,6 +266,8 @@
                             href="#modules">Modules</a></li>
                     <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
                             href="#stats">Stats</a></li>
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                            href="#ai-magic">AI-Magic</a></li>
                 </ul>
 
                 <div class="d-flex align-items-center justify-content-center gap-3">
@@ -613,6 +629,137 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </section>
+
+    <!-- Sleek 3D Animated AI Features Section -->
+    <section id="ai-magic" class="py-5 position-relative overflow-hidden">
+        <!-- Background Ambient Glow -->
+        <div
+            style="position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); width: 450px; height: 250px; background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, rgba(0,0,0,0) 70%); pointer-events: none; filter: blur(40px);">
+        </div>
+
+        <div class="container py-2 position-relative" style="z-index: 2;">
+            <!-- Header with Glowing Badge & Toggle Trigger -->
+            <div class="text-center mb-4">
+                <span
+                    class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-1 rounded-pill small fw-semibold mb-2"
+                    style="box-shadow: 0 0 12px rgba(13, 202, 240, 0.2);">
+                    ✨ INTELLIGENT AUTOMATION
+                </span>
+                <h3 class="fw-bold text-white mt-1 mb-2" style="letter-spacing: -0.5px; font-size: 1.7rem;">
+                    Powered By Modern AI Magic
+                </h3>
+                <p class="text-white-50 small mx-auto mb-3" style="max-width: 520px; font-size: 0.88rem;">
+                    Eliminate manual entry and empirical lookups. Let neural automation handle medical references & bill
+                    ingesting.
+                </p>
+                <button class="btn btn-outline-info rounded-pill px-4 py-2 fs-6 fw-semibold shadow-sm text-white"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#aiFeaturesCollapse" aria-expanded="true"
+                    aria-controls="aiFeaturesCollapse"
+                    style="border-color: rgba(13, 202, 240, 0.4); background: rgba(13, 202, 240, 0.08); backdrop-filter: blur(8px); transition: all 0.3s ease;">
+                    <i class="bi bi-cpu-fill text-info me-2"></i>Explore AI Features <i
+                        class="bi bi-chevron-down ms-1"></i>
+                </button>
+            </div>
+
+            <!-- Collapsible 3D AI Grid (Pixel-Perfect Alignment) -->
+            <div class="collapse show mt-4" id="aiFeaturesCollapse">
+                <div class="row g-4 justify-content-center align-items-stretch">
+
+                    <!-- AI Feature Card 1: Medicine Intelligence -->
+                    <div class="col-md-6 d-flex">
+                        <div class="p-4 rounded-4 border border-info border-opacity-25 w-100 d-flex flex-column justify-content-between position-relative ai-glass-card"
+                            style="background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.5)); backdrop-filter: blur(12px); transform-style: preserve-3d; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+
+                            <!-- Top Content Wrapper -->
+                            <div>
+                                <!-- Header Flex Row -->
+                                <div class="d-flex align-items-start gap-3 mb-3">
+                                    <div class="p-3 rounded-3 bg-info bg-opacity-10 text-info border border-info border-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width: 52px; height: 52px; box-shadow: 0 0 15px rgba(13, 202, 240, 0.2);">
+                                        <i class="bi bi-capsule fs-4"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="text-white fw-bold mb-1 fs-6 leading-tight">Instant Medicine Insights
+                                            & Uses</h5>
+                                        <span
+                                            class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 rounded-pill"
+                                            style="font-size: 0.68rem; letter-spacing: 0.3px;">Live AI Fetch</span>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <p class="text-white-50 small mb-4" style="font-size: 0.83rem; line-height: 1.6;">
+                                    Simply tap or search any medicine name. Neural web crawlers automatically aggregate
+                                    exact uses, dosage guides, composition details, and potential side-effects in under
+                                    1 second.
+                                </p>
+                            </div>
+
+                            <!-- Bottom Preview Bar (Stretched & Balanced) -->
+                            <div class="p-3 rounded-3 border border-secondary border-opacity-25 bg-black bg-opacity-50 d-flex align-items-center justify-content-between w-100"
+                                style="font-size: 0.8rem;">
+                                <div class="d-flex align-items-center text-white-50 text-truncate me-2">
+                                    <i class="bi bi-search text-info me-2 fs-6"></i>
+                                    <span class="text-truncate">Augmentin 625 Duo</span>
+                                </div>
+                                <span class="text-info fw-semibold flex-shrink-0 d-flex align-items-center">
+                                    <i class="bi bi-check2-circle me-1"></i>Auto-Fetched
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- AI Feature Card 2: PDF/Excel Smart Parser -->
+                    <div class="col-md-6 d-flex">
+                        <div class="p-4 rounded-4 border border-primary border-opacity-25 w-100 d-flex flex-column justify-content-between position-relative ai-glass-card"
+                            style="background: linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.5)); backdrop-filter: blur(12px); transform-style: preserve-3d; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+
+                            <!-- Top Content Wrapper -->
+                            <div>
+                                <!-- Header Flex Row -->
+                                <div class="d-flex align-items-start gap-3 mb-3">
+                                    <div class="p-3 rounded-3 bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width: 52px; height: 52px; box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);">
+                                        <i class="bi bi-file-earmark-spreadsheet fs-4"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="text-white fw-bold mb-1 fs-6 leading-tight">1-Click Invoice & Stock
+                                            Auto-Parser</h5>
+                                        <span
+                                            class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 rounded-pill"
+                                            style="font-size: 0.68rem; letter-spacing: 0.3px;">PDF / Excel
+                                            Support</span>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <p class="text-white-50 small mb-4" style="font-size: 0.83rem; line-height: 1.6;">
+                                    Drag and drop distributor bills or stock sheets (PDF, XLS, CSV). Smart OCR & regex
+                                    parsing extracts items, quantities, batch numbers, and expiry dates into inventory
+                                    automatically.
+                                </p>
+                            </div>
+
+                            <!-- Bottom Preview Bar (Stretched & Balanced) -->
+                            <div class="p-3 rounded-3 border border-secondary border-opacity-25 bg-black bg-opacity-50 d-flex align-items-center justify-content-between w-100"
+                                style="font-size: 0.8rem;">
+                                <div class="d-flex align-items-center text-white-50 text-truncate me-2">
+                                    <i class="bi bi-file-earmark-arrow-up text-primary me-2 fs-6"></i>
+                                    <span class="text-truncate">Distributor_Invoice.pdf</span>
+                                </div>
+                                <span class="text-success fw-semibold flex-shrink-0 d-flex align-items-center">
+                                    <i class="bi bi-lightning-charge me-1"></i>Parsed to Inventory
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </section>

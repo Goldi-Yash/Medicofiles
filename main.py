@@ -1319,11 +1319,21 @@ def delete_transaction(sale_id):
     
     try:
         data = request.get_json() or {}
-        passcode = data.get('passcode', '')
-        store_config = user_query(StoreSettings).first()
+        passcode = str(data.get('passcode', '')).strip()
 
-        if passcode != store_config.admin_pin:
-            return {'status': 'error', 'message': 'Incorrect Security PIN! Authorization denied.'}, 403
+        store_config = user_query(StoreSettings).first()
+        saved_pin = str(getattr(store_config, 'admin_pin', '') or '').strip()
+
+        # FIX: Agar stored PIN default '1234' hai YA empty hai,
+        # to Naye user ko block mat karo — blank input ya koi bhi default attempt delete kar dega!
+        if saved_pin and saved_pin != "1234":
+            if passcode != saved_pin:
+                return {'status': 'error', 'message': 'Incorrect Security PIN! Authorization denied.'}, 403
+        else:
+            # Stored PIN blank ya default '1234' hai:
+            # Agar user ne '1234' daala ho YA blank chhoda ho, dono pass honge!
+            if passcode and passcode not in ["", "1234"]:
+                return {'status': 'error', 'message': 'Incorrect Security PIN! Authorization denied.'}, 403
 
         sale = user_query(Sale).filter_by(id=sale_id).first_or_404()
         # Restore stock logic...
@@ -2445,12 +2455,57 @@ def verify_email_otp():
 
     return {'status': 'success', 'message': 'Email address verified & updated successfully in database!'}
 
+@app.route('/api/send-signup-otp', methods=['POST'])
+def send_signup_otp():
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    
+    if not email:
+        return {'status': 'error', 'message': 'Please enter a valid email address.'}, 400
+        
+    # Check if email already registered
+    if User.query.filter_by(email=email).first():
+        return {'status': 'error', 'message': 'Email address already registered! Please login.'}, 400
+
+    otp = str(random.randint(100000, 999999))
+    session['signup_otp'] = otp
+    session['signup_email'] = email
+
+    try:
+        msg = Message(
+            subject="Medico Signup - Email Verification OTP",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email]
+        )
+        msg.body = f"Hello,\n\nYour OTP to verify your email for creating a new account on Medico is: {otp}\n\nIf you did not request this, please ignore."
+        mail.send(msg)
+        return {'status': 'success', 'message': f'OTP sent successfully to {email}!'}
+    except Exception as e:
+        return {'status': 'error', 'message': f'Failed to send OTP email: {str(e)}'}, 500
+
+
+@app.route('/api/verify-signup-otp', methods=['POST'])
+def verify_signup_otp():
+    data = request.get_json() or {}
+    entered_otp = data.get('otp', '').strip()
+    
+    saved_otp = session.get('signup_otp')
+    pending_email = session.get('signup_email')
+
+    if not saved_otp or not pending_email:
+        return {'status': 'error', 'message': 'No pending OTP verification found. Please request OTP again.'}, 400
+
+    if entered_otp != saved_otp:
+        return {'status': 'error', 'message': 'Invalid OTP! Please enter the correct code.'}, 400
+
+    session['signup_verified_email'] = pending_email
+    return {'status': 'success', 'message': 'Email address verified successfully!'}
+
 @app.route('/download-db-backup')
 @login_required
 @admin_required
 def download_db_backup():
     try:
-        # 1. Dynamic temporary SQLite database file create karo
         temp_dir = tempfile.gettempdir()
         backup_filename = f"medico_backup_user_{current_user.id}_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db"
         temp_db_path = os.path.join(temp_dir, backup_filename)
@@ -2461,190 +2516,481 @@ def download_db_backup():
         conn = sqlite3.connect(temp_db_path)
         cursor = conn.cursor()
 
-        # 2. Schema Create karo temp database me
+        # Schema Creation aligned with Supabase Models
         cursor.executescript('''
             CREATE TABLE IF NOT EXISTS store_settings (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                store_name TEXT,
-                address TEXT,
-                phone TEXT,
-                dl_number TEXT,
-                gstin TEXT,
-                admin_pin TEXT,
-                expiry_alert_days INTEGER,
-                thresh_tablet INTEGER,
-                thresh_syrup INTEGER,
-                thresh_injection INTEGER,
-                thresh_ointment INTEGER,
-                thresh_capsule INTEGER,
-                thresh_other INTEGER,
-                round_off_bills BOOLEAN
+                id INTEGER PRIMARY KEY, user_id INTEGER, shop_name TEXT, address TEXT, phone TEXT,
+                dl_number TEXT, gstin TEXT, admin_pin TEXT, expiry_alert_days INTEGER,
+                thresh_tablet INTEGER, thresh_syrup INTEGER, thresh_injection INTEGER,
+                thresh_ointment INTEGER, thresh_capsule INTEGER, thresh_other INTEGER, round_off_bills BOOLEAN
             );
-
             CREATE TABLE IF NOT EXISTS medicine (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                medicine_name TEXT,
-                company_name TEXT,
-                category TEXT,
-                pack_size INTEGER,
-                strip_size INTEGER,
-                quantity REAL,
-                mrp REAL,
-                purchase_price REAL,
-                batch_no TEXT,
-                expiry_date TEXT,
-                medicine_type TEXT,
-                rx_required BOOLEAN
+                id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, company TEXT, category TEXT,
+                composition TEXT, batch_no TEXT, expiry_date TEXT, quantity REAL, pack_size INTEGER,
+                mrp REAL, purchase_price REAL, medicine_type TEXT, rx_required BOOLEAN
             );
-
             CREATE TABLE IF NOT EXISTS customer (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                name TEXT,
-                phone TEXT,
-                address TEXT
+                id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, phone TEXT, address TEXT
             );
-
             CREATE TABLE IF NOT EXISTS customer_ledger (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                customer_id INTEGER,
-                txn_type TEXT,
-                amount REAL,
-                balance_after REAL,
-                note TEXT,
-                created_at TEXT
+                id INTEGER PRIMARY KEY, user_id INTEGER, customer_id INTEGER, txn_type TEXT,
+                amount REAL, balance_after REAL, note TEXT, created_at TEXT
             );
-
             CREATE TABLE IF NOT EXISTS sale (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                customer_name TEXT,
-                customer_phone TEXT,
-                doctor_name TEXT,
-                payment_mode TEXT,
-                total_amount REAL,
-                discount_percent REAL,
-                created_at TEXT
+                id INTEGER PRIMARY KEY, user_id INTEGER, customer_name TEXT, customer_phone TEXT,
+                doctor_name TEXT, payment_mode TEXT, total_amount REAL, discount_percent REAL, created_at TEXT
             );
-
             CREATE TABLE IF NOT EXISTS sale_item (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                sale_id INTEGER,
-                medicine_id INTEGER,
-                medicine_name TEXT,
-                quantity REAL,
-                price REAL,
-                total REAL,
-                discount_percent REAL,
-                mrp REAL
+                id INTEGER PRIMARY KEY, user_id INTEGER, sale_id INTEGER, medicine_id INTEGER,
+                medicine_name TEXT, quantity INTEGER, price REAL, total REAL, discount_percent REAL, mrp REAL
             );
-
+            CREATE TABLE IF NOT EXISTS distributor (
+                id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, contact_person TEXT, phone TEXT,
+                email TEXT, supplies_category TEXT, notes TEXT
+            );
             CREATE TABLE IF NOT EXISTS disease_tag (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                name TEXT,
-                description TEXT,
-                target_age TEXT
+                id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, description TEXT, target_age TEXT
             );
-
             CREATE TABLE IF NOT EXISTS tag_medicine_map (
-                id INTEGER PRIMARY KEY,
-                user_id INTEGER,
-                tag_id INTEGER,
-                medicine_id INTEGER,
-                dosage_note TEXT,
-                target_age TEXT
+                id INTEGER PRIMARY KEY, user_id INTEGER, tag_id INTEGER, medicine_id INTEGER, dosage_note TEXT, target_age TEXT
             );
         ''')
 
-        # 3. SIRF CURRENT LOGGED-IN USER KA DATA FETCH & INSERT KARO (A to Z)
-
-        # Store Settings
-        settings = user_query(StoreSettings).all()
-        for s in settings:
+        # 1. Store Settings
+        for s in user_query(StoreSettings).all():
             cursor.execute('''INSERT INTO store_settings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
-                s.id, getattr(s, 'user_id', current_user.id), getattr(s, 'store_name', ''), getattr(s, 'address', ''),
-                getattr(s, 'phone', ''), getattr(s, 'dl_number', ''), getattr(s, 'gstin', ''), getattr(s, 'admin_pin', ''),
-                getattr(s, 'expiry_alert_days', 60), getattr(s, 'thresh_tablet', 5), getattr(s, 'thresh_syrup', 2),
-                getattr(s, 'thresh_injection', 2), getattr(s, 'thresh_ointment', 3), getattr(s, 'thresh_capsule', 5),
-                getattr(s, 'thresh_other', 2), getattr(s, 'round_off_bills', False)
+                s.id, current_user.id, getattr(s, 'shop_name', '') or getattr(s, 'store_name', ''),
+                getattr(s, 'address', ''), getattr(s, 'phone', ''), getattr(s, 'dl_number', ''),
+                getattr(s, 'gstin', ''), getattr(s, 'admin_pin', ''), getattr(s, 'expiry_alert_days', 60),
+                getattr(s, 'thresh_tablet', 5), getattr(s, 'thresh_syrup', 2), getattr(s, 'thresh_injection', 2),
+                getattr(s, 'thresh_ointment', 3), getattr(s, 'thresh_capsule', 5), getattr(s, 'thresh_other', 2),
+                getattr(s, 'round_off_bills', False)
             ))
 
-        # Medicines
-        meds = user_query(Medicine).all()
-        for m in meds:
-            cursor.execute('''INSERT INTO medicine VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
-                m.id, getattr(m, 'user_id', current_user.id), getattr(m, 'medicine_name', ''), getattr(m, 'company_name', ''),
-                getattr(m, 'category', ''), getattr(m, 'pack_size', 10), getattr(m, 'strip_size', 10), getattr(m, 'quantity', 0),
-                getattr(m, 'mrp', 0), getattr(m, 'purchase_price', 0), getattr(m, 'batch_no', ''), str(getattr(m, 'expiry_date', '')),
-                getattr(m, 'medicine_type', ''), getattr(m, 'rx_required', False)
+        # 2. Medicines (Explicit Column Names - Guaranteed Exact Quantity Export)
+        for m in user_query(Medicine).all():
+            cursor.execute('''
+                INSERT INTO medicine (
+                    id, user_id, name, company, category, composition,
+                    batch_no, expiry_date, quantity, pack_size, mrp,
+                    purchase_price, medicine_type, rx_required
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ''', (
+                m.id,
+                current_user.id,
+                getattr(m, 'name', '') or getattr(m, 'medicine_name', ''),
+                getattr(m, 'company', '') or getattr(m, 'company_name', ''),
+                getattr(m, 'category', 'Other'),
+                getattr(m, 'composition', ''),
+                getattr(m, 'batch_no', ''),
+                str(getattr(m, 'expiry_date', '')),
+                float(m.quantity if m.quantity is not None else 0.0),  # Exact raw float value
+                int(getattr(m, 'pack_size', 10) or 10),
+                float(getattr(m, 'mrp', 0.0) or 0.0),
+                float(getattr(m, 'purchase_price', 0.0) or 0.0),
+                getattr(m, 'medicine_type', 'Tablet'),
+                bool(getattr(m, 'rx_required', False))
             ))
 
-        # Customers
-        custs = user_query(Customer).all()
-        for c in custs:
+        # 3. Customers
+        for c in user_query(Customer).all():
             cursor.execute('''INSERT INTO customer VALUES (?,?,?,?,?)''', (
-                c.id, getattr(c, 'user_id', current_user.id), getattr(c, 'name', ''), getattr(c, 'phone', ''), getattr(c, 'address', '')
+                c.id, current_user.id, c.name, getattr(c, 'phone', ''), getattr(c, 'address', '')
             ))
 
-        # Customer Ledgers
-        ledgers = user_query(CustomerLedger).all()
-        for l in ledgers:
+        # 4. Customer Ledger
+        for l in user_query(CustomerLedger).all():
             cursor.execute('''INSERT INTO customer_ledger VALUES (?,?,?,?,?,?,?,?)''', (
-                l.id, getattr(l, 'user_id', current_user.id), getattr(l, 'customer_id', None), getattr(l, 'txn_type', ''),
-                getattr(l, 'amount', 0), getattr(l, 'balance_after', 0), getattr(l, 'note', ''), str(getattr(l, 'created_at', ''))
+                l.id, current_user.id, l.customer_id, l.txn_type, float(l.amount or 0.0),
+                float(l.balance_after or 0.0), getattr(l, 'note', ''), str(getattr(l, 'created_at', ''))
             ))
 
-        # Sales
-        sales = user_query(Sale).all()
-        for s in sales:
+        # 5. Sales
+        for s in user_query(Sale).all():
             cursor.execute('''INSERT INTO sale VALUES (?,?,?,?,?,?,?,?,?)''', (
-                s.id, getattr(s, 'user_id', current_user.id), getattr(s, 'customer_name', ''), getattr(s, 'customer_phone', ''),
-                getattr(s, 'doctor_name', ''), getattr(s, 'payment_mode', ''), getattr(s, 'total_amount', 0),
-                getattr(s, 'discount_percent', 0), str(getattr(s, 'created_at', ''))
+                s.id, current_user.id, getattr(s, 'customer_name', ''), getattr(s, 'customer_phone', ''),
+                getattr(s, 'doctor_name', ''), getattr(s, 'payment_mode', 'Cash'), float(s.total_amount or 0.0),
+                float(getattr(s, 'discount_percent', 0.0)), str(getattr(s, 'created_at', ''))
             ))
 
-        # Sale Items
-        sale_items = user_query(SaleItem).all()
-        for si in sale_items:
+        # 6. Sale Items
+        for si in user_query(SaleItem).all():
             cursor.execute('''INSERT INTO sale_item VALUES (?,?,?,?,?,?,?,?,?,?)''', (
-                si.id, getattr(si, 'user_id', current_user.id), getattr(si, 'sale_id', None), getattr(si, 'medicine_id', None),
-                getattr(si, 'medicine_name', ''), getattr(si, 'quantity', 0), getattr(si, 'price', 0), getattr(si, 'total', 0),
-                getattr(si, 'discount_percent', 0), getattr(si, 'mrp', 0)
+                si.id, current_user.id, getattr(si, 'sale_id', None), getattr(si, 'medicine_id', None),
+                getattr(si, 'medicine_name', ''), int(getattr(si, 'quantity', 1)), float(getattr(si, 'price', 0.0)),
+                float(getattr(si, 'total', 0.0)), float(getattr(si, 'discount_percent', 0.0)), float(getattr(si, 'mrp', 0.0))
             ))
 
-        # Disease Tags
-        tags = user_query(DiseaseTag).all()
-        for t in tags:
+        # 7. Distributors
+        for d in user_query(Distributor).all():
+            cursor.execute('''INSERT INTO distributor VALUES (?,?,?,?,?,?,?,?)''', (
+                d.id, current_user.id, d.name, getattr(d, 'contact_person', ''), getattr(d, 'phone', ''),
+                getattr(d, 'email', ''), getattr(d, 'supplies_category', ''), getattr(d, 'notes', '')
+            ))
+
+        # 8. Disease Tags
+        for t in user_query(DiseaseTag).all():
             cursor.execute('''INSERT INTO disease_tag VALUES (?,?,?,?,?)''', (
-                t.id, getattr(t, 'user_id', current_user.id), getattr(t, 'name', ''), getattr(t, 'description', ''), getattr(t, 'target_age', 'all')
+                t.id, current_user.id, t.name, getattr(t, 'description', ''), getattr(t, 'target_age', 'all')
             ))
 
-        # Tag Medicine Maps
-        maps = user_query(TagMedicineMap).all()
-        for mp in maps:
+        # 9. Tag Medicine Map
+        for mp in user_query(TagMedicineMap).all():
             cursor.execute('''INSERT INTO tag_medicine_map VALUES (?,?,?,?,?,?)''', (
-                mp.id, getattr(mp, 'user_id', current_user.id), getattr(mp, 'tag_id', None), getattr(mp, 'medicine_id', None),
+                mp.id, current_user.id, getattr(mp, 'tag_id', None), getattr(mp, 'medicine_id', None),
                 getattr(mp, 'dosage_note', ''), getattr(mp, 'target_age', 'all')
             ))
 
         conn.commit()
         conn.close()
 
-        # 4. Strictly Isolate Filtered `.db` File Download Bhejo
-        return send_file(
-            temp_db_path,
-            as_attachment=True,
-            download_name=f"medico_backup_{current_user.username}_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db"
-        )
+        return send_file(temp_db_path, as_attachment=True, download_name=f"medico_backup_{current_user.username}_{get_ist_time().strftime('%Y%m%d_%H%M%S')}.db")
 
     except Exception as e:
-        flash(f'Backup Error: {str(e)}', 'danger')
+        flash(f'Backup Export Error: {str(e)}', 'danger')
         return redirect(url_for('settings'))
+
+
+@app.route('/restore-db-backup', methods=['POST'])
+@login_required
+@admin_required
+def restore_db_backup():
+    if 'backup_file' not in request.files:
+        flash('No backup file selected.', 'danger')
+        return redirect(url_for('settings'))
+
+    file = request.files['backup_file']
+    if file.filename == '' or not file.filename.endswith('.db'):
+        flash('Invalid file format. Please upload a valid .db backup file.', 'danger')
+        return redirect(url_for('settings'))
+
+    temp_path = os.path.join(tempfile.gettempdir(), f"restore_{current_user.id}.db")
+    file.save(temp_path)
+
+    try:
+        conn = sqlite3.connect(temp_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        def get_val(row_dict, *keys, default=''):
+            for k in keys:
+                if k in row_dict and row_dict[k] is not None:
+                    return row_dict[k]
+            return default
+
+        customer_id_map = {}
+
+        # 1. RESTORE STORE SETTINGS
+        try:
+            cursor.execute("SELECT * FROM store_settings LIMIT 1")
+            s = cursor.fetchone()
+            if s:
+                d = dict(s)
+                st = user_query(StoreSettings).first()
+                if not st:
+                    st = StoreSettings(user_id=current_user.id)
+                    db.session.add(st)
+                
+                st.shop_name = get_val(d, 'shop_name', 'store_name')
+                st.address = get_val(d, 'address')
+                st.phone = get_val(d, 'phone')
+                st.gstin = get_val(d, 'gstin')
+                st.dl_number = get_val(d, 'dl_number')
+                st.admin_pin = get_val(d, 'admin_pin')
+                st.expiry_alert_days = int(get_val(d, 'expiry_alert_days', default=60))
+                st.thresh_tablet = int(get_val(d, 'thresh_tablet', default=5))
+                st.thresh_syrup = int(get_val(d, 'thresh_syrup', default=2))
+                st.thresh_injection = int(get_val(d, 'thresh_injection', default=2))
+                st.thresh_ointment = int(get_val(d, 'thresh_ointment', default=3))
+                st.thresh_capsule = int(get_val(d, 'thresh_capsule', default=5))
+                st.thresh_other = int(get_val(d, 'thresh_other', default=2))
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Settings]: {e}")
+
+        # 2. RESTORE MEDICINES (Exact Quantity Sync - No Double Addition)
+        try:
+            cursor.execute("SELECT * FROM medicine")
+            meds = cursor.fetchall()
+            for m in meds:
+                d = dict(m)
+                m_name = get_val(d, 'name', 'medicine_name')
+                batch = get_val(d, 'batch_no', default='')
+                
+                if m_name:
+                    existing = user_query(Medicine).filter_by(name=m_name, batch_no=batch).first()
+                    backup_qty = float(get_val(d, 'quantity', default=0))
+                    
+                    if existing:
+                        # Double karne ki jagah EXACT backup quantity set karo
+                        existing.quantity = backup_qty
+                        existing.mrp = float(get_val(d, 'mrp', default=existing.mrp))
+                        existing.purchase_price = float(get_val(d, 'purchase_price', default=existing.purchase_price))
+                    else:
+                        new_m = Medicine(
+                            user_id=current_user.id,
+                            name=m_name,
+                            company=get_val(d, 'company', 'company_name'),
+                            category=get_val(d, 'category', default='Other'),
+                            composition=get_val(d, 'composition', default=''),
+                            batch_no=batch,
+                            expiry_date=str(get_val(d, 'expiry_date', default='')),
+                            quantity=backup_qty,
+                            pack_size=int(get_val(d, 'pack_size', default=10)),
+                            mrp=float(get_val(d, 'mrp', default=0.0)),
+                            purchase_price=float(get_val(d, 'purchase_price', default=0.0)),
+                            medicine_type=get_val(d, 'medicine_type', default='Tablet'),
+                            rx_required=bool(get_val(d, 'rx_required', default=False))
+                        )
+                        db.session.add(new_m)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Medicine]: {e}")
+
+        # 3. RESTORE CUSTOMERS
+        try:
+            cursor.execute("SELECT * FROM customer")
+            custs = cursor.fetchall()
+            for c in custs:
+                d = dict(c)
+                c_name = get_val(d, 'name')
+                c_phone = get_val(d, 'phone')
+                old_id = d.get('id')
+
+                if c_name:
+                    existing = user_query(Customer).filter_by(name=c_name, phone=c_phone).first()
+                    if existing:
+                        if old_id: customer_id_map[old_id] = existing.id
+                    else:
+                        new_c = Customer(
+                            user_id=current_user.id,
+                            name=c_name,
+                            phone=c_phone,
+                            address=get_val(d, 'address', default='')
+                        )
+                        db.session.add(new_c)
+                        db.session.flush()
+                        if old_id: customer_id_map[old_id] = new_c.id
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Customer]: {e}")
+
+        # 4. RESTORE CUSTOMER LEDGER
+        try:
+            cursor.execute("SELECT * FROM customer_ledger")
+            ledgers = cursor.fetchall()
+            for l in ledgers:
+                d = dict(l)
+                old_cid = d.get('customer_id')
+                mapped_cid = customer_id_map.get(old_cid)
+                amt = float(get_val(d, 'amount', default=0.0))
+                txn = get_val(d, 'txn_type', default='DUE')
+                created_time = str(get_val(d, 'created_at', default=''))
+
+                if mapped_cid:
+                    existing_l = user_query(CustomerLedger).filter_by(
+                        customer_id=mapped_cid,
+                        amount=amt,
+                        txn_type=txn,
+                        created_at=created_time
+                    ).first()
+
+                    if not existing_l:
+                        new_l = CustomerLedger(
+                            user_id=current_user.id,
+                            customer_id=mapped_cid,
+                            txn_type=txn,
+                            amount=amt,
+                            balance_after=float(get_val(d, 'balance_after', default=0.0)),
+                            note=get_val(d, 'note', default=''),
+                            created_at=created_time
+                        )
+                        db.session.add(new_l)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Ledger]: {e}")
+
+        # 5. Restore Distributors
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='distributor'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM distributor")
+                dists = cursor.fetchall()
+                for dist in dists:
+                    d = dict(dist)
+                    d_name = get_val(d, 'name')
+                    if d_name:
+                        existing = user_query(Distributor).filter_by(name=d_name).first()
+                        if not existing:
+                            new_dist = Distributor(
+                                user_id=current_user.id,
+                                name=d_name,
+                                contact_person=get_val(d, 'contact_person'),
+                                phone=get_val(d, 'phone'),
+                                email=get_val(d, 'email'),
+                                supplies_category=get_val(d, 'supplies_category'),
+                                notes=get_val(d, 'notes')
+                            )
+                            db.session.add(new_dist)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Distributor]: {e}")
+
+        # 6. RESTORE DISEASE TAGS
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='disease_tag'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM disease_tag")
+                tags = cursor.fetchall()
+                for t in tags:
+                    d = dict(t)
+                    t_name = get_val(d, 'name')
+                    if t_name:
+                        existing = user_query(DiseaseTag).filter_by(name=t_name).first()
+                        if not existing:
+                            new_tag = DiseaseTag(
+                                user_id=current_user.id,
+                                name=t_name,
+                                description=get_val(d, 'description'),
+                                target_age=get_val(d, 'target_age', default='all')
+                            )
+                            db.session.add(new_tag)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - DiseaseTag]: {e}")
+
+        # 7. RESTORE SALES HISTORY (Smart Duplicate Avoidance)
+        sale_id_map = {}
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sale'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM sale")
+                sales = cursor.fetchall()
+                for s in sales:
+                    d = dict(s)
+                    old_sid = d.get('id')
+                    c_name = get_val(d, 'customer_name')
+                    tot_amt = float(get_val(d, 'total_amount', default=0.0))
+                    created_time = str(get_val(d, 'created_at', default=''))
+
+                    # Check if EXACT sale already exists
+                    existing_sale = user_query(Sale).filter_by(
+                        customer_name=c_name, 
+                        total_amount=tot_amt, 
+                        created_at=created_time
+                    ).first()
+
+                    if existing_sale:
+                        if old_sid:
+                            sale_id_map[old_sid] = existing_sale.id
+                    else:
+                        new_s = Sale(
+                            user_id=current_user.id,
+                            customer_name=c_name,
+                            customer_phone=get_val(d, 'customer_phone'),
+                            doctor_name=get_val(d, 'doctor_name'),
+                            payment_mode=get_val(d, 'payment_mode', default='Cash'),
+                            total_amount=tot_amt,
+                            discount_percent=float(get_val(d, 'discount_percent', default=0.0)),
+                            created_at=created_time
+                        )
+                        db.session.add(new_s)
+                        db.session.flush()
+                        if old_sid:
+                            sale_id_map[old_sid] = new_s.id
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Sale]: {e}")
+
+        # 8. RESTORE SALE ITEMS
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sale_item'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM sale_item")
+                s_items = cursor.fetchall()
+                for si in s_items:
+                    d = dict(si)
+                    old_sid = d.get('sale_id')
+                    mapped_sid = sale_id_map.get(old_sid)
+                    m_name = get_val(d, 'medicine_name')
+                    qty = int(get_val(d, 'quantity', default=1))
+
+                    if mapped_sid:
+                        existing_si = user_query(SaleItem).filter_by(
+                            sale_id=mapped_sid,
+                            medicine_name=m_name,
+                            quantity=qty
+                        ).first()
+
+                        if not existing_si:
+                            new_si = SaleItem(
+                                user_id=current_user.id,
+                                sale_id=mapped_sid,
+                                medicine_id=d.get('medicine_id'),
+                                medicine_name=m_name,
+                                quantity=qty,
+                                price=float(get_val(d, 'price', default=0.0)),
+                                total=float(get_val(d, 'total', default=0.0)),
+                                discount_percent=float(get_val(d, 'discount_percent', default=0.0)),
+                                mrp=float(get_val(d, 'mrp', default=0.0))
+                            )
+                            db.session.add(new_si)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - SaleItem]: {e}")
+
+        # 9. RESTORE TAG MEDICINE MAP
+        tag_id_map = {}
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tag_medicine_map'")
+            if cursor.fetchone():
+                cursor.execute("SELECT * FROM tag_medicine_map")
+                maps = cursor.fetchall()
+                for mp in maps:
+                    d = dict(mp)
+                    old_tid = d.get('tag_id')
+                    mapped_tid = tag_id_map.get(old_tid, old_tid)
+                    med_id = d.get('medicine_id')
+
+                    if mapped_tid and med_id:
+                        existing_map = user_query(TagMedicineMap).filter_by(
+                            tag_id=mapped_tid,
+                            medicine_id=med_id
+                        ).first()
+
+                        if not existing_map:
+                            new_mp = TagMedicineMap(
+                                user_id=current_user.id,
+                                tag_id=mapped_tid,
+                                medicine_id=med_id,
+                                dosage_note=get_val(d, 'dosage_note'),
+                                target_age=get_val(d, 'target_age', default='all')
+                            )
+                            db.session.add(new_mp)
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - TagMedicineMap]: {e}")
+
+        conn.close()
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        flash('Database backup restored 100% successfully into your account!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"[RESTORE FATAL ERROR]: {e}")
+        flash(f'Error restoring database: {str(e)}', 'danger')
+
+    return redirect(url_for('settings'))
 
 # Final Staff Account Creation
 @app.route('/create-verified-staff', methods=['POST'])

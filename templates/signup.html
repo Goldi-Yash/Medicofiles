@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - Medico</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='rotate(-45 32 32)'><path d='M16 20 C16 11.163 23.163 4 32 4 L32 60 C23.163 60 16 52.837 16 44 Z' fill='%232563eb'/><path d='M32 4 C40.837 4 48 11.163 48 20 L48 44 C48 52.837 40.837 60 32 60 Z' fill='%231d4ed8'/><line x1='32' y1='4' x2='32' y2='60' stroke='%23ffffff' stroke-width='4'/></g></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -127,62 +129,110 @@
 </head>
 
 <body>
-
-    <div class="brand-logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
-            <path d="m8.5 8.5 7 7" />
-        </svg>
-        Medico
-    </div>
+    <a href="/welcome" style="text-decoration: none; color: inherit;">
+        <div class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+                <path d="m8.5 8.5 7 7" />
+            </svg>
+            Medico
+        </div>
+    </a>
 
     <div class="signup-card">
         <h2 class="signup-title">Create an account</h2>
 
-        <form action="/signup" method="POST">
+        <form action="/signup" method="POST" id="signupForm">
+            <!-- Email Field with Send OTP Button -->
             <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control" placeholder="admin@medico.com" required>
+                <div class="input-group">
+                    <input type="email" id="emailInput" name="email" class="form-control" placeholder="admin@medico.com"
+                        required>
+                    <button class="btn btn-outline-primary" type="button" id="sendOtpBtn" onclick="sendSignupOTP()">
+                        Get OTP
+                    </button>
+                </div>
+                <small id="emailHelp" class="text-white">Verify your email via OTP to set password.</small>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Create Password</label>
+            <!-- OTP Input Box (Initially Hidden, Appears on Get OTP) -->
+            <div class="mb-3" id="otpBoxGroup" style="display: none;">
+                <label class="form-label text-white small fw-semibold">Enter 6-Digit OTP</label>
+                <div class="input-group">
+                    <input type="text" id="otpCodeInput" class="form-control text-center" maxlength="6"
+                        placeholder="000000" style="letter-spacing: 3px;">
+                    <button class="btn btn-primary" type="button" id="verifyOtpBtn" onclick="verifySignupOTP()">
+                        Verify OTP
+                    </button>
+                </div>
+                <small id="otpStatusMsg" class="small"></small>
+            </div>
 
-                <!-- Container for Input + Eye Icon -->
+            <!-- Password Section (Initially Locked) -->
+            <div class="mb-3" id="passwordGroup" style="opacity: 0.4; pointer-events: none;">
+                <label class="form-label">Create Password</label>
                 <div class="position-relative">
                     <input type="password" id="passwordInput" name="password" class="form-control pe-5"
-                        placeholder="Minimum 6 characters" minlength="6" required>
-
-                    <!-- Eye Toggle Icon -->
+                        placeholder="Minimum 6 characters" minlength="6" required disabled>
                     <span onclick="togglePasswordVisibility()"
                         style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10; color: #a0aec0;">
                         <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                             stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
                         </svg>
                     </span>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-signup">Create account</button>
-
-            <a href="/login/google" class="btn btn-google d-flex align-items-center justify-content-center gap-2 text-decoration-none">
-                <svg width="16" height="16" viewBox="0 0 24 24">
-                    <path fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                Continue with Google
-            </a>
+            <!-- Submit Button (Initially Disabled) -->
+            <button type="submit" id="submitBtn" class="btn btn-signup w-100" disabled>Create account</button>
         </form>
+
+        <!-- OTP Verification Modal (Same as settings.html) -->
+        <div class="modal fade" id="otpModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content rounded-4 border-secondary shadow-lg"
+                    style="background-color: #121824; color: #ffffff;">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title fw-bold text-dark">Verify Email OTP</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body py-3">
+                        <p class="text-muted small mb-3">We sent a 6-digit verification code to your email address.</p>
+                        <div class="mb-3">
+                            <input type="text" id="otpCodeInput" class="form-control text-center" maxlength="6"
+                                placeholder="000000" style="letter-spacing: 4px;">
+                        </div>
+                        <div id="otpStatusMsg" class="small"></div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary w-100 rounded-3 mt-2"
+                            onclick="verifySignupOTP()">Verify
+                            OTP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <a href="/login/google"
+            class="btn btn-google d-flex align-items-center justify-content-center gap-2 text-decoration-none">
+            <svg width="16" height="16" viewBox="0 0 24 24">
+                <path fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            Continue with Google
+        </a>
 
         <div class="login-text">
             Already have an account? <a href="/login" class="login-link">Log in</a>
@@ -209,6 +259,103 @@
         <circle cx="12" cy="12" r="3"></circle>
         `;
             }
+        }
+
+        let otpModalObj = null;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            otpModalObj = new bootstrap.Modal(document.getElementById('otpModal'));
+        });
+
+        // 1. Send OTP to signup email
+        function sendSignupOTP() {
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email) {
+                alert("Please enter a valid email address first.");
+                return;
+            }
+
+            const btn = document.getElementById('sendOtpBtn');
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+
+            fetch('/api/send-signup-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerText = "Get OTP";
+                    if (data.status === 'success') {
+                        document.getElementById('otpBoxGroup').style.display = 'block';
+                        document.getElementById('emailHelp').className = "text-white small";
+                        document.getElementById('emailHelp').innerText = "OTP sent to your email! Enter code below.";
+                    } else {
+                        alert(data.message || "Failed to send OTP.");
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.innerText = "Get OTP";
+                    alert("Error connecting to server. Please try again.");
+                });
+        }
+
+        // 2. Verify OTP & Unlock Password Field
+        function verifySignupOTP() {
+            const email = document.getElementById('emailInput').value.trim();
+            const otp = document.getElementById('otpCodeInput').value.trim();
+            const statusMsg = document.getElementById('otpStatusMsg');
+
+            if (otp.length !== 6) {
+                statusMsg.className = "small text-danger";
+                statusMsg.innerText = "Please enter full 6-digit OTP.";
+                return;
+            }
+
+            const vBtn = document.getElementById('verifyOtpBtn');
+            vBtn.disabled = true;
+            vBtn.innerText = "Verifying...";
+
+            fetch('/api/verify-signup-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, otp: otp })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    vBtn.disabled = false;
+                    vBtn.innerText = "Verify OTP";
+                    if (data.status === 'success') {
+                        // Lock Email & OTP Box
+                        document.getElementById('emailInput').readOnly = true;
+                        document.getElementById('sendOtpBtn').className = 'btn btn-success';
+                        document.getElementById('sendOtpBtn').innerText = "Verified ✓";
+                        document.getElementById('sendOtpBtn').disabled = true;
+                        document.getElementById('otpBoxGroup').style.display = 'none';
+
+                        // Unlock Password and Create Account button
+                        const passGrp = document.getElementById('passwordGroup');
+                        passGrp.style.opacity = "1";
+                        passGrp.style.pointerEvents = "auto";
+                        document.getElementById('passwordInput').disabled = false;
+                        document.getElementById('submitBtn').disabled = false;
+
+                        document.getElementById('emailHelp').className = "text-success fw-bold";
+                        document.getElementById('emailHelp').innerText = "Email verified! Enter password to complete signup.";
+                    } else {
+                        statusMsg.className = "small text-danger";
+                        statusMsg.innerText = data.message || "Invalid OTP code.";
+                    }
+                })
+                .catch(err => {
+                    vBtn.disabled = false;
+                    vBtn.innerText = "Verify OTP";
+                    statusMsg.className = "small text-danger";
+                    statusMsg.innerText = "Verification error. Try again.";
+                });
         }
     </script>
 </body>

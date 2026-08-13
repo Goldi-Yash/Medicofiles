@@ -504,11 +504,19 @@
                         {% endif %}
                     </li>
                     <li class="nav-item">
+                        {% if current_user.has_permission('modules', 'distributors') %}
                         <a href="/distributors"
                             class="nav-link {% if request.path == '/distributors' %}active{% endif %}">
                             <i class="bi bi-truck"></i>
                             <span class="nav-text">Distributors</span>
                         </a>
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Distributors')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="nav-text">Distributors</span>
+                        </a>
+                        {% endif %}
                     </li>
                 </ul>
             </div>
@@ -604,62 +612,45 @@
     </div>
 
     {% if current_user.is_authenticated %}
-    <!-- First Time Onboarding Overlay & Modal (Only Once Per Account) -->
-    <div id="onboardingOverlay" style="
-    position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 99999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-">
-        <div style="
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        border-radius: 20px;
-        padding: 32px 28px;
-        max-width: 420px;
-        width: 90%;
-        text-align: center;
-        color: #f8fafc;
-        animation: onboardingPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    ">
-            <div style="
-            width: 64px; height: 64px;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
-        ">
+    <!-- First Time Onboarding Overlay (Only Once Per Account) -->
+    <div id="onboardingOverlay"
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; display: none; align-items: center; justify-content: center;">
+
+        <div
+            style="background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border-radius: 20px; padding: 32px 28px; max-width: 420px; width: 90%; text-align: center; color: #f8fafc; animation: onboardingPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+
+            {% if current_user.role == 'cashier' or current_user.owner_id %}
+            <!-- STAFF WELCOME POPUP -->
+            <div
+                style="width: 64px; height: 64px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);">
+                <i class="bi bi-person-badge" style="font-size: 28px; color: #ffffff;"></i>
+            </div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; font-size: 1.35rem;">Welcome to the Team!</h4>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5; margin-bottom: 24px;">
+                You are logged in as Store Staff. Get ready to process billing, manage counter inventory, and serve
+                customers seamlessly.
+            </p>
+            <button type="button" id="completeProfileBtn"
+                style="width: 100%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; font-weight: 600; padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+                Start Billing Now <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+            {% else %}
+            <!-- ADMIN / OWNER WELCOME POPUP -->
+            <div
+                style="width: 64px; height: 64px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);">
                 <i class="bi bi-gear-wide-connected" style="font-size: 28px; color: #ffffff;"></i>
             </div>
-
             <h4 style="font-weight: 700; margin-bottom: 10px; font-size: 1.35rem;">Welcome to Medico!</h4>
             <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5; margin-bottom: 24px;">
                 To ensure smooth billing receipts, tax calculations, and store setup, please complete your store profile
                 settings.
             </p>
-
-            <a href="{{ url_for('settings') }}" id="completeProfileBtn" style="
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: #ffffff;
-            font-weight: 600;
-            padding: 12px 20px;
-            border-radius: 12px;
-            text-decoration: none;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-        ">
+            <a href="{{ url_for('settings') }}" id="completeProfileBtn"
+                style="display: block; width: 100%; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; font-weight: 600; padding: 12px 20px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
                 Complete Profile Now <i class="bi bi-arrow-right ms-1"></i>
             </a>
+            {% endif %}
+
         </div>
     </div>
 
@@ -675,8 +666,12 @@
                 document.body.style.overflow = 'hidden';
 
                 document.getElementById('completeProfileBtn').addEventListener('click', function () {
-                    // Save permanent flag for this user ID
                     localStorage.setItem(storageKey, 'true');
+                    const overlay = document.getElementById('onboardingOverlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                        document.body.style.overflow = 'auto';
+                    }
                 });
             }
         });

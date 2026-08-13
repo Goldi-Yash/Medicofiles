@@ -351,12 +351,6 @@
         let pin = document.getElementById('securityPinInput').value;
         let errorDiv = document.getElementById('authErrorMessage');
 
-        if (!pin) {
-            errorDiv.innerText = "Please enter Security PIN!";
-            errorDiv.style.display = 'block';
-            return;
-        }
-
         fetch('/api/delete-transaction/' + saleId, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

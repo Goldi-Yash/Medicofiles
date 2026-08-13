@@ -20,7 +20,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="/settings" enctype="multipart/form-data">
+    <form method="POST" id="settingsMainForm" action="/settings" enctype="multipart/form-data">
         <div class="row g-4">
 
             <!-- Left Tab Navigation Menu -->
@@ -553,6 +553,21 @@
                     {% if current_user.has_permission('settings', 'backup') %}
                     <div class="tab-pane fade" id="tab-backup">
                         <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <!-- Flash Alerts Block for Backup Tab -->
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm mb-3"
+                                role="alert">
+                                <i
+                                    class="bi {% if category == 'success' %}bi-check-circle-fill text-success{% else %}bi-exclamation-triangle-fill text-danger{% endif %} me-2 fs-5"></i>
+                                <span>{{ message }}</span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                            {% endwith %}
                             <h5 class="fw-bold mb-3 text-dark"><i
                                     class="bi bi-cloud-arrow-up me-2 text-primary"></i>Database Backup</h5>
                             <p class="text-muted small">Your SQLite database file (`instance/medical_store.db`) is
@@ -562,6 +577,25 @@
                                 class="btn btn-outline-primary fw-semibold align-self-start">
                                 <i class="bi bi-download me-2"></i>Download Local DB Backup
                             </a>
+
+                            <!-- Restore Database Block (No Nested Form) -->
+                            <div class="mt-3 pt-3 border-top">
+                                <h6 class="fw-bold text-dark mb-1"><i
+                                        class="bi bi-cloud-arrow-down me-2 text-success"></i>Restore Database from
+                                    Backup</h6>
+                                <p class="text-muted small mb-2">Upload your previously downloaded <code>.db</code>
+                                    backup file to restore your store data.</p>
+                                <div class="input-group" style="max-width: 480px;">
+                                    <input type="file" name="backup_file" form="settingsMainForm" class="form-control"
+                                        accept=".db">
+                                    <button class="btn btn-success fw-semibold" type="submit"
+                                        formaction="{{ url_for('restore_db_backup') }}" value="restore_db"
+                                        form="settingsMainForm"
+                                        onclick="return confirm('Are you sure you want to restore data from this backup file?');">
+                                        <i class="bi bi-upload me-1"></i> Restore Data
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     {% endif %}
@@ -1331,15 +1365,45 @@
         }
 
         document.addEventListener("DOMContentLoaded", function () {
-            // Activate tab based on URL hash if present
-            var hash = window.location.hash;
-            if (hash) {
-                var triggerEl = document.querySelector('a[href="' + hash + '"]');
+            // 1. Restore last active tab from localStorage or URL hash
+            let activeTabHash = localStorage.getItem('activeSettingsTab') || window.location.hash;
+
+            if (activeTabHash) {
+                let triggerEl = document.querySelector('a[href="' + activeTabHash + '"]') || document.querySelector('a[data-bs-target="' + activeTabHash + '"]');
+
                 if (triggerEl) {
-                    var tab = new bootstrap.Tab(triggerEl);
+                    // STEP A: Purane saare active tab buttons aur content panes ko RESET karo
+                    document.querySelectorAll('.custom-settings-nav .list-group-item').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-content .tab-pane').forEach(pane => {
+                        pane.classList.remove('show', 'active');
+                    });
+
+                    // STEP B: Target Tab aur Pane ko Cleanly Activate karo
+                    triggerEl.classList.add('active');
+                    let targetPane = document.querySelector(activeTabHash);
+                    if (targetPane) {
+                        targetPane.classList.add('show', 'active');
+                    }
+
+                    // Bootstrap Tab instance trigger karo
+                    let tab = new bootstrap.Tab(triggerEl);
                     tab.show();
                 }
             }
+
+            // 2. Save active tab on click
+            let tabLinks = document.querySelectorAll('.custom-settings-nav a');
+            tabLinks.forEach(function (tabLink) {
+                tabLink.addEventListener('shown.bs.tab', function (e) {
+                    let targetHash = e.target.getAttribute('href') || e.target.getAttribute('data-bs-target');
+                    if (targetHash) {
+                        localStorage.setItem('activeSettingsTab', targetHash);
+                        history.replaceState(null, null, targetHash);
+                    }
+                });
+            });
         });
 
         function triggerEmailOTP() {
