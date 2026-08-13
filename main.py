@@ -894,7 +894,7 @@ def upload_pdf_bill():
 
         # model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite' , 'gemini-flash']
         # EXACT SAME FALLBACK LOOP AS GET_MEDICINE_INFO
-        model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash']
+        model_names = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite' , 'gemini-flash']
         response = None
 
         for m_name in model_names:
