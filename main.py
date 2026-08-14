@@ -1633,10 +1633,9 @@ def bill_details_api(bill_id):
     }
 
 @app.route('/print-bill/<int:sale_id>')
-@login_required
 def print_bill(sale_id):
-    sale = user_query(Sale).filter_by(id=sale_id).first_or_404()
-    store_config = user_query(StoreSettings).first() # Auto-fetches Shop Name, Address, DL No, Footer
+    sale = Sale.query.get_or_404(sale_id)
+    store_config = StoreSettings.query.filter_by(user_id=sale.user_id).first() or StoreSettings.query.first() # Auto-fetches Shop Name, Address, DL No, Footer
     
     return render_template(
         'print_receipt.html',
