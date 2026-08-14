@@ -69,10 +69,16 @@
                                                 class="form-control text-uppercase fw-bold border-primary"
                                                 placeholder="e.g. ARY, GUP, SWA" maxlength="10">
                                         </div>
-                                        <button type="button" id="proceedUploadBtn"
-                                            class="btn btn-primary w-100 fw-bold rounded-3">
-                                            Continue to Upload <i class="bi bi-arrow-right ms-1"></i>
-                                        </button>
+                                        <div class="d-grid gap-2">
+                                            <button type="button" id="proceedUploadBtn"
+                                                class="btn btn-primary fw-bold rounded-3">
+                                                Continue to Upload <i class="bi bi-arrow-right ms-1"></i>
+                                            </button>
+                                            <button type="button" id="skipUploadBtn"
+                                                class="btn btn-outline-secondary btn-sm fw-semibold rounded-3">
+                                                Skip & Upload Without Tag
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -306,10 +312,8 @@
         distModal.show();
     });
 
-    // 2. Modal me Continue dabane par actual upload start hoga
-    document.getElementById('proceedUploadBtn').addEventListener('click', function () {
-        const distTagInput = document.getElementById('preUploadDistCode').value.trim().toUpperCase();
-
+    // Function to handle Bill Parsing (With or Without Tag)
+    function processBillUpload(distTagInput) {
         // Hide Distributor Modal
         const distModalEl = document.getElementById('distributorInputModal');
         const distModal = bootstrap.Modal.getInstance(distModalEl);
@@ -326,7 +330,7 @@
         const aiLoaderModalEl = document.getElementById('aiLoadingModal');
         let aiLoaderModal = null;
 
-        // Sirf PDF/Images ke liye AI Loader dikhao
+        // Show AI Loader for PDF/Images
         if (isPdfOrImg && aiLoaderModalEl) {
             aiLoaderModal = bootstrap.Modal.getOrCreateInstance(aiLoaderModalEl);
             aiLoaderModal.show();
@@ -345,11 +349,9 @@
         })
             .then(res => res.json())
             .then(data => {
-                // Hide AI Loader Modal safely if it was opened
                 finishProgress(() => {
                     if (aiLoaderModal) aiLoaderModal.hide();
                 });
-                // Double safety: Force hide spinner backdrop if still present
                 const loaderEl = document.getElementById('aiLoadingModal');
                 if (loaderEl) {
                     const modalInst = bootstrap.Modal.getInstance(loaderEl);
@@ -358,14 +360,12 @@
                 document.body.style.cursor = 'default';
 
                 if (data.status === 'success' && data.items.length > 0) {
-                    // Saare parsed items me distributor code auto-attach karo
                     parsedItems = data.items.map(item => ({
                         ...item,
                         distributor_code: item.distributor_code || distTagInput
                     }));
                     renderParsedTable();
 
-                    // Open Parsed Review Modal
                     const stockModalEl = document.getElementById('parsedStockModal');
                     const stockModal = bootstrap.Modal.getOrCreateInstance(stockModalEl);
                     stockModal.show();
@@ -383,6 +383,16 @@
                 document.getElementById('pdfFileInput').value = '';
                 selectedBillFile = null;
             });
+    }
+
+    // Event Listeners for both Continue and Skip Buttons
+    document.getElementById('proceedUploadBtn').addEventListener('click', function () {
+        const distTagInput = document.getElementById('preUploadDistCode').value.trim().toUpperCase();
+        processBillUpload(distTagInput);
+    });
+
+    document.getElementById('skipUploadBtn').addEventListener('click', function () {
+        processBillUpload(''); // Empty tag passed on Skip
     });
 
     // 2. Render Parsed Items into Modal Editable Grid
