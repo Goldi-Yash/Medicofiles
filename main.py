@@ -190,6 +190,15 @@ class User(db.Model, UserMixin):
         if not self.password_hash:
             return False
         return check_password_hash(self.password_hash, password)
+    
+class DemandNotes(db.Model):
+    __tablename__ = 'demand_notes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    generic_notes = db.Column(db.Text, default='')
+    pharma_notes = db.Column(db.Text, default='')
+    other_notes = db.Column(db.Text, default='')
+    updated_at = db.Column(db.DateTime, default=get_ist_time, onupdate=get_ist_time)
 
 class Distributor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2582,6 +2591,13 @@ def download_db_backup():
             CREATE TABLE IF NOT EXISTS tag_medicine_map (
                 id INTEGER PRIMARY KEY, user_id INTEGER, tag_id INTEGER, medicine_id INTEGER, dosage_note TEXT, target_age TEXT
             );
+            CREATE TABLE IF NOT EXISTS demand_notes (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER,
+                generic_notes TEXT,
+                pharma_notes TEXT,
+                other_notes TEXT
+            );
         ''')
 
         # 1. Store Settings
@@ -2667,6 +2683,12 @@ def download_db_backup():
             cursor.execute('''INSERT INTO tag_medicine_map VALUES (?,?,?,?,?,?)''', (
                 mp.id, current_user.id, getattr(mp, 'tag_id', None), getattr(mp, 'medicine_id', None),
                 getattr(mp, 'dosage_note', ''), getattr(mp, 'target_age', 'all')
+            ))
+
+        # 10. Demand Notes
+        for dn in user_query(DemandNotes).all():
+            cursor.execute('''INSERT INTO demand_notes VALUES (?,?,?,?,?)''', (
+                dn.id, current_user.id, getattr(dn, 'generic_notes', ''), getattr(dn, 'pharma_notes', ''), getattr(dn, 'other_notes', '')
             ))
 
         conn.commit()
@@ -3008,6 +3030,25 @@ def restore_db_backup():
             db.session.rollback()
             print(f"[RESTORE LOG - TagMedicineMap]: {e}")
 
+        # 10. RESTORE DEMAND NOTES
+        try:
+            cursor.execute("SELECT * FROM demand_notes LIMIT 1")
+            dn_row = cursor.fetchone()
+            if dn_row:
+                d = dict(dn_row)
+                existing_dn = user_query(DemandNotes).first()
+                if not existing_dn:
+                    existing_dn = DemandNotes(user_id=current_user.id)
+                    db.session.add(existing_dn)
+                
+                existing_dn.generic_notes = get_val(d, 'generic_notes', default='')
+                existing_dn.pharma_notes = get_val(d, 'pharma_notes', default='')
+                existing_dn.other_notes = get_val(d, 'other_notes', default='')
+                db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[RESTORE LOG - Demands]: {e}")
+
         conn.close()
         if os.path.exists(temp_path):
             os.remove(temp_path)
@@ -3283,6 +3324,37 @@ def delete_distributor(id):
     db.session.commit()
     flash('Distributor removed!', 'danger')
     return redirect(url_for('distributors'))
+
+@app.route('/api/get-demands', methods=['GET'])
+@login_required
+def get_demands():
+    owner_id = current_user.owner_id or current_user.id
+    notes = DemandNotes.query.filter_by(user_id=owner_id).first()
+    if not notes:
+        return jsonify({'generic': '', 'pharma': '', 'other': ''})
+    return jsonify({
+        'generic': notes.generic_notes or '',
+        'pharma': notes.pharma_notes or '',
+        'other': notes.other_notes or ''
+    })
+
+@app.route('/api/save-demands', methods=['POST'])
+@login_required
+def save_demands():
+    owner_id = current_user.owner_id or current_user.id
+    data = request.get_json() or {}
+    
+    notes = DemandNotes.query.filter_by(user_id=owner_id).first()
+    if not notes:
+        notes = DemandNotes(user_id=owner_id)
+        db.session.add(notes)
+    
+    notes.generic_notes = data.get('generic', '')
+    notes.pharma_notes = data.get('pharma', '')
+    notes.other_notes = data.get('other', '')
+    
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Demands updated successfully!'})
 
 if __name__ == '__main__':
     app.run(debug=True)

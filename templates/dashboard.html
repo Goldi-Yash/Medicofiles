@@ -17,6 +17,11 @@
             style="border-radius: 8px; transition: all 0.2s ease;" title="Toggle Light/Dark Theme">
             <i id="themeIcon" class="bi bi-moon-stars-fill"></i>
         </button>
+        <!-- Demands Notepad Button -->
+        <button type="button" class="btn btn-outline-warning d-flex align-items-center px-3"
+            onclick="openDemandsModal()">
+            <i class="bi bi-journal-text me-1"></i> Demands
+        </button>
         <!-- Add New Medicine -->
         {% if current_user.has_permission('modules', 'add_medicine') %}
         <a href="/add-stock" class="btn btn-outline-secondary">
@@ -353,6 +358,69 @@
     </div>
 </div>
 
+<!-- Big Demands Notepad Modal -->
+<div class="modal fade" id="demandsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0" style="background-color: var(--bs-body-bg, #fff);">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="bi bi-journal-check me-2"></i> Medicine Demands & Requirements
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <!-- Generic Column -->
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-light shadow-sm h-100">
+                            <div class="card-header bg-success text-white fw-bold">
+                                🟢 Generic Medicines
+                            </div>
+                            <div class="card-body p-2">
+                                <textarea id="demand_generic" class="form-control border-0 bg-transparent p-2" rows="12"
+                                    placeholder="Write generic demand notes here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pharma Column -->
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-light shadow-sm h-100">
+                            <div class="card-header bg-primary text-white fw-bold">
+                                🔵 Pharma / Branded
+                            </div>
+                            <div class="card-body p-2">
+                                <textarea id="demand_pharma" class="form-control border-0 bg-transparent p-2" rows="12"
+                                    placeholder="Write pharma demand notes here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Other Column -->
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-light shadow-sm h-100">
+                            <div class="card-header bg-warning text-dark fw-bold">
+                                🟡 Other / Surgical
+                            </div>
+                            <div class="card-body p-2">
+                                <textarea id="demand_other" class="form-control border-0 bg-transparent p-2" rows="12"
+                                    placeholder="Write other items demand notes here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top d-flex justify-content-between">
+                <small class="text-muted"><i class="bi bi-info-circle"></i> Notes auto-save when you click Save
+                    Demands.</small>
+                <div>
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold" onclick="saveDemands()"><i
+                            class="bi bi-save me-1"></i> Save Demands</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Chart.js CDN for Graphs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -459,6 +527,41 @@
             });
         }
     })();
+
+    function openDemandsModal() {
+        fetch('/api/get-demands')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('demand_generic').value = data.generic || '';
+                document.getElementById('demand_pharma').value = data.pharma || '';
+                document.getElementById('demand_other').value = data.other || '';
+                var myModal = new bootstrap.Modal(document.getElementById('demandsModal'));
+                myModal.show();
+            })
+            .catch(err => console.error("Error loading demands:", err));
+    }
+
+    function saveDemands() {
+        const payload = {
+            generic: document.getElementById('demand_generic').value,
+            pharma: document.getElementById('demand_pharma').value,
+            other: document.getElementById('demand_other').value
+        };
+
+        fetch('/api/save-demands', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Demands saved successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('demandsModal')).hide();
+                }
+            })
+            .catch(err => alert("Failed to save demands."));
+    }
 </script>
 
 {% endblock %}
