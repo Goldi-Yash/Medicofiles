@@ -25,3 +25,6 @@ medicine_cache.json
 
 #Migration To Cloud
 migrate_to_cloud.py
+
+#create_store_admin.py
+create_store_admin.py
