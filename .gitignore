@@ -28,3 +28,6 @@ migrate_to_cloud.py
 
 #create_store_admin.py
 create_store_admin.py
+
+# reset_password.py
+reset_password.py
