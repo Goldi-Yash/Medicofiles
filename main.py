@@ -838,8 +838,8 @@ def upload_pdf_bill():
             cat_col = next((c for c in df.columns if any(k in c for k in ['category', 'group', 'form', 'dosage', 'cat', 'type'])), None)
             batch_col = next((c for c in df.columns if any(k in c for k in ['batch', 'b.no', 'b_no', 'lot', 'bno', 'b. n', 'b.no.'])), None)
             exp_col = next((c for c in df.columns if any(k in c for k in ['exp', 'expiry', 'exp_date', 'exp.date', 'validity', 'mfg_exp'])), None)
-            qty_col = next((c for c in df.columns if any(k in c for k in ['qty', 'quantity', 'count', 'units', 'nos', 'strip', 'box', 'free_qty','pack'])), None)
-            pack_col = next((c for c in df.columns if any(k in c for k in ['pack', 'pack_size', 'pkg', 'packing'])), None)
+            qty_col = next((c for c in df.columns if any(k in c for k in ['qty', 'quantity', 'count', 'units', 'nos', 'strip', 'box', 'free_qty'])), None)
+            pack_col = next((c for c in df.columns if any(k in c for k in ['pack', 'pack_size'])), None)
 
             # Indian Pharmacy Pricing Resolution (PTS, P.Rate, PTR, MRP)
             prate_col = next((c for c in df.columns if any(k in c for k in ['pts', 'cost', 'p.rate', 'p_rate', 'pur', 'purchase', 'p.price', 'cost_rate', 'buy_price', 'net_rate', 'net_cost', 'p.rate(₹)', 'p_rate(₹)', 'rate'])), None)
@@ -888,7 +888,7 @@ def upload_pdf_bill():
                 'company': str(row.get(company_col, '')).strip() if company_col and pd.notna(row.get(company_col)) else '',
                 'composition': str(row.get(comp_col, '')).strip() if comp_col and pd.notna(row.get(comp_col)) else '',
                 'category': cat,
-                'pack_size': int(re.sub(r'[^\d]', '', str(row.get(pack_col)))) if pack_col and pd.notna(row.get(pack_col)) and re.sub(r'[^\d]', '', str(row.get(pack_col))) else 10,
+                'pack_size': int(float(row.get(pack_col, 10))) if pack_col and pd.notna(row.get(pack_col)) and str(row.get(pack_col)).strip() not in ['', 'nan', 'None'] else 10,
                 'batch_no': str(row.get(batch_col, '')).strip() if batch_col and pd.notna(row.get(batch_col)) else '',
                 'expiry_date': str(row.get(exp_col, '')).strip() if exp_col and pd.notna(row.get(exp_col)) else '',
                 'quantity': qty_val,
