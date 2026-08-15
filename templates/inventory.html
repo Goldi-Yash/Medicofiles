@@ -154,9 +154,14 @@
 
                             <span class="badge bg-secondary-subtle text-dark fw-semibold">
                                 {% if is_tab_cap and p_size > 1 %}
-                                {% set total_tabs = (med.quantity * p_size)|round|int %}
-                                {% set full_strips = total_tabs // p_size %}
-                                {% set loose_tabs = total_tabs % p_size %}
+                                {% set raw_qty = (med.quantity or 0)|string %}
+                                {% if '.' in raw_qty %}
+                                {% set full_strips = raw_qty.split('.')[0]|int %}
+                                {% set loose_tabs = raw_qty.split('.')[1]|int %}
+                                {% else %}
+                                {% set full_strips = (med.quantity or 0)|int %}
+                                {% set loose_tabs = 0 %}
+                                {% endif %}
 
                                 {% if loose_tabs > 0 %}
                                 {{ full_strips }} Str + {{ loose_tabs }} Tab

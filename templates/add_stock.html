@@ -110,6 +110,7 @@
                                                         <th>Composition (Salt)</th>
                                                         <th style="width: 100px;">Distributor</th>
                                                         <th style="width: 110px;">Category</th>
+                                                        <th>Pack Size</th>
                                                         <th>Batch No.</th>
                                                         <th>Expiry Date</th>
                                                         <th style="width: 80px;">Qty</th>
@@ -177,7 +178,7 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Pack Size (Tab/Cap per Strip)</label>
                             <input type="number" name="pack_size" class="form-control" placeholder="e.g. 10" min="1"
-                                value="{{ medicine.pack_size if medicine and medicine.pack_size else 10 }}">
+                                value="{{ medicine.pack_size if medicine and medicine.pack_size else 10 }}" required>
                         </div>
 
                         <!-- Salt / Composition -->
@@ -185,7 +186,7 @@
                             <label class="form-label fw-semibold">Salt / Composition</label>
                             <input type="text" name="composition" class="form-control"
                                 placeholder="e.g. Paracetamol IP 650 mg"
-                                value="{{ medicine.composition if medicine else '' }}" required>
+                                value="{{ medicine.composition if medicine else '' }}">
                         </div>
 
                         <!-- Prescription Required Switch -->
@@ -402,20 +403,18 @@
 
         parsedItems.forEach((item, index) => {
             // --- Auto-detect Category if not already set ---
-            if (!item.category) {
+            if (!item.category || item.category === 'Other') {
                 let nameLower = (item.name || '').toLowerCase();
-                if (nameLower.includes("capsule") || nameLower.includes("cap")) {
-                    item.category = "Capsule";
-                } else if (nameLower.includes("syrup") || nameLower.includes("syr") || nameLower.includes("suspension")) {
-                    item.category = "Syrup";
-                } else if (nameLower.includes("inj") || nameLower.includes("injection")) {
-                    item.category = "Injection";
-                } else if (nameLower.includes("ointment") || nameLower.includes("gel") || nameLower.includes("cream")) {
-                    item.category = "Ointment";
-                } else if (nameLower.includes("tab") || nameLower.includes("tablet")) {
-                    item.category = "Tablet";
-                } else {
-                    item.category = "Other";
+                if (nameLower.includes('cap') || nameLower.includes('capsule')) {
+                    item.category = 'Capsule';
+                } else if (nameLower.includes('syr') || nameLower.includes('syrup') || nameLower.includes('susp') || nameLower.includes('suspension')) {
+                    item.category = 'Syrup';
+                } else if (nameLower.includes('inj') || nameLower.includes('injection') || nameLower.includes('vial') || nameLower.includes('amp')) {
+                    item.category = 'Injection';
+                } else if (nameLower.includes('oint') || nameLower.includes('ointment') || nameLower.includes('gel') || nameLower.includes('cream')) {
+                    item.category = 'Ointment';
+                } else if (nameLower.includes('tab') || nameLower.includes('tablet')) {
+                    item.category = 'Tablet';
                 }
             }
             tbody.innerHTML += `
@@ -430,9 +429,9 @@
                     <input type="text" class="form-control form-control-sm" value="${item.composition || ''}" placeholder="e.g. Paracetamol" onchange="parsedItems[${index}].composition = this.value">
                 </td>
                 <td>
-                        <input type="text" class="form-control form-control-sm text-uppercase fw-bold" 
-                            value="${item.distributor_code || ''}"
-                            onchange="parsedItems[${index}].distributor_code = this.value.toUpperCase()">
+                    <input type="text" class="form-control form-control-sm text-uppercase fw-bold"
+                        value="${item.distributor_code || ''}"
+                        onchange="parsedItems[${index}].distributor_code = this.value.toUpperCase()">
                 </td>
                 <td>
                     <select class="form-select form-select-sm" onchange="parsedItems[${index}].category = this.value">
@@ -444,14 +443,17 @@
                         <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
                     </select>
                 </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm" value="${item.batch_no || 'BATCH-01'}" onchange="parsedItems[${index}].batch_no = this.value">
+                <td style="width: 85px;">
+                    <input type="number" class="form-control form-control-sm" value="${item.pack_size || 10}" onchange="parsedItems[${index}].pack_size = parseInt(this.value) || 10">
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm" value="${item.expiry_date || '12/2028'}" placeholder="MM/YYYY" onchange="parsedItems[${index}].expiry_date = this.value">
+                    <input type="text" class="form-control form-control-sm" value="${item.batch_no || ''}" placeholder="BATCH NO" onchange="parsedItems[${index}].batch_no = this.value">
                 </td>
                 <td>
-                    <input type="number" step="0.1" class="form-control form-control-sm" value="${item.quantity || 1}" onchange="parsedItems[${index}].quantity = parseFloat(this.value)">
+                    <input type="text" class="form-control form-control-sm" value="${item.expiry_date || ''}" placeholder="MM/YY" onchange="parsedItems[${index}].expiry_date = this.value">
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm" value="${item.quantity || 1}" onchange="parsedItems[${index}].quantity = parseFloat(this.value)">
                 </td>
                 <td>
                     <input type="number" step="0.01" class="form-control form-control-sm text-success fw-bold" value="${item.purchase_price || 0}" placeholder="0.00" onchange="parsedItems[${index}].purchase_price = parseFloat(this.value)">
@@ -464,8 +466,7 @@
                         <i class="bi bi-trash-fill"></i>
                     </button>
                 </td>
-            </tr>
-            `;
+            </tr>`;
         });
 
         document.getElementById('parsedItemCountText').innerText = `${parsedItems.length} items ready to import`;

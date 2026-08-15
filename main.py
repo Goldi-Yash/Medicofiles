@@ -838,8 +838,9 @@ def upload_pdf_bill():
             cat_col = next((c for c in df.columns if any(k in c for k in ['category', 'group', 'form', 'dosage', 'cat', 'type'])), None)
             batch_col = next((c for c in df.columns if any(k in c for k in ['batch', 'b.no', 'b_no', 'lot', 'bno', 'b. n', 'b.no.'])), None)
             exp_col = next((c for c in df.columns if any(k in c for k in ['exp', 'expiry', 'exp_date', 'exp.date', 'validity', 'mfg_exp'])), None)
-            qty_col = next((c for c in df.columns if any(k in c for k in ['qty', 'pack', 'quantity', 'count', 'units', 'nos', 'strip', 'box', 'free_qty'])), None)
-    
+            qty_col = next((c for c in df.columns if any(k in c for k in ['qty', 'quantity', 'count', 'units', 'nos', 'strip', 'box', 'free_qty','pack'])), None)
+            pack_col = next((c for c in df.columns if any(k in c for k in ['pack', 'pack_size', 'pkg', 'packing'])), None)
+
             # Indian Pharmacy Pricing Resolution (PTS, P.Rate, PTR, MRP)
             prate_col = next((c for c in df.columns if any(k in c for k in ['pts', 'cost', 'p.rate', 'p_rate', 'pur', 'purchase', 'p.price', 'cost_rate', 'buy_price', 'net_rate', 'net_cost', 'p.rate(₹)', 'p_rate(₹)', 'rate'])), None)
             mrp_col = next((c for c in df.columns if any(k in c for k in ['mrp', 'ptr', 'sale', 'retail', 'price', 's.rate', 's_rate', 'mrp(₹)'] ) and c != prate_col), None)
@@ -863,24 +864,38 @@ def upload_pdf_bill():
                 prate_val = parse_float(row.get(prate_col), 0.0) if prate_col else 0.0
                 mrp_val = parse_float(row.get(mrp_col), prate_val) if mrp_col else prate_val
     
-                cat = str(row.get(cat_col, 'Tablet')).strip() if cat_col and pd.notna(row.get(cat_col)) else 'Tablet'
-                if 'syrup' in clean_name.lower(): cat = 'Syrup'
-                elif 'capsule' in clean_name.lower(): cat = 'Capsule'
-                elif 'injection' in clean_name.lower(): cat = 'Injection'
-                elif 'ointment' in clean_name.lower() or 'cream' in clean_name.lower(): cat = 'Ointment'
+                # Smart Pharmacy Category Auto-Detection (Exhaustive Keywords)
+                clean_low = clean_name.lower()
+                if any(k in clean_low for k in ['cap', 'capsule']):
+                    cat = 'Capsule'
+                elif any(k in clean_low for k in ['syr', 'syrup', 'susp', 'suspension', 'liquid', 'sol', 'solution', 'elixir']):
+                    cat = 'Syrup'
+                elif any(k in clean_low for k in ['inj', 'injection', 'infusion', 'vial', 'ampoule', 'amp']):
+                    cat = 'Injection'
+                elif any(k in clean_low for k in ['oint', 'ointment', 'gel', 'cream', 'liniment']):
+                    cat = 'Ointment'
+                elif any(k in clean_low for k in ['tab', 'tablet', 'lozenge']):
+                    cat = 'Tablet'
+                elif any(k in clean_low for k in ['drop', 'drops', 'eye drop', 'ear drop', 'nasal']):
+                    cat = 'Other'
+                else:
+                    cat = str(row.get(cat_col, 'Other')).strip() if cat_col and pd.notna(row.get(cat_col)) else 'Other'
+                    if cat not in ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Other']:
+                        cat = 'Other'
     
                 extracted_items.append({
-                    'name': clean_name,
-                    'company': str(row.get(company_col, '')).strip() if company_col and pd.notna(row.get(company_col)) else '',
-                    'composition': str(row.get(comp_col, 'N/A')).strip() if comp_col and pd.notna(row.get(comp_col)) else 'N/A',
-                    'category': cat,
-                    'batch_no': str(row.get(batch_col, 'BATCH-01')).strip() if batch_col and pd.notna(row.get(batch_col)) else 'BATCH-01',
-                    'expiry_date': str(row.get(exp_col, '12/28')).strip() if exp_col and pd.notna(row.get(exp_col)) else '12/28',
-                    'quantity': qty_val,
-                    'purchase_price': prate_val,
-                    'mrp': mrp_val,
-                    'distributor_code': dist_code
-                })
+                'name': clean_name,
+                'company': str(row.get(company_col, '')).strip() if company_col and pd.notna(row.get(company_col)) else '',
+                'composition': str(row.get(comp_col, '')).strip() if comp_col and pd.notna(row.get(comp_col)) else '',
+                'category': cat,
+                'pack_size': int(re.sub(r'[^\d]', '', str(row.get(pack_col)))) if pack_col and pd.notna(row.get(pack_col)) and re.sub(r'[^\d]', '', str(row.get(pack_col))) else 10,
+                'batch_no': str(row.get(batch_col, '')).strip() if batch_col and pd.notna(row.get(batch_col)) else '',
+                'expiry_date': str(row.get(exp_col, '')).strip() if exp_col and pd.notna(row.get(exp_col)) else '',
+                'quantity': qty_val,
+                'purchase_price': prate_val,
+                'mrp': mrp_val,
+                'distributor_code': dist_code
+            })
     
             return jsonify({'status': 'success', 'items': extracted_items})
         except Exception as e:
@@ -906,14 +921,16 @@ def upload_pdf_bill():
         Each object in the array must contain these exact keys:
         1. "name": Exact trade/brand medicine name (e.g. "Dolo 650", "Cipcal 500").
         2. "company": Manufacturer or Brand/Company name if present (e.g. "Cipla", "Alembic"). Otherwise "".
-        3. "composition": Chemical composition / Salt / Generic name (e.g. "Paracetamol 650mg"). If missing, return "N/A".
+        3. "composition": Chemical composition / Salt / Generic name (e.g. "Paracetamol 650mg"). If missing, return "".
         4. "category": Auto-detect among "Tablet", "Capsule", "Syrup", "Injection", "Ointment", or "Other".
-        5. "batch_no": Batch Number (e.g. "CP6012"). If missing, return "BATCH-01".
-        6. "expiry_date": Expiry date formatted as "MM/YY" or "MM/YYYY" (e.g. "10/27"). If missing, return "12/28".
-        7. "quantity": Total billed quantity as a number (e.g. 50, 30).
-        8. "purchase_price": Exact Cost Price / PTS (Price to Stockist / Cost Rate to dukan) as a number (e.g., 62.00, 95.00). If PTS is missing, use PTR.
-        9. "mrp": Exact PTR (Price to Retailer / Base Selling Rate) or MRP as a number (e.g., 70.00, 108.00). Must be equal to or greater than purchase_price.
-
+        5. "pack_size": Strip pack size number (e.g., 10, 15, 20). If missing, return 10.
+        6. "batch_no": Batch Number (e.g. "CP6012"). If missing, return "".
+        7. "expiry_date": Expiry date formatted as "MM/YY" or "MM/YYYY" (e.g. "10/27"). If missing, return "".
+        8. "quantity": Total billed quantity as a number (e.g. 50, 30).
+        9. "purchase_price": Exact Cost Price / PTS (Price to Stockist / Cost Rate to dukan) as a number (e.g., 62.00, 95.00). If PTS is missing, use PTR.
+        10. "mrp": Exact PTR (Price to Retailer / Base Selling Rate) or MRP as a number (e.g., 70.00, 108.00). Must be equal to or greater than purchase_price.
+        11. "distributor_code": ""
+        
         CRITICAL INSTRUCTIONS:
         - Exclude invoice header details (Billed To, Shipped To, Invoice No, GSTIN).
         - Exclude invoice footer details (GST Summary, Bank Details, Total Amount).
@@ -1158,6 +1175,19 @@ def delete_stock(id):
     db.session.commit()
     return redirect(url_for('inventory') + f'#med-{id}')
 
+def normalize_pharma_qty(qty_val):
+    """Formats 0.16, 1.9, 2.14 accurately without float precision distortion"""
+    try:
+        q_str = str(qty_val).strip()
+        if '.' in q_str:
+            parts = q_str.split('.')
+            whole = int(parts[0])
+            frac = int(parts[1])
+            return float(f"{whole}.{frac}")
+        return float(int(float(qty_val)))
+    except Exception:
+        return float(qty_val or 0.0)
+
 @app.route('/edit-stock/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_stock(id):
@@ -1174,7 +1204,7 @@ def edit_stock(id):
         medicine.composition = request.form.get('composition')
         medicine.batch_no = request.form.get('batch_no')
         medicine.expiry_date = request.form.get('expiry_date')
-        medicine.quantity = float(request.form.get('quantity', 0))
+        medicine.quantity = normalize_pharma_qty(request.form.get('quantity', 0))
         medicine.mrp = float(request.form.get('mrp'))
         medicine.purchase_price = float(request.form.get('purchase_price', 0) or 0)
         medicine.rx_required = True if request.form.get('rx_required') in ['true', 'on', 'True'] or 'rx_required' in request.form else False
@@ -1201,7 +1231,7 @@ def add_stock():
         composition = request.form.get('composition')
         batch_no = request.form.get('batch_no')
         expiry_date = request.form.get('expiry_date')
-        quantity = float(request.form.get('quantity', 0))
+        quantity = normalize_pharma_qty(request.form.get('quantity', 0))
         mrp = float(request.form.get('mrp'))
         purchase_price = float(request.form.get('purchase_price', 0) or 0)
         is_rx = ('rx_required' in request.form) or (request.form.get('rx_required') == 'true')
@@ -1221,7 +1251,7 @@ def add_stock():
         req_composition = str(data.get('composition') or data.get('salt') or '').strip()
         req_mrp = float(data.get('mrp') or 0.0)
         req_purchase_price = float(data.get('purchase_price', 0) or 0)
-        req_qty = float(data.get('quantity') or 0.0)
+        req_qty = normalize_pharma_qty(data.get('quantity', 0.0))
     
         # Duplicate match query using exact DB Model field names
         existing_med = Medicine.query.filter(
@@ -1288,13 +1318,16 @@ def bulk_save_stock():
         for item in items:
             # Clean item field values for strict check
             req_name = str(item.get('name', '')).strip()
-            req_batch = str(item.get('batch_no', 'BATCH-01')).strip()
+            req_batch = str(item.get('batch_no', '')).strip()
             req_company = str(item.get('company', '')).strip()
-            req_comp = str(item.get('composition', 'N/A')).strip()
-            req_expiry = str(item.get('expiry_date', '12/28')).strip()
+            req_comp = str(item.get('composition', '')).strip()
+            req_expiry = str(item.get('expiry_date', '')).strip()
             req_mrp = float(item.get('mrp', 0.0) or 0.0)
             req_pprice = float(item.get('purchase_price', 0.0) or 0.0)
-            req_qty = float(item.get('quantity', 1) or 1)
+            req_qty = normalize_pharma_qty(item.get('quantity', 1))
+            req_pack = int(item.get('pack_size', 10) or 10)
+            req_dist = str(item.get('distributor_code', '')).strip().upper()
+            req_cat = str(item.get('category', 'Tablet')).strip()
     
             # STRICT DB QUERY: Match Name, Batch, MRP, Expiry & Purchase Price
             existing_med = Medicine.query.filter(
@@ -1310,29 +1343,33 @@ def bulk_save_stock():
                 # Check Company and Composition too
                 same_company = (getattr(existing_med, 'company', '') or '').strip().lower() == req_company.lower()
                 same_comp = (getattr(existing_med, 'composition', '') or '').strip().lower() == req_comp.lower()
-                same_pack = getattr(existing_med, 'pack_size', 10) == int(request.form.get('pack_size', 10) or 10)
+                same_pack = getattr(existing_med, 'pack_size', 10) == req_pack
     
                 if same_company and same_comp and same_pack:
                     # 100% MATCH FOUND: Quantity Increment Karo!
                     existing_med.quantity = round(float(existing_med.quantity or 0) + req_qty, 2)
+                    if req_dist and not getattr(existing_med, 'distributor_code', None):
+                        existing_med.distributor_code = req_dist
                 else:
                     # Discrepancy in Company/Salt: Create NEW Row
                     new_med = Medicine(
                         user_id=current_user.id,
-                        name=req_name, company=req_company, category=item.get('category', 'Tablet'),
+                        name=req_name, company=req_company, category=req_cat,
                         composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
                         quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
-                        pack_size=10, rx_required=item.get('rx_required', False)
+                        pack_size=req_pack, rx_required=item.get('rx_required', False),
+                        distributor_code=req_dist
                     )
                     db.session.add(new_med)
             else:
                 # NO MATCH: Create NEW Row
                 new_med = Medicine(
                     user_id=current_user.id,
-                    name=req_name, company=req_company, category=item.get('category', 'Tablet'),
+                    name=req_name, company=req_company, category=req_cat,
                     composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
                     quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
-                    pack_size=10, rx_required=item.get('rx_required', False)
+                    pack_size=req_pack, rx_required=item.get('rx_required', False),
+                    distributor_code=req_dist
                 )
                 db.session.add(new_med)
 
@@ -1377,21 +1414,40 @@ def delete_transaction(sale_id):
                 if medicine:
                     pack_size = int(getattr(medicine, 'pack_size', 10) or getattr(medicine, 'strip_size', 10) or 10)
                     med_display = str(getattr(item, 'medicine_name', '') or '')
-    
-                    # Current stock in terms of total tablets
-                    current_total_tabs = round(float(medicine.quantity or 0.0) * pack_size)
-    
-                    # Identify if item was sold as loose tablet
-                    if '[LOOSE-' in med_display:
-                        # Restore exact number of sold loose tabs
-                        restore_tabs = int(float(item.quantity))
-                    else:
-                        # Full strip restore
-                        restore_tabs = int(float(item.quantity) * pack_size)
+                    cat_low = str(getattr(medicine, 'category', '') or '').lower()
+                    is_tab_cap = ('tablet' in cat_low or 'capsule' in cat_low) and pack_size > 1
 
-                    # Add back exact tabs and update DB strip value
-                    new_total_tabs = current_total_tabs + restore_tabs
-                    medicine.quantity = round(new_total_tabs / pack_size, 4)
+                    if is_tab_cap:
+                        # 1. Parse current individual tabs accurately from decimal format
+                        q_str = str(medicine.quantity or 0.0).strip()
+                        if '.' in q_str:
+                            parts = q_str.split('.')
+                            cur_strips = int(parts[0])
+                            cur_loose = int(parts[1])
+                        else:
+                            cur_strips = int(float(medicine.quantity or 0))
+                            cur_loose = 0
+                        
+                        total_current_tabs = (cur_strips * pack_size) + cur_loose
+
+                        # 2. Identify if item was sold as loose tablet or strip
+                        if '[LOOSE-' in med_display:
+                            restore_tabs = int(float(item.quantity))
+                        else:
+                            restore_tabs = int(float(item.quantity) * pack_size)
+
+                        # 3. Add back exact tablets and convert back to clean decimal format
+                        new_total_tabs = total_current_tabs + restore_tabs
+                        new_strips = new_total_tabs // pack_size
+                        new_loose = new_total_tabs % pack_size
+
+                        if new_loose > 0:
+                            medicine.quantity = float(f"{new_strips}.{new_loose}")
+                        else:
+                            medicine.quantity = float(new_strips)
+                    else:
+                        # Direct quantity restore for Syrups, Injections, Ointments, etc.
+                        medicine.quantity = round(float(medicine.quantity or 0.0) + float(item.quantity), 2)
                     
         for item in items:
             db.session.delete(item)
@@ -1508,25 +1564,46 @@ def process_sale():
         
             db.session.add(sale_item)
 
-            # Stock Deduction Logic (Exact Tablet Modulo System)
+            # Stock Deduction Logic (Universal Pharma Pack-Size Math)
             if medicine:
                 pack_size = int(getattr(medicine, 'pack_size', 10) or getattr(medicine, 'strip_size', 10) or 10)
                 selected_unit = str(cart_item.get('unit', 'Strip')).strip().lower()
                 is_loose_unit = selected_unit in ['tab', 'tablet', 'loose', 'piece']
-
-                # Calculate total stock in terms of individual tablets/units
-                current_total_tabs = round(float(medicine.quantity or 0.0) * pack_size)
-
-                if is_loose_unit:
-                    # Deduct exact number of loose tabs requested (e.g. 2 tabs)
-                    deduct_tabs = int(qty)
-                else:
-                    # Full strip sale: deduct full strip worth of tabs (e.g. 1 strip = pack_size tabs)
-                    deduct_tabs = int(qty * pack_size)
-
-                # Subtract exact tablets and convert back to fractional strip float
-                remaining_tabs = max(0, current_total_tabs - deduct_tabs)
-                medicine.quantity = round(remaining_tabs / pack_size, 4)
+                cat_low = str(getattr(medicine, 'category', '') or '').lower()
+                is_tab_cap = ('tablet' in cat_low or 'capsule' in cat_low) and pack_size > 1
+    
+                if is_tab_cap:
+                    # 1. Parse current total individual tablets accurately from decimal format (e.g. 0.16 or 1.14)
+                    q_str = str(medicine.quantity or 0.0).strip()
+                    if '.' in q_str:
+                        parts = q_str.split('.')
+                        cur_strips = int(parts[0])
+                        cur_loose = int(parts[1])
+                    else:
+                        cur_strips = int(float(medicine.quantity or 0))
+                        cur_loose = 0
+                    
+                    total_current_tabs = (cur_strips * pack_size) + cur_loose
+    
+                    # 2. Calculate tabs to deduct
+                    if is_loose_unit:
+                        deduct_tabs = int(qty)
+                    else:
+                        deduct_tabs = int(qty * pack_size)
+    
+                    # 3. Calculate remaining tablets & convert back to exact decimal format
+                    remaining_tabs = max(0, total_current_tabs - deduct_tabs)
+                    rem_strips = remaining_tabs // pack_size
+                    rem_loose = remaining_tabs % pack_size
+    
+                    if rem_loose > 0:
+                        medicine.quantity = float(f"{rem_strips}.{rem_loose}")
+                    else:
+                        medicine.quantity = float(rem_strips)
+                        
+            else:
+                # Direct deduction for Syrups, Injections, Ointments, etc.
+                medicine.quantity = max(0.0, round(float(medicine.quantity or 0.0) - float(qty), 2))
 
         # Final bill amount
         if store_config.round_off_bills:

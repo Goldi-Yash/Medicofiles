@@ -77,7 +77,7 @@
                                 <th>Batch</th>
                                 <th>Expiry</th>
                                 <th>In Stock</th>
-                                <th>MRP</th>
+                                <th>P.Rate / MRP</th>
                                 <th class="text-end">Action</th>
                             </tr>
                         </thead>
@@ -108,6 +108,15 @@
                                             style="font-size: 9px; padding: 2px 5px;"
                                             title="Pharma / Branded Medicine">P</span>
                                         {% endif %}
+                                        <!-- DISTRIBUTOR / SUPPLIER TAG BADGE -->
+                                        {% if med.distributor_code %}
+                                        <span
+                                            class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1"
+                                            style="font-size: 9px; padding: 2px 5px;"
+                                            title="Distributor Tag: {{ med.distributor_code }}">
+                                            {{ med.distributor_code }}
+                                        </span>
+                                        {% endif %}
                                     </strong>
                                     <small class="text-muted">
                                         {% if med.company %}<span class="fw-semibold text-primary">{{ med.company
@@ -125,9 +134,14 @@
                                     {% set is_tab_cap = 'tablet' in cat_low or 'capsule' in cat_low %}
 
                                     {% if is_tab_cap and p_size > 1 %}
-                                    {% set total_tabs = (med.quantity * p_size)|round|int %}
-                                    {% set full_strips = total_tabs // p_size %}
-                                    {% set loose_tabs = total_tabs % p_size %}
+                                    {% set raw_qty = (med.quantity or 0)|string %}
+                                    {% if '.' in raw_qty %}
+                                    {% set full_strips = raw_qty.split('.')[0]|int %}
+                                    {% set loose_tabs = raw_qty.split('.')[1]|int %}
+                                    {% else %}
+                                    {% set full_strips = (med.quantity or 0)|int %}
+                                    {% set loose_tabs = 0 %}
+                                    {% endif %}
                                     <span class="badge bg-secondary-subtle text-dark fw-bold">
                                         {% if loose_tabs > 0 %}
                                         {{ full_strips }} Str + {{ loose_tabs }} Tab
@@ -136,11 +150,16 @@
                                         {% endif %}
                                     </span>
                                     {% else %}
-                                    <span class="badge bg-secondary-subtle text-dark fw-bold">{{
-                                        "%.1f"|format(med.quantity) }}</span>
+                                    <span class="badge bg-secondary-subtle text-dark fw-bold">
+                                        {{ "%.1f"|format(med.quantity or 0) }}
+                                    </span>
                                     {% endif %}
                                 </td>
-                                <td class="fw-bold">₹{{ "%.2f"|format(med.mrp) }}</td>
+                                <td class="text-nowrap">
+                                    <span class="text-success small">₹{{ "%.2f"|format(med.purchase_price or 0.0)
+                                        }}</span>
+                                    <span class="fw-bold text">/ ₹{{ "%.2f"|format(med.mrp or 0.0) }}</span>
+                                </td>
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-primary add-to-cart-btn"
                                         data-id="{{ med.id }}" data-name="{{ med.name }}" data-age-rule="{{ age_rule }}"
@@ -432,15 +451,22 @@
             let itemTotal = discountedPrice * item.quantity;
             itemsSubtotal += itemTotal;
 
-            // Unit Column HTML (Conditional rendering)
+            // Unit Column HTML (Auto-select and disable Strip if 0 Full Strips available)
             let unitCellHTML = '';
             if (isCuttable) {
+                let currentMaxStock = String(item.maxStock || '0');
+                let fullStripsAvailable = currentMaxStock.includes('.') ? parseInt(currentMaxStock.split('.')[0]) : parseInt(currentMaxStock);
+
+                // If 0 full strips in stock, force Tablet/Loose mode
+                if (fullStripsAvailable === 0 && item.unit === 'Strip') {
+                    item.unit = 'Tablet';
+                }
+
                 unitCellHTML = `
-            <select class="form-select form-select-sm p-0 px-1 unit-select" data-index="${index}" style="font-size: 0.75rem;">
-                    <option value="Strip" ${item.unit === 'Strip' ? 'selected' : ''}>Strip</option>
-                    <option value="Tablet" ${item.unit === 'Tablet' ? 'selected' : ''}>Tab</option>
-            </select>
-        `;
+                <select class="form-select form-select-sm p-0 px-1 unit-select" data-index="${index}" style="font-size: 0.75rem;">
+                    <option value="Strip" ${item.unit === 'Strip' ? 'selected' : ''} ${fullStripsAvailable === 0 ? 'disabled' : ''}>Strip ${fullStripsAvailable === 0 ? '(Out)' : ''}</option>
+                    <option value="Tablet" ${item.unit === 'Tablet' ? 'selected' : ''}>Loose</option>
+                </select>`;
             } else {
                 unitCellHTML = `<span class="badge bg-light text-dark border">Pack/Pcs</span>`;
             }
