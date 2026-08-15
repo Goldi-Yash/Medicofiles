@@ -36,10 +36,11 @@
                         <div class="card border-primary border-dash mb-4 bg-primary-subtle">
                             <div class="card-body text-center py-4">
                                 <i class="bi bi-file-earmark-pdf fs-1 text-primary mb-2 d-block"></i>
-                                <h5 class="fw-bold">Import Stock from PDF / Excel Bill</h5>
-                                <p class="text-muted small">Upload PDF or Excel invoice </p>
+                                <h5 class="fw-bold">Import Stock from PDF / Excel / Image Bill</h5>
+                                <p class="text-muted small">Upload PDF / Excel / Image invoice </p>
 
-                                <input type="file" id="pdfFileInput" accept=".pdf , .xlsx, .xls, .csv" class="d-none">
+                                <input type="file" id="pdfFileInput"
+                                    accept=".pdf,.xlsx,.xls,.csv,image/*,.jpg,.jpeg,.png,.webp" class="d-none">
                                 <button type="button" class="btn btn-primary px-4 fw-bold"
                                     onclick="document.getElementById('pdfFileInput').click()">
                                     <i class="bi bi-upload me-2"></i> Upload PDF / Excel Invoice
@@ -323,10 +324,12 @@
         if (!selectedBillFile) return;
 
         // File extension check (PDF vs Excel/CSV)
-        const isPdfOrImg = selectedBillFile.name.toLowerCase().endsWith('.pdf') ||
-            selectedBillFile.name.toLowerCase().endsWith('.png') ||
-            selectedBillFile.name.toLowerCase().endsWith('.jpg') ||
-            selectedBillFile.name.toLowerCase().endsWith('.jpeg');
+        const fileNameLow = selectedBillFile.name.toLowerCase();
+        const isPdfOrImg = fileNameLow.endsWith('.pdf') ||
+            fileNameLow.endsWith('.png') ||
+            fileNameLow.endsWith('.jpg') ||
+            fileNameLow.endsWith('.jpeg') ||
+            fileNameLow.endsWith('.webp');
 
         const aiLoaderModalEl = document.getElementById('aiLoadingModal');
         let aiLoaderModal = null;

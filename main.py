@@ -912,8 +912,15 @@ def upload_pdf_bill():
         client = genai.Client(api_key=api_key)
 
         file_bytes = file.read()
-        mime_type = "application/pdf" if filename.endswith('.pdf') else "image/jpeg"
-
+        if filename.endswith('.pdf'):
+            mime_type = "application/pdf"
+        elif filename.endswith('.png'):
+            mime_type = "image/png"
+        elif filename.endswith('.webp'):
+            mime_type = "image/webp"
+        else:
+            mime_type = "image/jpeg"
+            
         prompt = """
         You are an expert Indian Pharmacy Invoice / Bill Parser.
         Extract all medicine items listed in the invoice table and respond STRICTLY with a valid JSON array.
