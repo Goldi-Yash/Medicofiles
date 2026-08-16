@@ -39,12 +39,31 @@
                                 <h5 class="fw-bold">Import Stock from PDF / Excel / Image Bill</h5>
                                 <p class="text-muted small">Upload PDF / Excel / Image invoice </p>
 
+                                <!-- Standard File Input (PDF / Excel / Gallery Images) -->
                                 <input type="file" id="pdfFileInput"
                                     accept=".pdf,.xlsx,.xls,.csv,image/*,.jpg,.jpeg,.png,.webp" class="d-none">
-                                <button type="button" class="btn btn-primary px-4 fw-bold"
-                                    onclick="document.getElementById('pdfFileInput').click()">
-                                    <i class="bi bi-upload me-2"></i> Upload PDF / Excel / Image Invoice
-                                </button>
+
+                                <!-- Direct Camera Capture Input (Mobile Back-Camera) -->
+                                <input type="file" id="cameraFileInput" accept="image/*" capture="environment"
+                                    class="d-none">
+
+                                <div class="d-flex justify-content-center align-items-center gap-3 mt-3">
+                                    <button type="button" class="btn btn-primary px-4 fw-bold shadow-sm"
+                                        onclick="document.getElementById('pdfFileInput').click()">
+                                        <i class="bi bi-upload me-2"></i> Upload Invoice (PDF / Excel / Image)
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-primary px-4 fw-bold shadow-sm"
+                                        onclick="document.getElementById('cameraFileInput').click()">
+                                        <i class="bi bi-camera-fill me-2"></i> Scan via Camera
+                                    </button>
+                                </div>
+
+                                <!-- Note cleanly centered underneath both buttons -->
+                                <div class="text-center text-muted mt-2"
+                                    style="font-size: 0.75rem; font-style: italic;">
+                                    <i class="bi bi-phone me-1"></i> Scan via Camera is recommended for mobile phones
+                                </div>
                             </div>
                         </div>
                         <!-- Modern Distributor Input Modal Before Upload -->
@@ -321,6 +340,20 @@
         const distModal = new bootstrap.Modal(document.getElementById('distributorInputModal'));
         distModal.show();
     });
+
+    // 2. Camera Capture Listener
+    const cameraInput = document.getElementById('cameraFileInput');
+    if (cameraInput) {
+        cameraInput.addEventListener('change', function () {
+            if (!this.files || !this.files[0]) return;
+            selectedBillFile = this.files[0];
+
+            // Reset Distributor Tag and Open Modal
+            document.getElementById('preUploadDistCode').value = '';
+            const distModal = new bootstrap.Modal(document.getElementById('distributorInputModal'));
+            distModal.show();
+        });
+    }
 
     // Function to handle Bill Parsing (With or Without Tag)
     function processBillUpload(distTagInput) {
