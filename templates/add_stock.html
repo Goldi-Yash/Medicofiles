@@ -195,6 +195,8 @@
                                     endif %}>Injection</option>
                                 <option value="Ointment" {% if medicine and medicine.category=='Ointment' %}selected{%
                                     endif %}>Ointment</option>
+                                <option value="Sachet" {% if medicine and medicine.category=='Sachet' %}selected{% endif
+                                    %}>Sachet</option>
                                 <option value="Other" {% if medicine and medicine.category=='Other' %}selected{% endif
                                     %}>Other</option>
                             </select>
@@ -484,6 +486,7 @@
                         <option value="Syrup" ${item.category === 'Syrup' ? 'selected' : ''}>Syrup</option>
                         <option value="Injection" ${item.category === 'Injection' ? 'selected' : ''}>Injection</option>
                         <option value="Ointment" ${item.category === 'Ointment' ? 'selected' : ''}>Ointment</option>
+                        <option value="Sachet" ${item.category === 'Sachet' ? 'selected' : ''}>Sachet</option>
                         <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
                     </select>
                 </td>
@@ -637,7 +640,7 @@
         } else {
             packLabel.innerText = 'Packing / Volume / Weight';
             packInput.type = 'text';
-            packInput.placeholder = category === 'Syrup' ? 'e.g. 225 ml' : (category === 'Ointment' ? 'e.g. 15 gm' : 'e.g. 1 vial / 100 ml');
+            packInput.placeholder = category === 'Syrup' ? 'e.g. 225 ml' : (category === 'Ointment' ? 'e.g. 15 gm' : (category === 'Sachet' ? 'e.g. 5 gm / 1 sachet' : 'e.g. 1 vial / 100 ml'));
             if (packInput.value === '10') packInput.value = '';
         }
     }

@@ -310,6 +310,7 @@ class StoreSettings(db.Model):
     thresh_injection = db.Column(db.Integer, default=2)
     thresh_ointment = db.Column(db.Integer, default=3)
     thresh_capsule = db.Column(db.Integer, default=5)
+    thresh_sachet = db.Column(db.Integer, default=5)
     thresh_other = db.Column(db.Integer, default=2)
     
     # 4. Tax & Security
@@ -500,6 +501,7 @@ def dashboard():
         'Injection': getattr(store_config, 'thresh_injection', 2) or 2,
         'Ointment': getattr(store_config, 'thresh_ointment', 3) or 3,
         'Capsule': getattr(store_config, 'thresh_capsule', 5) or 5,
+        'Sachet': getattr(store_config, 'thresh_sachet', 5) or 5,
         'Other': getattr(store_config, 'thresh_other', 2) or 2
     }
 
@@ -585,7 +587,7 @@ def dashboard():
     # 5. Stock Categories & Category-wise Margin Analytics
     all_medicines = user_query(Medicine).all()
     
-    categories = ['Tablet', 'Syrup', 'Injection', 'Capsule', 'Other']
+    categories = ['Tablet', 'Syrup', 'Injection', 'Capsule', 'Sachet', 'Other']
     category_data = {c + 's' if not c.endswith('s') else c: 0 for c in categories}
     category_analytics = {}
 
@@ -720,6 +722,7 @@ def settings():
         store_config.thresh_injection = int(request.form.get('thresh_injection', 2))
         store_config.thresh_ointment = int(request.form.get('thresh_ointment', 3))
         store_config.thresh_capsule = int(request.form.get('thresh_capsule', 5))
+        store_config.thresh_sachet = int(request.form.get('thresh_sachet', 5))
         store_config.thresh_other = int(request.form.get('thresh_other', 2))
 
         # 1. Check if user modified email without OTP verification
@@ -874,6 +877,8 @@ def upload_pdf_bill():
                     cat = 'Injection'
                 elif any(k in clean_low for k in ['oint', 'ointment', 'gel', 'cream', 'liniment']):
                     cat = 'Ointment'
+                elif any(k in clean_low for k in ['sachet', 'granules', 'electral', 'electrolyte']):
+                    cat = 'Sachet'
                 elif any(k in clean_low for k in ['tab', 'tablet', 'lozenge']):
                     cat = 'Tablet'
                 elif any(k in clean_low for k in ['drop', 'drops', 'eye drop', 'ear drop', 'nasal']):
@@ -888,7 +893,7 @@ def upload_pdf_bill():
                 'company': str(row.get(company_col, '')).strip() if company_col and pd.notna(row.get(company_col)) else '',
                 'composition': str(row.get(comp_col, '')).strip() if comp_col and pd.notna(row.get(comp_col)) else '',
                 'category': cat,
-                'pack_size': int(float(row.get(pack_col, 10))) if pack_col and pd.notna(row.get(pack_col)) and str(row.get(pack_col)).strip() not in ['', 'nan', 'None'] else 10,
+                'pack_size': str(row.get(pack_col, '10')).strip() if pack_col and pd.notna(row.get(pack_col)) and str(row.get(pack_col)).strip() not in ['', 'nan', 'None'] else '10',
                 'batch_no': str(row.get(batch_col, '')).strip() if batch_col and pd.notna(row.get(batch_col)) else '',
                 'expiry_date': str(row.get(exp_col, '')).strip() if exp_col and pd.notna(row.get(exp_col)) else '',
                 'quantity': qty_val,

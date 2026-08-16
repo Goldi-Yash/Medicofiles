@@ -475,10 +475,20 @@
             const catChart = new Chart(elCat, {
                 type: 'doughnut',
                 data: {
-                    labels: keys.length ? keys : ['Tablets', 'Syrups', 'Capsules', 'Others'],
+                    labels: keys.length ? keys : ['Tablets', 'Syrups', 'Injections', 'Capsules', 'Sachets', 'Others'],
                     datasets: [{
-                        data: vals.length ? vals : [1, 1, 1, 1],
-                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'],
+                        data: vals.length ? vals : [1, 1, 1, 1, 1, 1],
+                        backgroundColor: (keys.length ? keys : ['Tablets', 'Syrups', 'Injections', 'Capsules', 'Sachets', 'Others']).map(cat => {
+                            const colorMap = {
+                                'Tablets': '#2563eb',     // 🔵 Tablets = Royal Blue
+                                'Capsules': '#10b981',    // 🟢 Capsules = Vibrant Green
+                                'Others': '#64748b',      // ⚪ Others = Slate Grey
+                                'Sachets': '#8b5cf6',     // 🟣 Sachets = Purple
+                                'Syrups': '#fd7e14',      // 🟠 Syrups = Orange
+                                'Injections': '#ef4444'   // 🔴 Injections = Red
+                            };
+                            return colorMap[cat] || '#64748b';
+                        }),
                         borderWidth: 2
                     }]
                 },
