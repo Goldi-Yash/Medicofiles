@@ -13,6 +13,10 @@ instance/
 *.db
 *.sqlite3
 
+# User uploaded files (PDFs, prescription images, etc.)
+static/uploads/*
+!static/uploads/.gitkeep
+
 # Environment Variables (Mail Passwords & Keys)
 .env
 
