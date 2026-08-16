@@ -43,7 +43,7 @@
                                     accept=".pdf,.xlsx,.xls,.csv,image/*,.jpg,.jpeg,.png,.webp" class="d-none">
                                 <button type="button" class="btn btn-primary px-4 fw-bold"
                                     onclick="document.getElementById('pdfFileInput').click()">
-                                    <i class="bi bi-upload me-2"></i> Upload PDF / Excel Invoice
+                                    <i class="bi bi-upload me-2"></i> Upload PDF / Excel / Image Invoice
                                 </button>
                             </div>
                         </div>
@@ -87,7 +87,8 @@
                         <!-- Review & Edit Parsed PDF Stock Modal -->
                         <div class="modal fade" id="parsedStockModal" tabindex="-1"
                             aria-labelledby="parsedStockModalLabel" aria-hidden="true" data-bs-backdrop="static">
-                            <div class="modal-dialog modal-xl modal-dialog-centered">
+                            <div class="modal-dialog modal-fullscreen-lg-down modal-dialog-centered"
+                                style="max-width: 96vw;">
                                 <div class="modal-content">
                                     <div class="modal-header bg-primary text-white">
                                         <h5 class="modal-title fw-bold" id="parsedStockModalLabel">
@@ -103,20 +104,24 @@
                                         </p>
 
                                         <div class="table-responsive">
-                                            <table class="table table-bordered align-middle table-hover">
+                                            <table
+                                                class="table table-bordered align-middle table-hover table-sm text-nowrap">
                                                 <thead class="table-light">
                                                     <tr>
-                                                        <th>Item Name *</th>
-                                                        <th>Company</th>
-                                                        <th>Composition (Salt)</th>
-                                                        <th style="width: 100px;">Distributor</th>
-                                                        <th style="width: 110px;">Category</th>
-                                                        <th>Pack Size</th>
-                                                        <th>Batch No.</th>
-                                                        <th>Expiry Date</th>
-                                                        <th style="width: 80px;">Qty</th>
-                                                        <th style="width: 100px;">P. Rate (₹)</th>
-                                                        <th style="width: 100px;">MRP (₹)</th>
+                                                        <th style="min-width: 160px;">Item Name *</th>
+                                                        <th style="min-width: 120px;">Company</th>
+                                                        <th style="min-width: 150px;">Composition (Salt)</th>
+                                                        <th style="min-width: 100px;">Distributor</th>
+                                                        <th style="min-width: 110px;">Category</th>
+                                                        <th style="min-width: 70px;">Pack Size</th>
+                                                        <th style="min-width: 110px;">Type</th>
+                                                        <th style="width: 50px;"
+                                                            class="text-center text-danger fw-bold">Rx</th>
+                                                        <th style="min-width: 120px;">Batch No.</th>
+                                                        <th style="min-width: 100px;">Expiry Date</th>
+                                                        <th style="min-width: 90px;">Qty</th>
+                                                        <th style="min-width: 100px;">P. Rate (₹)</th>
+                                                        <th style="min-width: 100px;">MRP (₹)</th>
                                                         <th style="width: 40px;"></th>
                                                     </tr>
                                                 </thead>
@@ -158,27 +163,30 @@
                         <!-- Category -->
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Category *</label>
-                            <select name="category" class="form-select" required>
+                            <select name="category" id="manualCategorySelect" class="form-select" required
+                                onchange="handleCategoryChange(this.value)">
                                 <option value="" disabled selected>Select Category</option>
                                 <option value="Tablet" {% if medicine and medicine.category=='Tablet' %}selected{% endif
                                     %}>Tablet</option>
+                                <option value="Capsule" {% if medicine and medicine.category=='Capsule' %}selected{%
+                                    endif %}>Capsule</option>
                                 <option value="Syrup" {% if medicine and medicine.category=='Syrup' %}selected{% endif
                                     %}>Syrup</option>
                                 <option value="Injection" {% if medicine and medicine.category=='Injection' %}selected{%
                                     endif %}>Injection</option>
                                 <option value="Ointment" {% if medicine and medicine.category=='Ointment' %}selected{%
                                     endif %}>Ointment</option>
-                                <option value="Capsule" {% if medicine and medicine.category=='Capsule' %}selected{%
-                                    endif %}>Capsule</option>
                                 <option value="Other" {% if medicine and medicine.category=='Other' %}selected{% endif
                                     %}>Other</option>
                             </select>
                         </div>
 
-                        <!-- Pack Size (Strips/Tabs) -->
+                        <!-- Dynamic Pack Size / Volume Input -->
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Pack Size (Tab/Cap per Strip)</label>
-                            <input type="number" name="pack_size" class="form-control" placeholder="e.g. 10" min="1"
+                            <label class="form-label fw-semibold" id="packSizeLabel">Pack Size (Tab/Cap per
+                                Strip)</label>
+                            <input type="text" name="pack_size" id="manualPackSizeInput" class="form-control"
+                                placeholder="e.g. 10"
                                 value="{{ medicine.pack_size if medicine and medicine.pack_size else 10 }}" required>
                         </div>
 
@@ -446,8 +454,21 @@
                         <option value="Other" ${item.category === 'Other' ? 'selected' : ''}>Other</option>
                     </select>
                 </td>
-                <td style="width: 85px;">
-                    <input type="number" class="form-control form-control-sm" value="${item.pack_size || 10}" onchange="parsedItems[${index}].pack_size = parseInt(this.value) || 10">
+                <td style="width: 95px;">
+                <input type="text" class="form-control form-control-sm"
+                    value="${item.pack_size || (item.category === 'Tablet' || item.category === 'Capsule' ? '10' : '')}" 
+                    placeholder="${item.category === 'Tablet' || item.category === 'Capsule' ? '10' : 'e.g. 225 ml'}"
+                    onchange="parsedItems[${index}].pack_size = this.value">
+                </td>
+                <td style="width: 105px;">
+                    <select class="form-select form-select-sm" onchange="parsedItems[${index}].medicine_type = this.value">
+                        <option value="" ${!item.medicine_type ? 'selected' : ''}>Type</option>
+                        <option value="generic" ${item.medicine_type === 'generic' ? 'selected' : ''}>Generic</option>
+                        <option value="pharma" ${item.medicine_type === 'pharma' ? 'selected' : ''}>Pharma</option>
+                    </select>
+                </td>
+                <td class="text-center align-middle" style="width: 50px;">
+                    <input type="checkbox" class="form-check-input border-danger" ${item.rx_required ? 'checked' : ''} onchange="parsedItems[${index}].rx_required = this.checked">
                 </td>
                 <td>
                     <input type="text" class="form-control form-control-sm" value="${item.batch_no || ''}" placeholder="BATCH NO" onchange="parsedItems[${index}].batch_no = this.value">
@@ -568,6 +589,24 @@
         setTimeout(() => {
             callback();
         }, 300); // 300ms pause at 100% for user feedback
+    }
+
+    function handleCategoryChange(category) {
+        const packInput = document.getElementById('manualPackSizeInput');
+        const packLabel = document.getElementById('packSizeLabel');
+        if (!packInput || !packLabel) return;
+
+        if (category === 'Tablet' || category === 'Capsule') {
+            packLabel.innerText = 'Pack Size (Tab/Cap per Strip)';
+            packInput.type = 'number';
+            packInput.placeholder = 'e.g. 10';
+            if (!packInput.value || isNaN(packInput.value)) packInput.value = '10';
+        } else {
+            packLabel.innerText = 'Packing / Volume / Weight';
+            packInput.type = 'text';
+            packInput.placeholder = category === 'Syrup' ? 'e.g. 225 ml' : (category === 'Ointment' ? 'e.g. 15 gm' : 'e.g. 1 vial / 100 ml');
+            if (packInput.value === '10') packInput.value = '';
+        }
     }
 </script>
 {% endblock %}

@@ -221,7 +221,7 @@ class Medicine(db.Model):
     batch_no = db.Column(db.String(50), nullable=False)
     expiry_date = db.Column(db.String(20), nullable=False)
     quantity = db.Column(db.Float, nullable=False, default=0)
-    pack_size = db.Column(db.Integer, default=10) # e.g. 10 tablets per strip
+    pack_size = db.Column(db.String(50), default='10')
     mrp = db.Column(db.Float, nullable=False)
     purchase_price = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=get_ist_time)
@@ -1216,7 +1216,7 @@ def edit_stock(id):
         medicine.purchase_price = float(request.form.get('purchase_price', 0) or 0)
         medicine.rx_required = True if request.form.get('rx_required') in ['true', 'on', 'True'] or 'rx_required' in request.form else False
         medicine.medicine_type = request.form.get('medicine_type', '').strip()
-        medicine.pack_size = int(request.form.get('pack_size', 10) or 10)
+        medicine.pack_size = str(request.form.get('pack_size', '10')).strip()
         medicine.distributor_code = request.form.get('distributor_code', '').strip().upper()
 
         db.session.commit()
@@ -1243,7 +1243,7 @@ def add_stock():
         purchase_price = float(request.form.get('purchase_price', 0) or 0)
         is_rx = ('rx_required' in request.form) or (request.form.get('rx_required') == 'true')
         medicine_type = request.form.get('medicine_type', '')
-        pack_size = int(request.form.get('pack_size', 10) or 10)
+        pack_size = str(request.form.get('pack_size', '10')).strip()
         dist_code = request.form.get('distributor_code', '').strip().upper()
 
         # -------------------------------------------------------------
@@ -1332,9 +1332,11 @@ def bulk_save_stock():
             req_mrp = float(item.get('mrp', 0.0) or 0.0)
             req_pprice = float(item.get('purchase_price', 0.0) or 0.0)
             req_qty = normalize_pharma_qty(item.get('quantity', 1))
-            req_pack = int(item.get('pack_size', 10) or 10)
+            req_pack = str(item.get('pack_size', '10')).strip()
             req_dist = str(item.get('distributor_code', '')).strip().upper()
             req_cat = str(item.get('category', 'Tablet')).strip()
+            req_med_type = str(item.get('medicine_type', '')).strip()
+            req_rx = bool(item.get('rx_required', False))
     
             # STRICT DB QUERY: Match Name, Batch, MRP, Expiry & Purchase Price
             existing_med = Medicine.query.filter(
@@ -1375,7 +1377,8 @@ def bulk_save_stock():
                     name=req_name, company=req_company, category=req_cat,
                     composition=req_comp, batch_no=req_batch, expiry_date=req_expiry,
                     quantity=req_qty, purchase_price=req_pprice, mrp=req_mrp,
-                    pack_size=req_pack, rx_required=item.get('rx_required', False),
+                    pack_size=req_pack, rx_required=req_rx,
+                    medicine_type=req_med_type,
                     distributor_code=req_dist
                 )
                 db.session.add(new_med)
