@@ -61,11 +61,25 @@
     <div class="col-lg-7">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
-                <!-- Search Bar -->
-                <div class="input-group mb-3">
-                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-                    <input type="text" id="medSearch" class="form-control bg-light border-start-0"
-                        placeholder="Type medicine name or composition to add...">
+                <div class="row g-2 mb-3">
+                    <!-- 1. All-in-One Global Search (Name, Brand, Code) -->
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i
+                                    class="bi bi-search text-primary"></i></span>
+                            <input type="text" id="medSearch" class="form-control bg-light border-start-0"
+                                placeholder="Search medicine, brand...">
+                        </div>
+                    </div>
+                    <!-- 2. Dedicated Salt / Composition Search (Substitutes) -->
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i
+                                    class="bi bi-capsule text-success"></i></span>
+                            <input type="text" id="saltSearch" class="form-control bg-light border-start-0"
+                                placeholder="Search by Salt / Composition...">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Inventory List for Cart Selection -->
@@ -394,14 +408,30 @@
     // Stale storage clean-up
     localStorage.removeItem('pos_pending_items');
 
-    // 1. Live Medicine Search
-    document.getElementById('medSearch').addEventListener('keyup', function () {
-        let term = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#medTableBody tr');
+    // 1. Dual Filter Function (Global Search + Dedicated Salt Filter)
+    function filterBillingTable() {
+        const globalTerm = (document.getElementById('medSearch')?.value || '').toLowerCase().trim();
+        const saltTerm = (document.getElementById('saltSearch')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#medTableBody tr');
+
         rows.forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+            const rowText = row.innerText.toLowerCase();
+
+            // Match global term across whole row
+            const matchesGlobal = !globalTerm || rowText.includes(globalTerm);
+
+            // Match salt specifically (or fallback to row text check)
+            const matchesSalt = !saltTerm || rowText.includes(saltTerm);
+
+            row.style.display = (matchesGlobal && matchesSalt) ? '' : 'none';
         });
-    });
+    }
+
+    const medSearchInput = document.getElementById('medSearch');
+    const saltSearchInput = document.getElementById('saltSearch');
+
+    if (medSearchInput) medSearchInput.addEventListener('input', filterBillingTable);
+    if (saltSearchInput) saltSearchInput.addEventListener('input', filterBillingTable);
 
     // Add to Cart Event Listener
     document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
