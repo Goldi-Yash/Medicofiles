@@ -30,6 +30,7 @@ import base64
 import sqlite3
 import tempfile
 import resend
+from PIL import Image
 
 load_dotenv()
 
@@ -804,6 +805,13 @@ def settings():
     staff_members = User.query.filter_by(role='cashier', owner_id=current_user.id).all()
 
     return render_template('settings.html', config=store_config ,current_user=current_user , staff_members=staff_members)
+
+def prepare_image_for_gemini(image_bytes):
+    img = Image.open(io.BytesIO(image_bytes))
+    img.thumbnail((1024, 1024))  # Resize max dimension to 1024px
+    output = io.BytesIO()
+    img.convert('RGB').save(output, format='JPEG', quality=80)
+    return output.getvalue()
 
 @app.route('/upload-pdf-bill', methods=['POST'])
 @login_required
