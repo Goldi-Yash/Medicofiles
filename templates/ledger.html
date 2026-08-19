@@ -34,8 +34,9 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Customer Name</th>
-                            <th>Phone Number</th>
+                            <th>Phone Number/Aadhar No.</th>
                             <th>Address</th>
+                            <th>Last Udhar/Txn Date</th>
                             <th>Outstanding Balance</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
@@ -46,6 +47,12 @@
                             <td class="ps-4 fw-bold text-dark">{{ item.customer.name }}</td>
                             <td><i class="bi bi-telephone text-muted me-1"></i> {{ item.customer.phone }}</td>
                             <td class="text-muted">{{ item.customer.address or 'N/A' }}</td>
+                            <td>
+                                <span class="text-dark fw-medium fs-7">
+                                    <i class="bi bi-calendar3 text-primary me-1"></i>
+                                    {{ item.customer.udhar_date if item.customer.udhar_date else 'N/A' }}
+                                </span>
+                            </td>
                             <td>
                                 {% if item.pending_balance > 0 %}
                                 <span
@@ -67,7 +74,9 @@
                                 {% set wa_phone = item.customer.phone.replace(' ', '').replace('-', '').replace('+', '')
                                 %}
                                 {% set wa_phone = '91' + wa_phone if wa_phone|length == 10 else wa_phone %}
-                                {% set wa_msg = "Hi " + item.customer.name + " your total outstanding balance with Medico Store is ₹" + "%.2f"|format(item.pending_balance) + " Please make the payment on time. Thank you!!" %}
+                                {% set wa_msg = "Hi " + item.customer.name + " your total outstanding balance with
+                                Medico Store is ₹" + "%.2f"|format(item.pending_balance) + " Please make the payment on
+                                time. Thank you!!" %}
 
 
                                 <a href="https://wa.me/{{ wa_phone }}?text={{ wa_msg | urlencode }}" target="_blank"
@@ -150,6 +159,12 @@
                                                 <label class="form-label small fw-semibold">Address / Location</label>
                                                 <textarea name="address" class="form-control"
                                                     rows="2">{{ item.customer.address or '' }}</textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small">Udhar / Entry Date</label>
+                                                <input type="text" name="udhar_date" class="form-control"
+                                                    value="{{ item.customer.udhar_date or '' }}"
+                                                    placeholder="e.g. 19 Aug 2026">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label text-danger small fw-bold">Opening Pending
@@ -262,6 +277,11 @@
                         <label class="form-label small fw-semibold">Address / Location</label>
                         <textarea name="address" class="form-control" rows="2"
                             placeholder="Customer address..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Udhar / Entry Date</label>
+                        <input type="text" name="udhar_date" class="form-control"
+                            placeholder="e.g. 19 Aug 2026, 10:30 AM ya 19/08/2026">
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-danger small fw-bold">Opening Pending Balance(₹)</label>

@@ -349,6 +349,7 @@ class Customer(db.Model):
     phone = db.Column(db.String(50), nullable=False)
     address = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=get_ist_time)
+    udhar_date = db.Column(db.String(100), nullable=True, default='')
     
     # Relationships
     ledger_entries = db.relationship('CustomerLedger', backref='customer', lazy=True, cascade="all, delete-orphan")
@@ -1855,11 +1856,26 @@ def customer_ledger():
         
         if pending_balance > 0:
             total_udhar_market += pending_balance
+
+        # 1. Check in ledger entries
+        last_date = None
+        if hasattr(c, 'ledger_entries') and c.ledger_entries:
+            last_l = c.ledger_entries[-1]
+            last_date = getattr(last_l, 'created_at', None) or getattr(last_l, 'date', None) or getattr(last_l, 'timestamp', None)
+
+        # 2. Fallback to Latest Credit Invoice (Cart Bill ki exact Date uthane ke liye)
+        if not last_date and hasattr(c, 'invoices') and c.invoices:
+            last_inv = c.invoices[-1]
+            last_date = getattr(last_inv, 'created_at', None) or getattr(last_inv, 'date', None)
+
+        # 3. Fallback to Customer Creation Date
+        if not last_date:
+            last_date = getattr(c, 'created_at', None)
             
         customer_data.append({
             'customer': c,
             'pending_balance': pending_balance,
-            'last_txn': c.ledger_entries[-1].date if c.ledger_entries else None
+            'last_txn': last_date
         })
         
     return render_template('ledger.html',
@@ -1901,11 +1917,12 @@ def add_customer():
     phone = request.form.get('phone', '').strip()
     address = request.form.get('address', '').strip()
     opening_balance = float(request.form.get('opening_balance', 0.0) or 0.0)
+    udhar_date = request.form.get('udhar_date', '').strip()
     
     if name and phone:
         existing = user_query(Customer).filter_by(phone=phone).first()
         if not existing:
-            new_cust = Customer(user_id=current_user.id, name=name, phone=phone, address=address)
+            new_cust = Customer(user_id=current_user.id, name=name, phone=phone, address=address, udhar_date=udhar_date)
             db.session.add(new_cust)
             db.session.flush() # ID generate karne ke liye
             
@@ -1937,6 +1954,7 @@ def edit_customer():
     phone = request.form.get('phone', '').strip()
     address = request.form.get('address', '').strip()
     opening_balance_str = request.form.get('opening_balance', '')
+    udhar_date = request.form.get('udhar_date', '').strip()
     
     if customer_id:
         c = user_query(Customer).filter_by(id=customer_id).first()
@@ -1944,6 +1962,7 @@ def edit_customer():
             c.name = name
             c.phone = phone
             c.address = address
+            c.udhar_date = udhar_date
             
             # Target Outstanding Balance jo user chahta hai
             if opening_balance_str != '':
