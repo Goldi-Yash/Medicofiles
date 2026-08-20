@@ -31,19 +31,6 @@
     <!-- Dynamic Top Title Bar Color -->
     <meta name="theme-color" id="pwa-theme-color" content="#0f172a">
 
-    <!-- iOS Safari Native Fullscreen Mode -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Medico">
-
-    <!-- Notch & Full-Screen Area Fix -->
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/icon-192.png') }}">
-
     <!-- Register Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -57,15 +44,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body {
-            /* Screen ke notch aur safe areas ko cover karne ke liye */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-            min-height: 100vh;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f4f6f9;
