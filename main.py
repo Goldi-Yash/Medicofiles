@@ -408,6 +408,10 @@ def serve_manifest():
 def serve_sw():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
+@app.route('/.well-known/assetlinks.json')
+def serve_assetlinks():
+    return send_from_directory('static/.well-known', 'assetlinks.json', mimetype='application/json')
+
 @app.route('/get_medicine_info/<path:med_name>')
 def get_medicine_info(med_name):
     try:

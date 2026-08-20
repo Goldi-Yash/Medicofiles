@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.medicofiles.twa",
+        "sha256_cert_fingerprints": ["21:42:6F:01:98:04:92:81:0D:36:98:FF:F5:E4:73:EC:45:C1:42:96:B8:10:37:36:14:B9:77:2B:99:C9:0E:79"]
+      }
+    }]
