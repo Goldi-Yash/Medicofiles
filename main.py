@@ -1,4 +1,4 @@
-from flask import Flask, render_template , request, redirect, url_for , jsonify , session , send_file , flash , abort
+from flask import Flask, render_template , request, redirect, url_for , jsonify , session , send_file , flash , abort , send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user , AnonymousUserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -399,6 +399,14 @@ def load_cache():
         except Exception:
             return {}
     return {}
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
 @app.route('/get_medicine_info/<path:med_name>')
 def get_medicine_info(med_name):

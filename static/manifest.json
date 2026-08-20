@@ -1,6 +1,7 @@
 {
     "name": "Medico",
     "short_name": "Medico",
+    "description": "Smart pharmacy billing, inventory, and ledger management system.",
     "start_url": "/",
     "id": "/?v=2",
     "display": "standalone",
