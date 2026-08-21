@@ -1195,6 +1195,32 @@ def inventory():
         stock_status=stock_status
     )
 
+@app.route('/inventory/bulk-delete', methods=['POST'])
+@login_required
+def bulk_delete_medicines():
+    if current_user.role != 'admin' and not current_user.has_permission('actions', 'delete_medicine'):
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    data = request.get_json() or {}
+    med_ids = data.get('ids', [])
+
+    if not med_ids:
+        return jsonify({'success': False, 'message': 'No medicines selected'}), 400
+
+    try:
+        # User owner / store scoping ke hisaab se medicines delete karna
+        medicines = user_query(Medicine).filter(Medicine.id.in_(med_ids)).all()
+        count = len(medicines)
+
+        for med in medicines:
+            db.session.delete(med)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'{count} medicines deleted successfully!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
 @app.route('/delete-stock/<int:id>')
 @login_required
 def delete_stock(id):
@@ -2693,7 +2719,7 @@ def download_db_backup():
             );
             CREATE TABLE IF NOT EXISTS medicine (
                 id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, company TEXT, category TEXT,
-                composition TEXT, batch_no TEXT, expiry_date TEXT, quantity REAL, pack_size INTEGER,
+                composition TEXT, batch_no TEXT, expiry_date TEXT, quantity REAL, pack_size TEXT,
                 mrp REAL, purchase_price REAL, medicine_type TEXT, rx_required BOOLEAN
             );
             CREATE TABLE IF NOT EXISTS customer (
@@ -2759,7 +2785,7 @@ def download_db_backup():
                 getattr(m, 'batch_no', ''),
                 str(getattr(m, 'expiry_date', '')),
                 float(m.quantity if m.quantity is not None else 0.0),  # Exact raw float value
-                int(getattr(m, 'pack_size', 10) or 10),
+                str(getattr(m, 'pack_size', '') or '10'),
                 float(getattr(m, 'mrp', 0.0) or 0.0),
                 float(getattr(m, 'purchase_price', 0.0) or 0.0),
                 getattr(m, 'medicine_type', 'Tablet'),
@@ -2917,7 +2943,7 @@ def restore_db_backup():
                             batch_no=batch,
                             expiry_date=str(get_val(d, 'expiry_date', default='')),
                             quantity=backup_qty,
-                            pack_size=int(get_val(d, 'pack_size', default=10)),
+                            pack_size=str(get_val(d, 'pack_size', default='10')),
                             mrp=float(get_val(d, 'mrp', default=0.0)),
                             purchase_price=float(get_val(d, 'purchase_price', default=0.0)),
                             medicine_type=get_val(d, 'medicine_type', default='Tablet'),
