@@ -236,6 +236,34 @@
         .ai-glass-card {
             will-change: transform, box-shadow;
         }
+
+        #tutorial-tab .nav-link {
+            color: #94a3b8;
+            border: 1px solid transparent;
+            transition: all 0.25s ease-in-out;
+            font-weight: 500;
+            font-size: 0.88rem;
+        }
+
+        #tutorial-tab .nav-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+        }
+
+        #tutorial-tab .nav-link.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
     </style>
 </head>
 
@@ -271,6 +299,11 @@
                             href="#stats">Stats</a></li>
                     <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
                             href="#ai-magic">AI-Magic</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light opacity-75 hover-opacity-100" href="javascript:void(0)"
+                            data-bs-toggle="modal" data-bs-target="#appTutorialModal" style="cursor: pointer;">App
+                            Tutorial</a>
+                    </li>
                 </ul>
 
                 <div class="d-flex align-items-center justify-content-center gap-3">
@@ -306,6 +339,11 @@
                             style="border-radius:14px;">
                             <i class="bi bi-play-circle me-2"></i> Explore Features
                         </a>
+                        <button type="button"
+                            class="btn btn-outline-light rounded-pill px-4 py-3 fw-medium d-flex align-items-center gap-2"
+                            data-bs-toggle="modal" data-bs-target="#appTutorialModal">
+                            <i class="bi bi-play-circle"></i> App Tutorial & Guide
+                        </button>
                     </div>
                 </div>
 
@@ -844,6 +882,263 @@
             </div>
         </div>
     </footer>
+
+    <!-- Modern Interactive App Tutorial Modal -->
+    <div class="modal fade" id="appTutorialModal" tabindex="-1" aria-labelledby="appTutorialLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg"
+                style="background: #0b0f19; color: #f8fafc; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.08);">
+
+                <!-- Modal Header -->
+                <div class="modal-header border-bottom border-dark px-4 py-3"
+                    style="background: rgba(15, 23, 42, 0.8);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 rounded-3 bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-journal-bookmark-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="appTutorialLabel">Medicofiles
+                                Interactive Master Guide</h5>
+                            <small class="text-secondary">Complete walkthrough of modules, smart billing, and inventory
+                                control</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body p-4 custom-scroll">
+                    <div class="row g-4">
+
+                        <!-- Navigation Pills -->
+                        <div class="col-lg-3 col-md-4">
+                            <div class="nav flex-column nav-pills gap-2 sticky-top" style="top: 10px;" id="tutorial-tab"
+                                role="tablist">
+                                <button class="nav-link active text-start py-2 px-3 rounded-3" id="tab-overview-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-overview" type="button">
+                                    <i class="bi bi-grid-fill me-2"></i> 1. Dashboard Overview
+                                </button>
+                                <button class="nav-link text-start py-2 px-3 rounded-3" id="tab-pos-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-pos" type="button">
+                                    <i class="bi bi-receipt-cutoff me-2"></i> 2. Billing & POS
+                                </button>
+                                <button class="nav-link text-start py-2 px-3 rounded-3" id="tab-inventory-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-inventory" type="button">
+                                    <i class="bi bi-boxes me-2"></i> 3. Inventory & Stocks
+                                </button>
+                                <button class="nav-link text-start py-2 px-3 rounded-3" id="tab-ledger-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-ledger" type="button">
+                                    <i class="bi bi-book-half me-2"></i> 4. Udhar & Customer Ledger
+                                </button>
+                                <button class="nav-link text-start py-2 px-3 rounded-3" id="tab-ai-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-ai" type="button">
+                                    <i class="bi bi-stars me-2 text-warning"></i> 5. Smart Treatment AI
+                                </button>
+                                <button class="nav-link text-start py-2 px-3 rounded-3" id="tab-security-btn"
+                                    data-bs-toggle="pill" data-bs-target="#tab-security" type="button">
+                                    <i class="bi bi-shield-lock-fill me-2"></i> 6. Backup & Multi-User
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tab Contents -->
+                        <div class="col-lg-9 col-md-8">
+                            <div class="tab-content" id="tutorial-tabContent">
+
+                                <!-- 1. Overview -->
+                                <div class="tab-pane fade show active" id="tab-overview">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-primary bg-opacity-20 text-primary mb-2">Module 01</span>
+                                        <h4 class="fw-bold text-white mb-3">Live Pharmacy Analytics & Monitoring</h4>
+                                        <p class="text-secondary leading-relaxed">The Dashboard gives you real-time
+                                            visibility over daily performance, stock health, and financial streams
+                                            without manual register calculation.</p>
+
+                                        <div class="row g-3 mt-2">
+                                            <div class="col-md-6">
+                                                <div
+                                                    class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+                                                    <div class="text-primary fw-semibold mb-1"><i
+                                                            class="bi bi-graph-up-arrow me-1"></i> Revenue & Profit
+                                                        Tracking</div>
+                                                    <small class="text-muted">Calculates gross sales, total net profit
+                                                        margins, and daily transaction counts in real time.</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div
+                                                    class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+                                                    <div class="text-warning fw-semibold mb-1"><i
+                                                            class="bi bi-bell-fill me-1"></i> Stock Health Alerts</div>
+                                                    <small class="text-muted">Instantly highlights low-stock units and
+                                                        expired/near-expiry medicine batches.</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Billing & POS -->
+                                <div class="tab-pane fade" id="tab-pos">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-success bg-opacity-20 text-success mb-2">Module 02</span>
+                                        <h4 class="fw-bold text-white mb-3">Lightning-Fast POS & Invoice Generation</h4>
+                                        <p class="text-secondary">Designed for high-rush counter hours with keyboard
+                                            shortcuts and instant receipt dispatch.</p>
+
+                                        <ul class="list-unstyled d-flex flex-column gap-3 mt-3">
+                                            <li class="d-flex align-items-start gap-2 text-white-50">
+                                                <i class="bi bi-check2-circle text-success fs-5"></i>
+                                                <span><strong>Batch & Expiry Auto-Sync:</strong> Select medicine to
+                                                    auto-fetch the active batch, expiry, and MRP. Real-time stock
+                                                    auto-deducts on sale.</span>
+                                            </li>
+                                            <li class="d-flex align-items-start gap-2 text-white-50">
+                                                <i class="bi bi-check2-circle text-success fs-5"></i>
+                                                <span><strong>Dual Print Modes:</strong> Generate standard A4 thermal
+                                                    invoices or compact POS roll receipts formatted for 58mm/80mm
+                                                    printers.</span>
+                                            </li>
+                                            <li class="d-flex align-items-start gap-2 text-white-50">
+                                                <i class="bi bi-check2-circle text-success fs-5"></i>
+                                                <span><strong>Multi-Payment Channels:</strong> Accept Cash, UPI/QR,
+                                                    Card, or push directly to Customer Credit (Udhar).</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Inventory -->
+                                <div class="tab-pane fade" id="tab-inventory">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-info bg-opacity-20 text-info mb-2">Module 03</span>
+                                        <h4 class="fw-bold text-white mb-3">Smart Inventory & Salt Composition Mapping
+                                        </h4>
+                                        <p class="text-secondary">Track your pharmacy inventory down to batch levels,
+                                            unit packings, and distributor associations.</p>
+
+                                        <div class="d-flex flex-column gap-2 mt-3">
+                                            <div
+                                                class="p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-10">
+                                                <strong class="text-white">Generic & Salt Search:</strong>
+                                                <p class="text-muted small mb-0">Search medicines not just by brand
+                                                    name, but by active chemical composition when specific brands are
+                                                    out of stock.</p>
+                                            </div>
+                                            <div
+                                                class="p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-10">
+                                                <strong class="text-white">Bulk Selection & Fast Actions:</strong>
+                                                <p class="text-muted small mb-0">Select multiple expired or obsolete
+                                                    items via master checkboxes to delete or restock in one click.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Customer Ledger -->
+                                <div class="tab-pane fade" id="tab-ledger">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-danger bg-opacity-20 text-danger mb-2">Module 04</span>
+                                        <h4 class="fw-bold text-white mb-3">Digital Khata (Customer Credit Ledger)</h4>
+                                        <p class="text-secondary">Eliminate paper khata books with automated
+                                            debit/credit balancing and timestamp tracking.</p>
+
+                                        <div class="row g-3 mt-1">
+                                            <div class="col-12">
+                                                <div
+                                                    class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+                                                    <span class="text-danger fw-semibold">Automatic Udhar
+                                                        Linking:</span>
+                                                    <p class="text-muted small mb-0">When an unpaid bill is created, the
+                                                        amount automatically maps to the customer's ledger profile with
+                                                        individual date stamps.</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div
+                                                    class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+                                                    <span class="text-success fw-semibold">Payment Settlement:</span>
+                                                    <p class="text-muted small mb-0">Record cash/UPI returns with notes
+                                                        to adjust outstanding balances instantly with full statement
+                                                        history.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 5. Smart Treatment AI -->
+                                <div class="tab-pane fade" id="tab-ai">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-warning bg-opacity-20 text-warning mb-2">Module 05</span>
+                                        <h4 class="fw-bold text-white mb-3">Symptom Tagging & AI Treatment Assistant
+                                        </h4>
+                                        <p class="text-secondary">An intelligent assistant built to help pharmacists
+                                            discover suitable OTC combinations and verify dosages.</p>
+
+                                        <div
+                                            class="p-3 rounded-3 bg-dark bg-opacity-50 border border-warning border-opacity-25 mt-3">
+                                            <div class="d-flex align-items-center gap-2 mb-1 text-warning fw-semibold">
+                                                <i class="bi bi-robot"></i> Intelligent Recommendation Engine
+                                            </div>
+                                            <p class="text-muted small mb-0">Tag medicines with disease categories
+                                                (e.g., Fever, Cold, GI distress) and receive instant drug-interaction
+                                                warnings and dosage guidelines powered by Gemini AI integration.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 6. Backup & Security -->
+                                <div class="tab-pane fade" id="tab-security">
+                                    <div class="p-4 rounded-4"
+                                        style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05);">
+                                        <span class="badge bg-primary bg-opacity-20 text-primary mb-2">Module 06</span>
+                                        <h4 class="fw-bold text-white mb-3">Enterprise Cloud Storage & Local Backups
+                                        </h4>
+                                        <p class="text-secondary">Keep your store records safe with dual-layer cloud
+                                            synchronization and role-based staff isolation.</p>
+
+                                        <ul class="list-unstyled d-flex flex-column gap-2 mt-3 text-white-50 small">
+                                            <li><i class="bi bi-check-lg text-primary me-2"></i><strong>Multi-User
+                                                    Roles:</strong> Create Operator/Staff accounts with granular
+                                                permissions (e.g., restrict ledger edits or deletion rights).</li>
+                                            <li><i class="bi bi-check-lg text-primary me-2"></i><strong>One-Click Local
+                                                    DB Backup:</strong> Download an offline copy of your entire
+                                                SQLite/Supabase database at any time.</li>
+                                            <li><i class="bi bi-check-lg text-primary me-2"></i><strong>Multi-Device
+                                                    PWA:</strong> Works on desktop counters, Android APKs, and iPhones
+                                                with zero installation hassle.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer border-top border-dark px-4 py-3 d-flex justify-content-between"
+                    style="background: rgba(15, 23, 42, 0.8);">
+                    <small class="text-white">Built for modern pharmacies & retail medical chains.</small>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3"
+                            data-bs-dismiss="modal">Close</button>
+                        <a href="/login" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold">Launch App Now <i
+                                class="bi bi-arrow-right ms-1"></i></a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
     <!-- 3D Pop Animation CSS & Modal Script -->
     <style>
