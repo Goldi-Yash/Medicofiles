@@ -610,6 +610,70 @@
                     <div class="tab-pane fade" id="tab-account" role="tabpanel">
                         <div class="card border-0 shadow-sm rounded-4 p-4">
 
+                            <!-- Subscription Details Card inside Tab 7 -->
+                            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white"
+                                style="background: #111827;">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                    <div>
+                                        {% if current_user.subscription_status == 'expired' %}
+                                        <span
+                                            class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 mb-2 text-uppercase fw-bold px-3 py-1">
+                                            <i class="bi bi-x-circle me-1"></i> {{ current_user.plan_type }} Plan
+                                            (Expired)
+                                        </span>
+                                        {% else %}
+                                        <span
+                                            class="badge {% if current_user.plan_type == 'ultra' %}bg-warning text-dark{% elif current_user.plan_type == 'pro' %}bg-primary{% else %}bg-secondary{% endif %} mb-2 text-uppercase fw-bold px-3 py-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i> {{ current_user.plan_type }}
+                                            Plan Active
+                                        </span>
+                                        {% endif %}
+
+                                        <h5 class="fw-bold mb-1 text-white">Current Subscription Status</h5>
+                                        <p class="text-white-50 small mb-0">
+                                            {% if current_user.subscription_status == 'expired' %}
+                                            Expired on: <strong class="text-danger">{{
+                                                current_user.subscription_end_date.strftime('%d %b, %Y') if
+                                                current_user.subscription_end_date else 'Expired' }}</strong>
+                                            {% else %}
+                                            Valid until: <strong class="text-light">{{
+                                                current_user.subscription_end_date.strftime('%d %b, %Y') if
+                                                current_user.subscription_end_date else 'Lifetime' }}</strong>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if current_user.subscription_status == 'expired' %}
+                                        <!-- Expired State: Direct Renew Button -->
+                                        <a href="/checkout?plan={{ current_user.plan_type if current_user.plan_type in ['basic', 'pro', 'ultra'] else 'pro' }}"
+                                            class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Renew {{
+                                            current_user.plan_type|upper }} Plan
+                                        </a>
+                                        {% else %}
+                                        <!-- Active State: Upgrade & Manage Buttons -->
+                                        {% if current_user.plan_type == 'basic' %}
+                                        <a href="/checkout?plan=pro"
+                                            class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                                            <i class="bi bi-lightning-charge-fill me-1"></i> Upgrade to Pro (₹399)
+                                        </a>
+                                        {% elif current_user.plan_type == 'pro' %}
+                                        <a href="/checkout?plan=ultra"
+                                            class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm">
+                                            <i class="bi bi-arrow-up-circle-fill me-1"></i> Upgrade to Ultra (₹799)
+                                        </a>
+                                        {% endif %}
+
+                                        <a href="/checkout?plan={{ current_user.plan_type if current_user.plan_type in ['basic', 'pro', 'ultra'] else 'pro' }}"
+                                            class="btn btn-outline-light rounded-pill px-3 fw-semibold">
+                                            Manage / Switch
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Professional Header Section -->
                             <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
                                 <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary d-flex align-items-center justify-content-center"

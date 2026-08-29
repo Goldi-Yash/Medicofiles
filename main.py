@@ -41,6 +41,14 @@ wiki = wikipediaapi.Wikipedia(
     language='en'
 )
 
+# Uploads directory
+UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static', 'uploads', 'payments')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def user_query(model):
     """Auto-filters DB model for store owner OR staff member's store owner"""
     if hasattr(model, 'user_id') and current_user.is_authenticated:
@@ -160,6 +168,12 @@ class User(db.Model, UserMixin):
     deactivated_at = db.Column(db.DateTime, nullable=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
+    # Subscription Fields (Using your get_ist_time)
+    plan_type = db.Column(db.String(50), default='trial') # trial, basic, pro, ultra
+    subscription_status = db.Column(db.String(50), default='active') # active, expired
+    trial_start_date = db.Column(db.DateTime, default=get_ist_time)
+    subscription_end_date = db.Column(db.DateTime, default=lambda: get_ist_time() + timedelta(days=30))
+
     def get_permissions(self):
         if self.role == 'admin':
             return {"all": True}
@@ -191,6 +205,107 @@ class User(db.Model, UserMixin):
         if not self.password_hash:
             return False
         return check_password_hash(self.password_hash, password)
+
+    def get_effective_plan(self):
+        """Owner ka plan fetch karega agar staff login hai"""
+        owner = self if self.role == 'admin' or not getattr(self, 'owner_id', None) else User.query.get(self.owner_id)
+        if not owner:
+            return 'basic'
+            
+        # Check trial / subscription expiry using IST
+        if owner.subscription_end_date and get_ist_time() > owner.subscription_end_date:
+            return 'expired'
+            
+        return owner.plan_type or 'trial'
+
+    def can_access(self, feature_name):
+        """Feature availability check based on exact pricing matrix"""
+        plan = self.get_effective_plan()
+        
+        # 30-day unrestricted trial ya ultra me sab kuch allowed
+        if plan in ['trial', 'ultra']:
+            return True
+            
+        if plan == 'expired':
+            return False
+
+        # Pro Plan
+        if plan == 'pro':
+            allowed_in_pro = [
+                'unlimited_inventory',
+                'whatsapp_billing',
+                'stock_alerts_page',
+                'whatsapp_ledger',
+                'ai_smart_inventory',
+                'ai_drug_assistant',
+                'symptom_tags_master',
+                'smart_treatment',
+                'staff_management_pro',
+                'db_restore'
+            ]
+            return feature_name in allowed_in_pro
+
+        # Basic Plan
+        if plan == 'basic':
+            allowed_in_basic = [
+                'standard_billing',
+                'manual_inventory_500',
+                'ledger_manual',
+                'db_download_only'
+            ]
+            return feature_name in allowed_in_basic
+
+        return False
+
+# Feature Gate Decorator (Outside User Class)
+def require_feature(feature_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+            if not current_user.can_access(feature_name):
+                flash('Upgrade Required: This feature is not available in your current plan.', 'warning')
+                return redirect(url_for('dashboard'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+# Context Processor for HTML Templates (Outside User Class)
+@app.context_processor
+def inject_subscription_status():
+    if current_user.is_authenticated:
+        plan = current_user.get_effective_plan()
+        days_left = 0
+        owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+        if owner and owner.subscription_end_date:
+            now_ist = get_ist_time()
+            if owner.subscription_end_date > now_ist:
+                days_left = (owner.subscription_end_date - now_ist).days
+        return {
+            'user_plan': plan,
+            'trial_days_left': days_left,
+            'can_access': current_user.can_access
+        }
+    return {
+        'user_plan': 'guest',
+        'trial_days_left': 0,
+        'can_access': lambda x: False
+    }
+
+@app.before_request
+def enforce_active_subscription():
+    if current_user.is_authenticated:
+        # 'switch_to_trial' ko allowed list me add karein
+        allowed_endpoints = ['checkout_plan', 'confirm_subscription', 'confirm_subscription_with_proof' , 'switch_to_trial', 'logout', 'static']
+        if request.endpoint in allowed_endpoints:
+            return
+            
+        owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+        if owner and owner.subscription_status == 'pending_payment':
+            target_plan = request.args.get('plan') or owner.plan_type or 'basic'
+            return redirect(url_for('checkout_plan', plan=target_plan))
     
 class DemandNotes(db.Model):
     __tablename__ = 'demand_notes'
@@ -367,6 +482,16 @@ class CustomerLedger(db.Model):
     note = db.Column(db.String(255), nullable=True) # Bill/Invoice ID ya Receipt Info
     date = db.Column(db.DateTime, default=get_ist_time)
 
+class SubscriptionPayment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    plan_type = db.Column(db.String(50), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    utr_number = db.Column(db.String(20), unique=True, nullable=False)
+    screenshot_url = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(50), default='verified')
+    created_at = db.Column(db.DateTime, default=get_ist_time)
+
 def get_settings():
     if current_user.is_authenticated:
         owner_id = current_user.owner_id if getattr(current_user, 'owner_id', None) else current_user.id
@@ -413,6 +538,7 @@ def serve_assetlinks():
     return send_from_directory('static/.well-known', 'assetlinks.json', mimetype='application/json')
 
 @app.route('/get_medicine_info/<path:med_name>')
+@require_feature('ai_drug_assistant')
 def get_medicine_info(med_name):
     try:
         med_key = med_name.strip().lower()
@@ -828,7 +954,18 @@ def prepare_image_for_gemini(image_bytes):
 
 @app.route('/upload-pdf-bill', methods=['POST'])
 @login_required
+# @require_feature('ai_smart_inventory')
 def upload_pdf_bill():
+
+    # --- PRO Feature Gate Check ---
+    if not current_user.can_access('ai_smart_inventory'):
+        return jsonify({
+            'status': 'error',
+            'is_pro_lock': True,
+            'message': 'AI Invoice & File Parser is a Pro feature. Please upgrade to Pro Plan to auto-import stock.'
+        }), 200
+    # ------------------------------
+
     dist_code = request.form.get('distributor_code', '').strip().upper()
 
     if 'bill_pdf' not in request.files:
@@ -1338,7 +1475,16 @@ def add_stock():
                         return redirect(url_for('inventory')) # Ya jo bhi inventory page ka route function name hai (e.g. url_for('stocks'))
 
         # If no exact match, create a NEW row as usual below:
-        # new_medicine = Medicine(...)
+        # --- 500 Medicine Limit Check for Basic Plan ---
+        plan = current_user.get_effective_plan()
+        if plan == 'basic':
+            total_meds = user_query(Medicine).count()
+            if total_meds >= 500:
+                if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'status': 'error', 'message': 'Basic Plan allows maximum 500 medicines. Please upgrade to Pro for Unlimited Stock.'}), 403
+                flash('Basic Plan allows maximum 500 medicines. Please upgrade to Pro for Unlimited Stock.', 'warning')
+                return redirect(url_for('inventory'))
+        # -----------------------------------------------
 
         # DB Model object banana
         new_med = Medicine(
@@ -1810,6 +1956,7 @@ def parse_expiry(expiry_str):
 
 @app.route('/inventory/alerts')
 @login_required
+@require_feature('stock_alerts_page')
 def inventory_alerts():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'alerts'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -2061,6 +2208,7 @@ def delete_customer(customer_id):
 # 1. Disease Tags Management Page
 @app.route('/symptom-tags', methods=['GET', 'POST'])
 @login_required
+@require_feature('symptom_tags_master')
 def symptom_tags():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'symptom_tags'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -2175,6 +2323,7 @@ def delete_disease_tag(tag_id):
 # 1. Smart Symptom Assistant Counter Page
 @app.route('/symptom-assistant')
 @login_required
+@require_feature('smart_treatment')
 def symptom_assistant():
     if current_user.role != 'admin' and not current_user.has_permission('modules', 'assistant'):
         flash('ACCESS_RESTRICTED', 'access_denied_popup')
@@ -2430,49 +2579,73 @@ def login():
 
     return render_template('login.html')
 
-# 2. SIGNUP ROUTE (With Try-Except Safety)
+# 2. SIGNUP ROUTE (With Subscription & Plan Auto-Routing)
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    # URL query ya Form dono se plan extract karega
+    selected_plan = request.form.get('selected_plan') or request.args.get('plan', 'trial')
+    
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
 
         if not email or not password:
             flash('Please fill in all fields!', 'warning')
-            return redirect(url_for('signup'))
+            return redirect(url_for('signup', plan=selected_plan))
 
-        # MINIMUM 6 CHARACTERS VALIDATION
         if len(password) < 6:
             flash('Password must be at least 6 characters long!', 'danger')
-            return redirect(url_for('signup'))
+            return redirect(url_for('signup', plan=selected_plan))
 
-        # Check existing user
         existing_user = User.query.filter(func.lower(User.email) == email).first()
         if existing_user:
             flash('Email already registered! Please login directly.', 'info')
             return redirect(url_for('login'))
 
         try:
-            # Generate unique username from email
             base_username = email.split('@')[0]
             extracted_username = base_username
             while User.query.filter(func.lower(User.username) == extracted_username.lower()).first():
                 extracted_username = f"{base_username}_{secrets.token_hex(2)}"
 
-            new_user = User(username=extracted_username, email=email)
-            new_user.password_hash = generate_password_hash(password)
-            
+            # Plan Verification Logic
+            is_trial = (selected_plan == 'trial')
+            new_plan_type = 'trial' if is_trial else selected_plan
+            new_sub_status = 'active' if is_trial else 'pending_payment'
+            # Paid plan par trial days nahi balki payment pending rahegi
+            new_end_date = get_ist_time() + timedelta(days=30) if is_trial else get_ist_time()
+
+            new_user = User(
+                username=extracted_username,
+                email=email,
+                role='admin',
+                plan_type=new_plan_type,
+                subscription_status=new_sub_status,
+                trial_start_date=get_ist_time(),
+                subscription_end_date=new_end_date
+            )
+            new_user.set_password(password)
+
             db.session.add(new_user)
             db.session.commit()
 
-            flash('Account created successfully! Please login.', 'success')
-            return redirect(url_for('login'))
-        except Exception as e:
-            db.session.rollback() # 👈 Database lock/error se bachata hai!
-            flash('Something went wrong during signup. Please try again.', 'danger')
-            return redirect(url_for('signup'))
+            # Auto Login
+            login_user(new_user)
 
-    return render_template('signup.html')
+            # Routing
+            if is_trial:
+                flash('Welcome! Your 30-Day Free Trial has started.', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                # Seedha checkout screen par payment QR ke sath bhejega
+                return redirect(url_for('checkout_plan', plan=selected_plan))
+
+        except Exception as e:
+            db.session.rollback()
+            flash('Something went wrong during signup. Please try again.', 'danger')
+            return redirect(url_for('signup', plan=selected_plan))
+
+    return render_template('signup.html', selected_plan=selected_plan)
 
 # 1. FORGOT PASSWORD ROUTE (Sends Link to Gmail)
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -2860,6 +3033,7 @@ def download_db_backup():
 @app.route('/restore-db-backup', methods=['POST'])
 @login_required
 @admin_required
+@require_feature('db_restore')
 def restore_db_backup():
     if 'backup_file' not in request.files:
         flash('No backup file selected.', 'danger')
@@ -3232,6 +3406,17 @@ def create_verified_staff():
     if not password or len(password) < 6:
         return jsonify({'status': 'error', 'message': 'Password must be at least 6 characters!'}), 400
 
+    # --- Plan-Based Staff Account Restrictions ---
+    plan = current_user.get_effective_plan()
+    if plan == 'basic':
+        return jsonify({'status': 'error', 'message': 'Staff accounts are not included in the Basic Plan. Please upgrade to Pro.'}), 403
+
+    if plan == 'pro':
+        current_staff_count = User.query.filter_by(owner_id=current_user.id).count()
+        if current_staff_count >= 2:
+            return jsonify({'status': 'error', 'message': 'Pro Plan allows a maximum of 2 Staff accounts. Upgrade to Ultra for Unlimited Staff.'}), 403
+    # --------------------------------------------
+
     new_staff = User(
         username=name or email.split('@')[0],
         email=email,
@@ -3511,6 +3696,143 @@ def save_demands():
     
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Demands updated successfully!'})
+
+# 1. Checkout Page Route
+@app.route('/checkout')
+@login_required
+def checkout_plan():
+    plan = request.args.get('plan', 'pro')
+    
+    owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+    if owner and owner.subscription_status == 'pending_payment':
+        owner.plan_type = 'pro' if plan == 'pro_yearly' else plan
+        db.session.commit()
+
+    # Check: Kya user ne pehle trial use kiya hai?
+    # Agar trial_start_date set hai aur plan active/expired ho chuka hai
+    has_used_trial = False
+    trial_status_label = None
+    
+    now = get_ist_time()
+    if owner.trial_start_date is not None:
+        has_used_trial = True
+        if owner.plan_type == 'trial' and owner.subscription_end_date:
+            if owner.subscription_end_date > now:
+                days_left = (owner.subscription_end_date - now).days + 1
+                trial_status_label = f"Trial Active ({days_left} Days Left)"
+            else:
+                trial_status_label = "Trial Expired"
+
+    all_plans = {
+        'basic': {'name': 'Basic Starter', 'price': 199, 'validity': '1 Month', 'badge': 'Starter', 'features': ['500 Medicines Limit', 'Standard POS Billing', 'Customer Ledger (Manual)', 'Local DB Backup']},
+        'pro': {'name': 'Pro / Growth Plan', 'price': 399, 'validity': '1 Month', 'badge': 'Most Popular', 'features': ['Unlimited Medicines & Bills', 'WhatsApp Invoices & Reminders', 'Gemini AI Drug & Salt Assistant', 'AI Invoice PDF/Excel Parser', 'Stock Alerts & Treatment Engine']},
+        'pro_yearly': {'name': 'Pro Annual Plan', 'price': 3999, 'validity': '1 Year (Save 17%)', 'badge': 'Best Value', 'features': ['Everything in Pro Plan for 1 Year', 'Unlimited Medicines & Bills', 'WhatsApp Invoices & Reminders', 'AI Invoice Parser & AI Drug Assistant', 'Priority VIP Support']},
+        'ultra': {'name': 'Ultra Multi-Counter', 'price': 799, 'validity': '1 Month', 'badge': 'Multi-Counter', 'features': ['Everything in Pro Plan', 'Unlimited Staff Accounts', 'Custom Roles & Isolated Permissions', 'Multi-Branch Architecture', 'Automated Cloud Snapshots']}
+    }
+    
+    selected_plan_info = all_plans.get(plan, all_plans['pro'])
+    return render_template(
+        'checkout.html', 
+        plan_info=selected_plan_info, 
+        plan_key=plan, 
+        all_plans=all_plans,
+        has_used_trial=has_used_trial,
+        trial_status_label=trial_status_label
+    )
+
+# 2. Instant Payment Confirmation / Activation API
+@app.route('/api/confirm-subscription', methods=['POST'])
+@login_required
+def confirm_subscription():
+    # Supports both FormData (with screenshot) and JSON
+    if request.is_json:
+        data = request.get_json() or {}
+        plan_key = data.get('plan', 'pro')
+        utr_no = str(data.get('utr', '')).strip()
+        screenshot = None
+    else:
+        plan_key = request.form.get('plan', 'pro')
+        utr_no = str(request.form.get('utr', '')).strip()
+        screenshot = request.files.get('screenshot')
+
+    # 1. Strict 12-Digit Numeric UTR Check
+    if not utr_no or len(utr_no) != 12 or not utr_no.isdigit():
+        return jsonify({
+            'status': 'error',
+            'message': 'Please enter a valid 12-digit numeric UPI Transaction / UTR Number.'
+        }), 400
+
+    # 2. Duplicate UTR Prevention (Anti-Fraud Lock)
+    existing_payment = SubscriptionPayment.query.filter_by(utr_number=utr_no).first()
+    if existing_payment:
+        return jsonify({
+            'status': 'error',
+            'message': 'This UTR Reference Number has already been submitted.'
+        }), 400
+
+    # 3. Handle Screenshot Upload (if attached)
+    screenshot_url = None
+    if screenshot and screenshot.filename and allowed_file(screenshot.filename):
+        filename = f"pay_{current_user.id}_{int(datetime.now().timestamp())}_{secure_filename(screenshot.filename)}"
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        screenshot.save(filepath)
+        screenshot_url = f"/static/uploads/payments/{filename}"
+
+    owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+    
+    plan_prices = {'basic': 199, 'pro': 399, 'pro_yearly': 3999, 'ultra': 799}
+    days_to_add = 365 if plan_key == 'pro_yearly' else 30
+    actual_plan = 'pro' if plan_key == 'pro_yearly' else plan_key
+
+    # 4. Save Payment Audit in Database
+    new_payment = SubscriptionPayment(
+        user_id=owner.id,
+        plan_type=plan_key,
+        amount=plan_prices.get(plan_key, 399),
+        utr_number=utr_no,
+        screenshot_url=screenshot_url,
+        status='verified'
+    )
+    db.session.add(new_payment)
+
+    # 5. Activate / Extend Subscription
+    owner.plan_type = actual_plan
+    owner.subscription_status = 'active'
+    owner.subscription_end_date = get_ist_time() + timedelta(days=days_to_add)
+    db.session.commit()
+
+    return jsonify({
+        'status': 'success',
+        'message': f'🎉 Payment verified! Your {actual_plan.upper()} plan has been activated.'
+    })
+
+# Checkout se 1-click Trial Activate karne ka route
+@app.route('/api/switch-to-trial', methods=['POST'])
+@login_required
+def switch_to_trial():
+    try:
+        owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+        
+        # Abuse check: Agar user ka trial pehle shuru ho chuka hai aur pending_payment nahi hai fresh
+        if owner.trial_start_date is not None and owner.plan_type != 'trial' and owner.subscription_status != 'pending_payment':
+            return jsonify({
+                'status': 'error',
+                'message': 'You have already used your 30-Day Free Trial on this account.'
+            }), 400
+            
+        owner.plan_type = 'trial'
+        owner.subscription_status = 'active'
+        owner.trial_start_date = get_ist_time()
+        owner.subscription_end_date = get_ist_time() + timedelta(days=30)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Switched to 30-Day Free Trial successfully!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -222,9 +222,20 @@
         "%.2f"|format(sale.total_amount) +"\nPayment Mode: " + sale.payment_mode + "\n\nTo download your bill, visit:\n"
         + bill_url + "\n\nThank you! Take care of your health. " %}
 
+        {% if can_access('whatsapp_billing') %}
+        <!-- Unlocked: Pro / Ultra / Trial Users -->
         <button onclick="shareWhatsApp('{{ wa_phone }}', '{{ wa_msg | urlencode }}')" class="btn-action btn-whatsapp">
             📱 Share on WhatsApp
         </button>
+        {% else %}
+        <!-- Locked: Basic Plan (Disabled with Upgrade Tooltip/Badge) -->
+        <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2 opacity-50"
+            title="Available in Pro Plan"
+            onclick="alert('WhatsApp Invoice is a Pro Feature. Please upgrade your plan to send digital bills!')">
+            <i class="bi bi-whatsapp"></i> <span class="text-decoration-line-through">📱 Share on WhatsApp</span>
+            <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">PRO</span>
+        </button>
+        {% endif %}
 
         <button onclick="window.print()" class="btn-action btn-print">🖨️ Print Receipt</button>
     </div>

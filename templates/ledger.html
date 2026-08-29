@@ -79,11 +79,19 @@
                                 time. Thank you!!" %}
 
 
+                                {% if can_access('whatsapp_ledger') %}
                                 <a href="https://wa.me/{{ wa_phone }}?text={{ wa_msg | urlencode }}" target="_blank"
                                     class="btn btn-sm btn-outline-success me-1 rounded-3"
                                     title="Send WhatsApp Reminder">
                                     <i class="bi bi-whatsapp"></i>
                                 </a>
+                                {% else %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1 rounded-3 opacity-50"
+                                    title="WhatsApp Reminders available in Pro Plan"
+                                    onclick="alert('WhatsApp Reminder is a Pro Feature. Please upgrade your plan to send 1-click reminders.')">
+                                    <i class="bi bi-whatsapp"></i>
+                                </button>
+                                {% endif %}
                                 {% endif %}
                                 <button class="btn btn-sm btn-outline-secondary me-1 rounded-3" title="Edit Customer"
                                     data-bs-toggle="modal" data-bs-target="#editCustomerModal{{ item.customer.id }}">

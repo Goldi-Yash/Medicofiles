@@ -307,6 +307,10 @@
                     <li class="nav-item">
                         <a class="nav-link text-light opacity-75 hover-opacity-100" href="#contact-us">Contact Us</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light opacity-75 hover-opacity-100" href="#pricing-section">Pricing
+                            Plans</a>
+                    </li>
                 </ul>
 
                 <div class="d-flex align-items-center justify-content-center gap-3">
@@ -873,6 +877,144 @@
         </div>
     </div>
 
+    <!-- Sleek 4-Card Pricing & Plans Section -->
+    <section id="pricing-section" class="py-5 position-relative"
+        style="background: rgba(11, 15, 25, 0.98); border-top: 1px solid rgba(255, 255, 255, 0.08);">
+        <div class="container-fluid px-lg-5 py-5">
+
+            <div class="text-center mb-5">
+                <span class="badge bg-primary bg-opacity-20 text-white px-3 py-2 rounded-pill fw-semibold mb-2">Pricing
+                    & Access</span>
+                <h2 class="display-6 fw-bold text-white">Choose the Right Plan for Your Pharmacy</h2>
+                <p class="text-white small">Start risk-free with our 30-Day Free Trial or purchase a plan directly.</p>
+            </div>
+
+            <div class="row g-4 align-items-stretch justify-content-center">
+
+                <!-- Card 1: 30-Day Free Trial -->
+                <div class="col-xl-3 col-lg-6 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column border border-success border-opacity-50 position-relative shadow"
+                        style="background: linear-gradient(180deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%);">
+                        <span
+                            class="badge bg-success position-absolute top-0 start-50 translate-middle rounded-pill px-3 py-1 shadow">ZERO
+                            COST</span>
+                        <span class="badge bg-success bg-opacity-25 text-success w-fit mb-2 mt-1">Full Access</span>
+                        <h4 class="fw-bold text-white mb-1">30-Day Free Trial</h4>
+                        <div class="my-3">
+                            <span class="display-6 fw-bold text-white">₹0</span><span class="text-white small"> / 30
+                                days</span>
+                        </div>
+                        <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                            <li><i class="bi bi-check2 text-success me-2"></i><strong>100% Unrestricted
+                                    Features</strong></li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Unlimited Medicines & Billing</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>WhatsApp Invoices & Reminders</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>AI Drug & Salt Assistant</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>AI Invoice PDF/Excel Parser</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Stock Alerts & Symptom Master</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>No Credit Card Required</li>
+                        </ul>
+                        <a href="{{ url_for('signup', plan='trial') }}"
+                            class="btn btn-success rounded-pill py-2 w-100 fw-bold shadow">
+                            <i class="bi bi-rocket-takeoff-fill me-1"></i> Start Free Trial
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Card 2: Basic Plan (Purchase) -->
+                <div class="col-xl-3 col-lg-6 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column border border-secondary border-opacity-25"
+                        style="background: rgba(255, 255, 255, 0.02);">
+                        <span class="badge bg-secondary bg-opacity-25 text-light w-fit mb-2">Starter</span>
+                        <h4 class="fw-bold text-white mb-1">Basic Plan</h4>
+                        <div class="my-3">
+                            <span class="display-6 fw-bold text-white">₹199</span><span class="text-white small"> /
+                                month</span>
+                        </div>
+                        <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                            <li><i class="bi bi-check2 text-success me-2"></i>Up to 500 Medicines Limit</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Standard POS & Fast Billing</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Customer Ledger (Manual)</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Local DB Backup Download</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>24x7 Call & SMS Support</li>
+                            <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No WhatsApp Invoice</li>
+                            <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No AI Tools / Uses</li>
+                            <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Staff Accounts</li>
+                        </ul>
+                        <a href="{% if current_user.is_authenticated %}/checkout?plan=basic{% else %}{{ url_for('signup', plan='basic') }}{% endif %}"
+                            class="btn btn-outline-light rounded-pill py-2 w-100 fw-semibold">
+                            <i class="bi bi-cart-check-fill me-1"></i> Buy Basic Plan
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Card 3: Pro Plan (Purchase - Highlighted) -->
+                <div class="col-xl-3 col-lg-6 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column border border-primary position-relative shadow-lg"
+                        style="background: linear-gradient(180deg, rgba(37, 99, 235, 0.15) 0%, rgba(15, 23, 42, 0.75) 100%);">
+                        <span
+                            class="badge bg-primary position-absolute top-0 start-50 translate-middle rounded-pill px-3 py-1 shadow">MOST
+                            POPULAR</span>
+                        <span class="badge bg-primary bg-opacity-25 text-primary w-fit mb-2 mt-1">Recommended</span>
+                        <h4 class="fw-bold text-white mb-1">Pro / Growth</h4>
+                        <div class="my-3">
+                            <span class="display-6 fw-bold text-white">₹399</span><span class="text-white small"> /
+                                month</span>
+                            <div class="small text-warning fw-semibold mt-1">or ₹3,999 / year (Save 17%)</div>
+                        </div>
+                        <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>Unlimited Medicines &
+                                    Bills</strong></li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>WhatsApp Invoices &
+                                    Reminders</strong></li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>Gemini AI Drug & Uses
+                                    Assistant</strong></li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>AI Invoice PDF/Excel
+                                    Parser</strong></li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>Symptom Tags & Treatment Engine
+                            </li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>Dedicated Stock Alerts Page</li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>1 Admin + 2 Staff Accounts</li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore</li>
+                        </ul>
+                        <a href="{% if current_user.is_authenticated %}/checkout?plan=pro{% else %}{{ url_for('signup', plan='pro') }}{% endif %}"
+                            class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Buy Pro Plan
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Card 4: Ultra Plan (Purchase) -->
+                <div class="col-xl-3 col-lg-6 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column border border-warning border-opacity-50 position-relative shadow"
+                        style="background: rgba(255, 255, 255, 0.02);">
+                        <span class="badge bg-warning text-dark w-fit mb-2">Multi-Counter</span>
+                        <h4 class="fw-bold text-white mb-1">Ultra Plan</h4>
+                        <div class="my-3">
+                            <span class="display-6 fw-bold text-white">₹799</span><span class="text-white small"> /
+                                month</span>
+                        </div>
+                        <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Everything in Pro Plan</li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i><strong>Unlimited Staff Accounts</strong>
+                            </li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Custom Roles & Permissions</li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Multi-Branch Architecture</li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Automated Cloud Snapshots</li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Priority On-Call Support</li>
+                        </ul>
+                        <a href="{% if current_user.is_authenticated %}/checkout?plan=ultra{% else %}{{ url_for('signup', plan='ultra') }}{% endif %}"
+                            class="btn btn-outline-warning rounded-pill py-2 w-100 fw-semibold">
+                            <i class="bi bi-shield-fill-check me-1"></i> Buy Ultra Plan
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
     <!-- Sleek Contact Us Section -->
     <section id="contact-us" class="py-5 position-relative"
         style="background: rgba(11, 15, 25, 0.95); border-top: 1px solid rgba(255, 255, 255, 0.08);">
@@ -1108,7 +1250,8 @@
                                                     class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
                                                     <span class="text-danger fw-semibold">Automatic Udhar
                                                         Linking:</span>
-                                                    <p class="text-secondary small mb-0">When an unpaid bill is created, the
+                                                    <p class="text-secondary small mb-0">When an unpaid bill is created,
+                                                        the
                                                         amount automatically maps to the customer's ledger profile with
                                                         individual date stamps.</p>
                                                 </div>
@@ -1117,7 +1260,8 @@
                                                 <div
                                                     class="p-3 rounded-3 bg-dark bg-opacity-50 border border-secondary border-opacity-25">
                                                     <span class="text-success fw-semibold">Payment Settlement:</span>
-                                                    <p class="text-secondary small mb-0">Record cash/UPI returns with notes
+                                                    <p class="text-secondary small mb-0">Record cash/UPI returns with
+                                                        notes
                                                         to adjust outstanding balances instantly with full statement
                                                         history.</p>
                                                 </div>

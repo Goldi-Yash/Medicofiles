@@ -406,7 +406,16 @@
                 }
                 document.body.style.cursor = 'default';
 
-                if (data.status === 'success' && data.items.length > 0) {
+                if (data.is_pro_lock) {
+                    // PRO Plan Locked Alert / Modal Trigger
+                    const pricingModalEl = document.getElementById('pricingUpgradeModal');
+                    if (pricingModalEl) {
+                        const upgradeModal = bootstrap.Modal.getOrCreateInstance(pricingModalEl);
+                        upgradeModal.show();
+                    } else {
+                        alert('⭐ PRO FEATURE: AI Smart Inventory (PDF/Image/Excel parsing) is available in Pro & Ultra Plans. Please upgrade to unlock automated file extraction!');
+                    }
+                } else if (data.status === 'success' && data.items && data.items.length > 0) {
                     parsedItems = data.items.map(item => ({
                         ...item,
                         distributor_code: item.distributor_code || distTagInput
@@ -417,7 +426,7 @@
                     const stockModal = bootstrap.Modal.getOrCreateInstance(stockModalEl);
                     stockModal.show();
                 } else {
-                    alert('Could not parse items: ' + (data.message || 'Please check file layout.'));
+                    alert(data.message || 'Could not parse items. Please check file layout.');
                 }
             })
             .catch(err => {
@@ -596,7 +605,7 @@
 
                 // Change status text dynamically
                 if (percent > 25 && percent <= 55) {
-                    if (subtext) subtext.innerText = "Analyzing PDF layout with Gemini AI...";
+                    if (subtext) subtext.innerText = "Analyzing PDF layout with AI...";
                 } else if (percent > 55) {
                     if (subtext) subtext.innerText = "Extracting PTR, PTS rates & Expiry dates...";
                 }

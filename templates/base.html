@@ -420,10 +420,16 @@
                     </li>
                     <!-- Stock Alerts -->
                     <li class="nav-item">
-                        {% if current_user.has_permission('modules', 'alerts') %}
+                        {% if current_user.has_permission('modules', 'alerts') and can_access('stock_alerts_page') %}
                         <a href="/inventory/alerts"
                             class="nav-link {% if request.path == '/inventory/alerts' %}active{% endif %}">
                             <i class="bi bi-bell-fill"></i><span class="nav-text">Stock Alerts</span>
+                        </a>
+                        {% elif not can_access('stock_alerts_page') %}
+                        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#pricingUpgradeModal"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-bell-fill"></i><span class="nav-text">Stock Alerts</span>
+                            <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.6rem;">PRO</span>
                         </a>
                         {% else %}
                         <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Stock Alerts')"
@@ -462,33 +468,42 @@
                     </li>
                     <!-- Symptom Tags Master -->
                     <li class="nav-item">
-                        {% if current_user.has_permission('modules', 'symptom_tags') %}
-                        <a class="nav-link {% if request.path == '/symptom-tags' %}active{% endif %}"
-                            href="/symptom-tags">
-                            <i class="bi bi-tags-fill"></i>
-                            <span class="nav-text">Symptom Tags Master</span>
+                        {% if current_user.has_permission('modules', 'symptom_tags') and
+                        can_access('symptom_tags_master') %}
+                        <a href="/symptom-tags"
+                            class="nav-link {% if request.path == '/symptom-tags' %}active{% endif %}">
+                            <i class="bi bi-tags-fill"></i><span class="nav-text">Symptom Tags Master</span>
+                        </a>
+                        {% elif not can_access('symptom_tags_master') %}
+                        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#pricingUpgradeModal"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-tags-fill"></i><span class="nav-text">Symptom Tags Master</span>
+                            <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.6rem;">PRO</span>
                         </a>
                         {% else %}
                         <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Symptom Tags Master')"
                             class="nav-link text-white-50 opacity-50">
-                            <i class="bi bi-tags-fill"></i>
-                            <span class="nav-text">Symptom Tags Master</span>
+                            <i class="bi bi-tags-fill"></i><span class="nav-text">Symptom Tags Master</span>
                         </a>
                         {% endif %}
                     </li>
                     <!-- Smart Treatment Assistant -->
                     <li class="nav-item">
-                        {% if current_user.has_permission('modules', 'assistant') %}
-                        <a class="nav-link {% if request.path == '/symptom-assistant' %}active{% endif %}"
-                            href="/symptom-assistant">
-                            <i class="bi bi-prescription2"></i>
-                            <span class="nav-text">Smart Treatment Assistant</span>
+                        {% if current_user.has_permission('modules', 'assistant') and can_access('smart_treatment') %}
+                        <a href="/symptom-assistant"
+                            class="nav-link {% if request.path == '/symptom-assistant' %}active{% endif %}">
+                            <i class="bi bi-prescription2"></i><span class="nav-text">Smart Treatment Assistant</span>
+                        </a>
+                        {% elif not can_access('smart_treatment') %}
+                        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#pricingUpgradeModal"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-prescription2"></i><span class="nav-text">Smart Treatment Assistant</span>
+                            <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.6rem;">PRO</span>
                         </a>
                         {% else %}
                         <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Smart Treatment Assistant')"
                             class="nav-link text-white-50 opacity-50">
-                            <i class="bi bi-prescription2"></i>
-                            <span class="nav-text">Smart Treatment Assistant</span>
+                            <i class="bi bi-prescription2"></i><span class="nav-text">Smart Treatment Assistant</span>
                         </a>
                         {% endif %}
                     </li>
@@ -569,6 +584,84 @@
 
         <!-- 2. Main Page Content Wrap (Pushed by margin-left) -->
         <div id="main-content" class="flex-grow-1 w-100 bg-light p-4">
+
+            <!-- Live Subscription / Plan Status Strip -->
+            {% if user_plan == 'trial' %}
+            <!-- Trial user: Har page par countdown dikhega -->
+            <div class="alert alert-primary py-2 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 shadow-sm"
+                style="background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); color: #f8fafc; border-left: 4px solid #3b82f6 !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-pill px-2 py-1"><i class="bi bi-clock-history me-1"></i>
+                        30-Day Free Trial</span>
+                    <span class="small">You have <strong class="text-warning">{{ trial_days_left }} days
+                            remaining</strong> with full unrestricted access.</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" data-bs-toggle="modal"
+                    data-bs-target="#pricingUpgradeModal">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Upgrade Plan
+                </button>
+            </div>
+            {% elif user_plan == 'expired' %}
+            <!-- Expired alert strip: Plan ke hisaab se dynamic text -->
+            <div
+                class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 shadow-sm">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+                    <span class="small fw-semibold">
+                        {% if current_user.plan_type == 'trial' %}
+                        Your <strong>30-day Free Trial</strong> has expired. Choose a plan to continue billing & AI
+                        features.
+                        {% else %}
+                        Your <strong>{{ current_user.plan_type|upper }} Plan</strong> has expired. Please renew your
+                        subscription to resume full store access.
+                        {% endif %}
+                    </span>
+                </div>
+                <a href="/checkout?plan={{ current_user.plan_type if current_user.plan_type in ['basic', 'pro', 'ultra'] else 'pro' }}"
+                    class="btn btn-sm btn-danger rounded-pill px-3 fw-bold shadow-sm">
+                    <i class="bi bi-arrow-repeat me-1"></i> Renew Now
+                </a>
+            </div>
+            {% elif request.path in ['/', '/dashboard'] %}
+            <!-- Subscribed Users (Basic / Pro / Ultra): Sirf Dashboard par dikhega -->
+            {% if user_plan == 'basic' %}
+            <div class="alert alert-dark py-2 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 shadow-sm"
+                style="background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); color: #f8fafc; border-left: 4px solid #64748b !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary rounded-pill px-2 py-1">Basic Plan (500 Limit)</span>
+                    <span class="small text-white-50">Upgrade to Pro to unlock WhatsApp Invoices, AI Tools & Stock
+                        Alerts.</span>
+                </div>
+                <a href="/checkout?plan=pro" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                    Upgrade to Pro (₹399)
+                </a>
+            </div>
+            {% elif user_plan == 'pro' %}
+            <div class="alert alert-dark py-2 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 shadow-sm"
+                style="background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); color: #f8fafc; border-left: 4px solid #3b82f6 !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <span
+                        class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1"><i
+                            class="bi bi-patch-check-fill me-1"></i> Active: PRO PLAN</span>
+                    <span class="small text-white-50">Unlimited Inventory & All AI Features Active.</span>
+                </div>
+                <a href="/checkout?plan=ultra" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold">
+                    <i class="bi bi-shield-fill-check me-1"></i> Upgrade to Ultra (₹799)
+                </a>
+            </div>
+            {% elif user_plan == 'ultra' %}
+            <div class="alert alert-dark py-1 px-3 mb-3 d-flex align-items-center justify-content-between rounded-3 border-0 shadow-sm opacity-75"
+                style="background: rgba(30, 41, 59, 0.4); color: #cbd5e1; font-size: 0.82rem;">
+                <div class="d-flex align-items-center gap-2">
+                    <span
+                        class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-25 rounded-pill px-2 py-0">Active
+                        Plan: ULTRA</span>
+                    <span>Unlimited Staff Accounts & Multi-Branch Support Unlocked</span>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+
             {% block content %}
             {% endblock %}
         </div>
@@ -627,6 +720,120 @@
                         Got it, Understood
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing & Upgrade Modal -->
+    <div class="modal fade" id="pricingUpgradeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg text-white"
+                style="background: #0d131f; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);">
+
+                <div class="modal-header border-bottom border-secondary border-opacity-25 px-4 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0">Choose Your Medicofiles Plan</h5>
+                        <small class="text-secondary">Flexible plans designed for single counters to multi-branch
+                            pharmacies.</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-4 align-items-stretch">
+
+                        <!-- Basic Plan -->
+                        <div class="col-lg-4">
+                            <div class="p-4 rounded-4 h-100 d-flex flex-column border border-secondary border-opacity-25"
+                                style="background: rgba(255,255,255,0.02);">
+                                <span class="badge bg-secondary bg-opacity-25 text-light w-fit mb-2">Starter</span>
+                                <h4 class="fw-bold text-white mb-1">Basic</h4>
+                                <div class="my-3">
+                                    <span class="fs-2 fw-bold text-white">₹199</span><span class="text-white small"> /
+                                        month</span>
+                                </div>
+                                <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Up to 500 Medicines</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Standard Billing & POS</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Customer Ledger (Manual)</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Local DB Backup Download</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>24x7 Call & SMS Support</li>
+                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No WhatsApp Invoice
+                                    </li>
+                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No AI Inventory /
+                                        Uses</li>
+                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Staff Accounts
+                                    </li>
+                                </ul>
+                                <a href="/checkout?plan=basic"
+                                    class="btn btn-outline-light rounded-pill py-2 w-100 fw-semibold">Choose Basic</a>
+                            </div>
+                        </div>
+
+                        <!-- Pro Plan (Highlighted) -->
+                        <div class="col-lg-4">
+                            <div class="p-4 rounded-4 h-100 d-flex flex-column border border-primary position-relative shadow"
+                                style="background: linear-gradient(180deg, rgba(37,99,235,0.12) 0%, rgba(15,23,42,0.6) 100%);">
+                                <span
+                                    class="badge bg-primary position-absolute top-0 start-50 translate-middle rounded-pill px-3 py-1 shadow">MOST
+                                    POPULAR</span>
+                                <span class="badge bg-primary bg-opacity-25 text-white w-fit mb-2">Recommended</span>
+                                <h4 class="fw-bold text-white mb-1">Pro / Growth</h4>
+                                <div class="my-3">
+                                    <span class="fs-2 fw-bold text-white">₹399</span><span class="text-white small"> /
+                                        month</span>
+                                    <div class="small text-warning fw-semibold mt-1">or ₹3,999 / year (Save 17%)</div>
+                                </div>
+                                <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>Unlimited Medicines
+                                            & Bills</strong></li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>WhatsApp Invoices &
+                                            Reminders</strong></li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>Gemini AI Drug &
+                                            Uses Assistant</strong></li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i><strong>AI Invoice
+                                            PDF/Excel Parser</strong></li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>Symptom Tags & Treatment
+                                        Assistant</li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>Dedicated Stock Alerts Page
+                                    </li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>1 Admin + 2 Staff Accounts
+                                    </li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore
+                                    </li>
+                                </ul>
+                                <a href="/checkout?plan=pro"
+                                    class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">Upgrade to Pro</a>
+                            </div>
+                        </div>
+
+                        <!-- Ultra Plan -->
+                        <div class="col-lg-4">
+                            <div class="p-4 rounded-4 h-100 d-flex flex-column border border-secondary border-opacity-25"
+                                style="background: rgba(255,255,255,0.02);">
+                                <span class="badge bg-warning bg-opacity-20 text-white w-fit mb-2">Multi-Counter</span>
+                                <h4 class="fw-bold text-white mb-1">Ultra</h4>
+                                <div class="my-3">
+                                    <span class="fs-2 fw-bold text-white">₹799</span><span class="text-white small"> /
+                                        month</span>
+                                </div>
+                                <ul class="list-unstyled d-flex flex-column gap-2 small text-white-50 mb-4 flex-grow-1">
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Everything in Pro Plan</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i><strong>Unlimited Staff
+                                            Accounts</strong></li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Custom Role & Permission Isolation
+                                    </li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Automated Cloud Snapshots</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Priority VIP On-Call Support</li>
+                                </ul>
+                                <a href="/checkout?plan=ultra"
+                                    class="btn btn-outline-warning rounded-pill py-2 w-100 fw-semibold">Choose Ultra</a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

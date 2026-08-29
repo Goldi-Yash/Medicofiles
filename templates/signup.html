@@ -143,7 +143,9 @@
     <div class="signup-card">
         <h2 class="signup-title">Create an account</h2>
 
-        <form action="/signup" method="POST" id="signupForm">
+        <form action="{{ url_for('signup', plan=selected_plan) }}" method="POST" id="signupForm">
+            <!-- Hidden Plan Identifier -->
+            <input type="hidden" name="selected_plan" value="{{ selected_plan or 'trial' }}">
             <!-- Email Field with Send OTP Button -->
             <div class="mb-3">
                 <label class="form-label">Email</label>
