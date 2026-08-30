@@ -329,19 +329,19 @@
             let cells = row.querySelectorAll('td');
             if (cells.length < 3) return;
 
-            // Cell 0: Products/Name, Cell 1: Company, Cell 2: Salt/Composition
-            let nameColText = (cells[0] ? cells[0].innerText : '').toLowerCase();
-            let companyColText = (cells[1] ? cells[1].innerText : '').toLowerCase();
-            let saltColText = (cells[2] ? cells[2].innerText : '').toLowerCase();
+            // Correct Table Column Indexing (Cell 0 is Checkbox)
+            let nameColText = (cells[1] ? cells[1].innerText : '').toLowerCase();
+            let companyColText = (cells[2] ? cells[2].innerText : '').toLowerCase();
+            let saltColText = (cells[3] ? cells[3].innerText : '').toLowerCase();
             let fullRowText = row.innerText.toLowerCase();
 
-            // Main Search: Matches Name, Batch, Company (EXCLUDES Salt Column)
+            // Main Search: Matches Name, Batch, Company
             let matchesSearch = !searchFilter ||
                 nameColText.includes(searchFilter) ||
                 companyColText.includes(searchFilter) ||
-                fullRowText.replace(saltColText, '').includes(searchFilter);
+                fullRowText.includes(searchFilter);
 
-            // Dedicated Salt Search: Only checks Composition/Salt Column
+            // Dedicated Salt Search: Strictly checks Composition (Cell 3)
             let matchesSalt = !saltFilter || saltColText.includes(saltFilter);
 
             let matchesCategory = (categoryFilter === 'all') || fullRowText.includes(categoryFilter);

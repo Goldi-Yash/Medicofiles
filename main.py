@@ -1101,7 +1101,7 @@ def upload_pdf_bill():
         2. "company": Manufacturer or Brand/Company name if present (e.g. "Cipla", "Alembic"). Otherwise "".
         3. "composition": Chemical composition / Salt formula with strength. IMPORTANT: If not printed on bill, auto-detect standard Indian generic composition for the medicine name (e.g. 'Dolo 650' -> 'Paracetamol 650mg', 'Augmentin 625' -> 'Amoxicillin (500mg) + Clavulanic Acid (125mg)', 'Pan-D' -> 'Pantoprazole (40mg) + Domperidone (30mg)'). Only return '' if completely unknown.
         4. "category": Auto-detect among "Tablet", "Capsule", "Syrup", "Injection", "Ointment", or "Other".
-        5. "pack_size": Strip pack size number (e.g., 10, 15, 20). If missing, return 10.
+        5. "pack_size": Strip/Bottle pack size. If tablet/capsule return count (e.g., "10", "15"). If syrup/suspension/liquid, auto-extract volume with unit (e.g., "30 ml", "60 ml", "100 ml", "200 ml"). If ointment/gel/cream, extract weight (e.g., "15 gm", "30 gm", "50 gm"). If injection, extract (e.g., "1 vial", "2 ml amp" , "1 ml" , "2 ml"). Default to "10" for tablets.
         6. "batch_no": Batch Number (e.g. "CP6012"). If missing, return "".
         7. "expiry_date": Expiry date formatted as "MM/YY" or "MM/YYYY" (e.g. "10/27"). If missing, return "".
         8. "quantity": Total billed quantity as a number (e.g. 50, 30).
@@ -1186,6 +1186,28 @@ def upload_pdf_bill():
             item['purchase_price'] = float(item.get('purchase_price', 0) or 0)
             item['mrp'] = float(item.get('mrp', item['purchase_price']) or item['purchase_price'])
             item['distributor_code'] = dist_code
+
+            # Smart Pack Size: Only Syrups/Ointments/Injections/Others get units; Tablets/Capsules get pure count
+            raw_nm = str(item.get('name', '')).strip()
+            cat_nm = str(item.get('category', '')).lower()
+            curr_pack = str(item.get('pack_size', '')).strip()
+    
+            if 'tablet' in cat_nm or 'capsule' in cat_nm or 'tab' in cat_nm or 'cap' in cat_nm:
+                # Tablet/Capsule: sirf clean digits (e.g. 10, 15, 20) allow karein, baki sab ke liye default 10
+                clean_digits = re.sub(r'[^\d]', '', curr_pack)
+                item['pack_size'] = clean_digits if (clean_digits and clean_digits in ['10', '15', '20', '30', '4', '6', '14', '28']) else '10'
+            else:
+                # Syrups, Ointments, Injections, Liquids, Others: extract ml, gm, vial, amp
+                unit_found = re.search(r'(\d+(?:\.\d+)?\s*(?:ml|gm|g|vial|amp|ltr|kg))\b', raw_nm, re.IGNORECASE)
+                if unit_found:
+                    item['pack_size'] = unit_found.group(1).lower()
+                elif not curr_pack or curr_pack in ['', 'nan', 'None', '10']:
+                    if 'syrup' in cat_nm or 'susp' in cat_nm:
+                        item['pack_size'] = '60 ml'
+                    elif 'oint' in cat_nm or 'gel' in cat_nm or 'cream' in cat_nm:
+                        item['pack_size'] = '30 gm'
+                    elif 'inj' in cat_nm:
+                        item['pack_size'] = '1 ml'
     
             med_k = str(item.get('name', '')).strip().lower()
             if med_k:
