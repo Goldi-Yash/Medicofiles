@@ -968,24 +968,21 @@ def upload_pdf_bill():
 
     dist_code = request.form.get('distributor_code', '').strip().upper()
 
-    if 'bill_pdf' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    files = request.files.getlist('bill_pdf')
+    if not files or len(files) == 0 or files[0].filename == '':
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
 
-    file = request.files['bill_pdf']
-    if file.filename == '':
-        return jsonify({'status': 'error', 'message': 'No selected file'}), 400
-
-    filename = file.filename.lower()
+    first_filename = files[0].filename.lower()
 
     # ========================================================
     # OPTION A: EXCEL / CSV FILE HANDLING (Pandas Fast Parse)
     # ========================================================
-    if filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv'):
+    if first_filename.endswith('.xlsx') or first_filename.endswith('.xls') or first_filename.endswith('.csv'):
         try:
-            if filename.endswith('.csv'):
-                df = pd.read_csv(file)
+            if first_filename.endswith('.csv'):
+                df = pd.read_csv(files[0])
             else:
-                df = pd.read_excel(file)
+                df = pd.read_excel(files[0])
 
             df.columns = [str(c).strip().lower() for c in df.columns]
             
@@ -1074,15 +1071,26 @@ def upload_pdf_bill():
 
         client = genai.Client(api_key=api_key)
 
-        file_bytes = file.read()
-        if filename.endswith('.pdf'):
-            mime_type = "application/pdf"
-        elif filename.endswith('.png'):
-            mime_type = "image/png"
-        elif filename.endswith('.webp'):
-            mime_type = "image/webp"
-        else:
-            mime_type = "image/jpeg"
+        content_parts = []
+        for f in files:
+            fname = f.filename.lower()
+            fbytes = f.read()
+            if not fbytes:
+                continue
+
+            if fname.endswith('.pdf'):
+                m_type = 'application/pdf'
+            elif fname.endswith('.png'):
+                m_type = 'image/png'
+            elif fname.endswith('.webp'):
+                m_type = 'image/webp'
+            else:
+                m_type = 'image/jpeg'
+
+            content_parts.append(types.Part.from_bytes(data=fbytes, mime_type=m_type))
+
+        if not content_parts:
+            return jsonify({'status': 'error', 'message': 'No valid bill image or PDF provided.'}), 400
             
         prompt = """
         You are an expert Indian Pharmacy Invoice / Bill Parser.
@@ -1117,10 +1125,7 @@ def upload_pdf_bill():
             try:
                 response = client.models.generate_content(
                     model=m_name,
-                    contents=[
-                        types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
-                        prompt
-                    ],
+                    contents=content_parts + [prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json"
                     )

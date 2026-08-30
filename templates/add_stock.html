@@ -40,7 +40,7 @@
                                 <p class="text-muted small">Upload PDF / Excel / Image invoice </p>
 
                                 <!-- Standard File Input (PDF / Excel / Gallery Images) -->
-                                <input type="file" id="pdfFileInput"
+                                <input type="file" id="pdfFileInput" multiple
                                     accept=".pdf,.xlsx,.xls,.csv,image/*,.jpg,.jpeg,.png,.webp" class="d-none">
 
                                 <!-- Direct Camera Capture Input (Mobile Back-Camera) -->
@@ -364,15 +364,20 @@
         const distModal = bootstrap.Modal.getInstance(distModalEl);
         if (distModal) distModal.hide();
 
-        if (!selectedBillFile) return;
+        // Input se saari selected files uthayenge (single ya multiple)
+        const fileInputEl = document.getElementById('pdfFileInput');
+        const filesToUpload = (fileInputEl && fileInputEl.files && fileInputEl.files.length > 0)
+            ? fileInputEl.files
+            : (selectedBillFile ? [selectedBillFile] : []);
 
-        // File extension check (PDF vs Excel/CSV)
-        const fileNameLow = selectedBillFile.name.toLowerCase();
-        const isPdfOrImg = fileNameLow.endsWith('.pdf') ||
-            fileNameLow.endsWith('.png') ||
-            fileNameLow.endsWith('.jpg') ||
-            fileNameLow.endsWith('.jpeg') ||
-            fileNameLow.endsWith('.webp');
+        if (filesToUpload.length === 0) return;
+
+        const firstFileName = filesToUpload[0].name.toLowerCase();
+        const isPdfOrImg = firstFileName.endsWith('.pdf') ||
+            firstFileName.endsWith('.png') ||
+            firstFileName.endsWith('.jpg') ||
+            firstFileName.endsWith('.jpeg') ||
+            firstFileName.endsWith('.webp');
 
         const aiLoaderModalEl = document.getElementById('aiLoadingModal');
         let aiLoaderModal = null;
@@ -387,7 +392,10 @@
         }
 
         let formData = new FormData();
-        formData.append('bill_pdf', selectedBillFile);
+        // Multiple files loop karke append karenge
+        for (let i = 0; i < filesToUpload.length; i++) {
+            formData.append('bill_pdf', filesToUpload[i]);
+        }
         formData.append('distributor_code', distTagInput);
 
         fetch('/upload-pdf-bill', {
