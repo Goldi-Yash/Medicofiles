@@ -1099,7 +1099,7 @@ def upload_pdf_bill():
         Each object in the array must contain these exact keys:
         1. "name": Exact trade/brand medicine name (e.g. "Dolo 650", "Cipcal 500").
         2. "company": Manufacturer or Brand/Company name if present (e.g. "Cipla", "Alembic"). Otherwise "".
-        3. "composition": Chemical composition / Salt / Generic name (e.g. "Paracetamol 650mg"). If missing, return "".
+        3. "composition": Chemical composition / Salt formula with strength. IMPORTANT: If not printed on bill, auto-detect standard Indian generic composition for the medicine name (e.g. 'Dolo 650' -> 'Paracetamol 650mg', 'Augmentin 625' -> 'Amoxicillin (500mg) + Clavulanic Acid (125mg)', 'Pan-D' -> 'Pantoprazole (40mg) + Domperidone (30mg)'). Only return '' if completely unknown.
         4. "category": Auto-detect among "Tablet", "Capsule", "Syrup", "Injection", "Ointment", or "Other".
         5. "pack_size": Strip pack size number (e.g., 10, 15, 20). If missing, return 10.
         6. "batch_no": Batch Number (e.g. "CP6012"). If missing, return "".
@@ -1177,13 +1177,35 @@ def upload_pdf_bill():
             else:
                 return jsonify({'status': 'error', 'message': 'Bill response formatting error. Please try uploading again.'}), 500
 
-        # Cleanup & Safety Types
+        # Cleanup & Safety Types + Cache Smart Matching
+        cached_all = load_cache() if 'load_cache' in globals() else {}
+        cache_dirty = False
+    
         for item in items:
             item['quantity'] = float(item.get('quantity', 1) or 1)
             item['purchase_price'] = float(item.get('purchase_price', 0) or 0)
             item['mrp'] = float(item.get('mrp', item['purchase_price']) or item['purchase_price'])
             item['distributor_code'] = dist_code
-
+    
+            med_k = str(item.get('name', '')).strip().lower()
+            if med_k:
+                if not item.get('composition') and med_k in cached_all and cached_all[med_k].get('composition'):
+                    item['composition'] = cached_all[med_k]['composition']
+                elif item.get('composition') and med_k not in cached_all:
+                    cached_all[med_k] = {
+                        'uses': f"{item['name']} is used as therapeutic medication containing {item['composition']}.",
+                        'side_effects': "Common side effects may include mild nausea or dizziness. Take as directed.",
+                        'composition': item['composition']
+                    }
+                    cache_dirty = True
+    
+        if cache_dirty:
+            try:
+                with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(cached_all, f, indent=4, ensure_ascii=False)
+            except Exception:
+                pass
+    
         return jsonify({'status': 'success', 'items': items})
 
     except Exception as e:
