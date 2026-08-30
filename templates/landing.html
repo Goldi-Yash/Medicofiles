@@ -366,9 +366,12 @@
                         </div>
                         <div
                             class="rounded-4 overflow-hidden border border-secondary border-opacity-25 shadow-lg bg-dark">
-                            <img src="{{ url_for('static', filename='images/dashboard_preview.png') }}"
-                                alt="Medicofiles Dashboard Preview" class="img-fluid w-100 d-block"
-                                style="border-radius: 12px; object-fit: cover;">
+                            <video autoplay loop muted playsinline preload="auto"
+                                poster="{{ url_for('static', filename='images/dashboard_preview.png') }}"
+                                class="img-fluid w-100 d-block" style="border-radius: 12px; object-fit: cover; transform: scale(1.05);">
+                                <source src="{{ url_for('static', filename='videos/demo_preview.mp4') }}"
+                                    type="video/mp4">
+                            </video>
                         </div>
                     </div>
                 </div>
