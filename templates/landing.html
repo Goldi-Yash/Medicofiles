@@ -275,7 +275,7 @@
 
     <!-- GLASS NAVBAR -->
     <nav class="navbar navbar-expand-lg fixed-top glass-nav py-3">
-        <div class="container">
+        <div class="container-fluid px-4 px-lg-5">
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" href="#">
                 <div class="bg-primary bg-gradient p-2 rounded-3 text-white d-flex align-items-center justify-content-center"
                     style="width:38px; height:38px;">
@@ -290,26 +290,30 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto text-center my-3 my-lg-0 gap-lg-4">
-                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                <ul class="navbar-nav mx-auto text-center my-3 my-lg-0 gap-lg-3">
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
                             href="#features">Features</a></li>
-                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
                             href="#modules">Modules</a></li>
-                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
                             href="#stats">Stats</a></li>
-                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100"
+                    <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
                             href="#ai-magic">AI-Magic</a></li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100" href="javascript:void(0)"
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="javascript:void(0)"
                             data-bs-toggle="modal" data-bs-target="#appTutorialModal" style="cursor: pointer;">App
                             Tutorial</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100" href="#contact-us">Contact Us</a>
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="#contact-us">Contact Us</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100" href="#pricing-section">Pricing
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="#pricing-section">Pricing
                             Plans</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
+                            href="#testimonials">Testimonials</a>
                     </li>
                 </ul>
 
@@ -368,7 +372,8 @@
                             class="rounded-4 overflow-hidden border border-secondary border-opacity-25 shadow-lg bg-dark">
                             <video autoplay loop muted playsinline preload="auto"
                                 poster="{{ url_for('static', filename='images/dashboard_preview.png') }}"
-                                class="img-fluid w-100 d-block" style="border-radius: 12px; object-fit: cover; transform: scale(1.05);">
+                                class="img-fluid w-100 d-block"
+                                style="border-radius: 12px; object-fit: cover; transform: scale(1.05);">
                                 <source src="{{ url_for('static', filename='videos/demo_preview.mp4') }}"
                                     type="video/mp4">
                             </video>
@@ -1018,6 +1023,166 @@
         </div>
     </section>
 
+    <!-- ========================================================================= -->
+    <!-- TESTIMONIALS & PHARMACY VIDEO REVIEWS SECTION -->
+    <!-- ========================================================================= -->
+    <section id="testimonials" class="py-5 position-relative"
+        style="background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 70%);">
+        <div class="container py-4">
+
+            <!-- Section Heading -->
+            <div class="text-center max-w-700 mx-auto mb-5">
+                <span
+                    class="badge rounded-pill bg-primary bg-opacity-20 text-white border border-primary border-opacity-25 px-3 py-2 mb-2 fw-semibold">
+                    <i class="bi bi-shield-check me-1"></i> Trusted by Local Chemists
+                </span>
+                <h2 class="display-6 fw-bold text-white mb-2">Real Stories from Real Medical Stores</h2>
+                <p class="text-white-50 small mb-0">See how pharmacy owners are saving hours daily and digitizing their
+                    inventory with Medicofiles.</p>
+            </div>
+
+            <div class="row g-4 justify-content-center">
+
+                <!-- Card 1: Video Testimonial Card -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column justify-content-between border border-secondary border-opacity-25 shadow-lg"
+                        style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px);">
+
+                        <div>
+                            <!-- Stars Rating -->
+                            <div class="d-flex align-items-center gap-1 mb-2 text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <span class="text-white small fw-bold ms-2">5.0</span>
+                            </div>
+
+                            <!-- Medical Store Name & Address -->
+                            <h5 class="fw-bold text-white mb-1">Jai Dada Bhaiya Medicos</h5>
+                            <div class="text-primary small mb-3">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Basai Road, Gurugram
+                            </div>
+
+                            <!-- Review Text -->
+                            <p class="text-light text-opacity-75 small fst-italic mb-3" style="line-height: 1.6;">
+                                "Pehle distributor ke aate hi 4-5 pages ke purchase bills manually computer me enter
+                                karne me 1-2 ghante lag jate the. Ab AI camera scan se 10 second me saari medicines aur
+                                unke batch/expiry add ho jate hain."
+                            </p>
+                        </div>
+
+                        <!-- Reviewer Details -->
+                        <div class="border-top border-secondary border-opacity-25 pt-3 d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-20 text-white fw-bold"
+                                style="width: 38px; height: 38px;">
+                                H/R
+                            </div>
+                            <div>
+                                <div class="fw-semibold text-white small">Hitesh/Rinku</div>
+                                <div class="text-white-50" style="font-size: 0.75rem;">Store Owner/Pharmacist</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Card 2: Written + High Trust Card -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column justify-content-between border border-secondary border-opacity-25 shadow-lg"
+                        style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px);">
+
+                        <div>
+                            <!-- Header Badging -->
+                            <div class="d-flex align-items-center gap-1 mb-2 text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <span class="text-white small fw-bold ms-2">5.0</span>
+                            </div>
+
+                            <!-- Medical Store Name & Address -->
+                            <h5 class="fw-bold text-white mb-1">Gupta Medical & General Store</h5>
+                            <div class="text-primary small mb-3">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Sector 14 Market, Gurugram
+                            </div>
+
+                            <!-- Review Text -->
+                            <p class="text-light text-opacity-75 small fst-italic mb-3" style="line-height: 1.6;">
+                                "Fast POS Billing aur direct customer WhatsApp receipts ne register maintain karne ka
+                                jhanjhat khatam kar diya. Expiry alert feature se humara expiry medicine ka loss bilkul
+                                zero ho gaya."
+                            </p>
+                        </div>
+
+                        <!-- Reviewer Details -->
+                        <div class="border-top border-secondary border-opacity-25 pt-3 d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-20 text-white fw-bold"
+                                style="width: 38px; height: 38px;">
+                                AG
+                            </div>
+                            <div>
+                                <div class="fw-semibold text-white small">Anil Gupta</div>
+                                <div class="text-white-50" style="font-size: 0.75rem;">Pharmacist (15+ Yrs Experience)
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Card 3: Multi-Counter / High Volume Review -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="p-4 rounded-4 h-100 d-flex flex-column justify-content-between border border-secondary border-opacity-25 shadow-lg"
+                        style="background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(12px);">
+
+                        <div>
+                            <!-- Header Badging -->
+                            <div class="d-flex align-items-center gap-1 mb-2 text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-half"></i>
+                                <span class="text-white small fw-bold ms-2">4.9</span>
+                            </div>
+
+                            <!-- Medical Store Name & Address -->
+                            <h5 class="fw-bold text-white mb-1">Sanjivani Pharmacy</h5>
+                            <div class="text-primary small mb-3">
+                                <i class="bi bi-geo-alt-fill me-1"></i> Near Civil Hospital, Gurugram
+                            </div>
+
+                            <!-- Review Text -->
+                            <p class="text-light text-opacity-75 small fst-italic mb-3" style="line-height: 1.6;">
+                                "Customer ledger (khata) maintain karna aur salt search se substitute medicine suggest
+                                karna bohot fast ho gaya hai. Sabse acchi baat customer ko printed bill ke sath unke
+                                phone par instant message chala jata hai."
+                            </p>
+                        </div>
+
+                        <!-- Reviewer Details -->
+                        <div class="border-top border-secondary border-opacity-25 pt-3 d-flex align-items-center gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-20 text-white fw-bold"
+                                style="width: 38px; height: 38px;">
+                                VS
+                            </div>
+                            <div>
+                                <div class="fw-semibold text-white small">Vikas Sharma</div>
+                                <div class="text-white-50" style="font-size: 0.75rem;">Pharmacist</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
     <!-- Sleek Contact Us Section -->
     <section id="contact-us" class="py-5 position-relative"
         style="background: rgba(11, 15, 25, 0.95); border-top: 1px solid rgba(255, 255, 255, 0.08);">
@@ -1076,8 +1241,8 @@
                 <i class="bi bi-capsule text-primary"></i> Medicofiles Systems &copy; 2026. All rights reserved.
             </div>
             <div class="d-flex gap-4 small text-muted">
-                <a href="{{ url_for('login') }}" class="text-decoration-none text-muted">Login</a>
-                <a href="{{ url_for('signup') }}" class="text-decoration-none text-muted">Signup</a>
+                <a href="{{ url_for('login') }}" class="text-decoration-none text-white">Login</a>
+                <a href="{{ url_for('signup') }}" class="text-decoration-none text-white">Signup</a>
             </div>
         </div>
     </footer>
