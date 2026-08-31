@@ -1093,8 +1093,8 @@ def upload_pdf_bill():
             return jsonify({'status': 'error', 'message': 'No valid bill image or PDF provided.'}), 400
             
         prompt = """
-        You are an expert Indian Pharmacy Invoice / Bill Parser.
-        Extract all medicine items listed in the invoice table and respond STRICTLY with a valid JSON array.
+        You are an expert Indian Pharmacy Invoice / Bill & Product Strip(Scanner) Parser.
+        Extract all medicine items listed in the invoice table OR visible on physical medicine strips/boxes, and respond STRICTLY with a valid JSON array.
 
         Each object in the array must contain these exact keys:
         1. "name": Exact trade/brand medicine name (e.g. "Dolo 650", "Cipcal 500").
@@ -1113,6 +1113,7 @@ def upload_pdf_bill():
         - Exclude invoice header details (Billed To, Shipped To, Invoice No, GSTIN).
         - Exclude invoice footer details (GST Summary, Bank Details, Total Amount).
         - Extract ONLY actual medicine rows from the table.
+        - If the image shows physical medicine strips/boxes instead of a bill, extract each distinct medicine item visible from the packaging.
         - Do NOT wrap output in markdown formatting like ```json.
         """
 
@@ -1183,8 +1184,8 @@ def upload_pdf_bill():
     
         for item in items:
             item['quantity'] = float(item.get('quantity', 1) or 1)
-            item['purchase_price'] = float(item.get('purchase_price', 0) or 0)
-            item['mrp'] = float(item.get('mrp', item['purchase_price']) or item['purchase_price'])
+            item['mrp'] = float(item.get('mrp', 0) or 0)
+            item['purchase_price'] = float(item['purchase_price']) if (item.get('purchase_price') and float(item.get('purchase_price', 0) or 0) > 0) else ''
             item['distributor_code'] = dist_code
 
             # Smart Pack Size: Only Syrups/Ointments/Injections/Others get units; Tablets/Capsules get pure count
