@@ -920,6 +920,7 @@
                             <li><i class="bi bi-check2 text-success me-2"></i>AI Drug & Salt Assistant</li>
                             <li><i class="bi bi-check2 text-success me-2"></i>AI Invoice PDF/Excel Parser</li>
                             <li><i class="bi bi-check2 text-success me-2"></i>Stock Alerts & Symptom Master</li>
+                            <li><i class="bi bi-check2 text-success me-2"></i>Unlimited Digital Bills Vault</li>
                             <li><i class="bi bi-check2 text-success me-2"></i>No Credit Card Required</li>
                         </ul>
                         <a href="{{ url_for('signup', plan='trial') }}"
@@ -948,6 +949,7 @@
                             <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No WhatsApp Invoice</li>
                             <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No AI Tools / Uses</li>
                             <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Staff Accounts</li>
+                            <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Digital Bills Vault</li>
                         </ul>
                         <a href="{% if current_user.is_authenticated %}/checkout?plan=basic{% else %}{{ url_for('signup', plan='basic') }}{% endif %}"
                             class="btn btn-outline-light rounded-pill py-2 w-100 fw-semibold">
@@ -984,6 +986,7 @@
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>Dedicated Stock Alerts Page</li>
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>1 Admin + 2 Staff Accounts</li>
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore</li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to 20,000 Invoices)</li>
                         </ul>
                         <a href="{% if current_user.is_authenticated %}/checkout?plan=pro{% else %}{{ url_for('signup', plan='pro') }}{% endif %}"
                             class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">
@@ -1009,6 +1012,7 @@
                             <li><i class="bi bi-check2 text-warning me-2"></i>Custom Roles & Permissions</li>
                             <li><i class="bi bi-check2 text-warning me-2"></i>Multi-Branch Architecture</li>
                             <li><i class="bi bi-check2 text-warning me-2"></i>Automated Cloud Snapshots</li>
+                            <li><i class="bi bi-check2 text-warning me-2"></i>Unlimited Bills & Invoices Vault</li>
                             <li><i class="bi bi-check2 text-warning me-2"></i>Priority On-Call Support</li>
                         </ul>
                         <a href="{% if current_user.is_authenticated %}/checkout?plan=ultra{% else %}{{ url_for('signup', plan='ultra') }}{% endif %}"

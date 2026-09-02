@@ -31,6 +31,10 @@ import sqlite3
 import tempfile
 import resend
 from PIL import Image
+import boto3
+from botocore.client import Config
+import uuid
+from io import BytesIO
 
 load_dotenv()
 
@@ -95,16 +99,61 @@ google = oauth.register(
     }
 )
 
-# Flask-Mail Configuration
-# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-# app.config['MAIL_PORT'] = 465
-# app.config['MAIL_USE_TLS'] = False
-# app.config['MAIL_USE_SSL'] = True
-# app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-# app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')  # Google App Password (16-digit code)
-# app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+# ---------------------------------------------------------
+# CLOUDFLARE R2 STORAGE CLIENT & UPLOAD HELPER
+# ---------------------------------------------------------
+R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID')
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', 'medicofiles-bills')
+R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', '').rstrip('/')
 
-# mail = Mail(app)
+def get_r2_client():
+    if not (R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
+        return None
+    return boto3.client(
+        's3',
+        endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        config=Config(signature_version='s3v4')
+    )
+
+def upload_to_r2(file_bytes, filename, content_type='image/webp'):
+    client = get_r2_client()
+    if not client:
+        raise Exception("R2 credentials not configured properly.")
+    
+    unique_key = f"bills/{uuid.uuid4().hex[:12]}_{filename}"
+    client.put_object(
+        Bucket=R2_BUCKET_NAME,
+        Key=unique_key,
+        Body=file_bytes,
+        ContentType=content_type
+    )
+    return f"{R2_PUBLIC_URL}/{unique_key}"
+
+def delete_from_r2(file_url):
+    """Cloudflare R2 se file permanently delete karta hai"""
+    try:
+        if not file_url:
+            return
+            
+        client = get_r2_client()
+        if not client:
+            print("[R2 ERROR]: R2 client initialize nahi hua")
+            return
+
+        filename = file_url.split('/')[-1]
+        object_key = f"bills/{filename}"
+
+        client.delete_object(
+            Bucket=R2_BUCKET_NAME,
+            Key=object_key
+        )
+        print(f"[R2 SUCCESS] Deleted: {object_key}")
+    except Exception as e:
+        print(f"[R2 ERROR]: {e}")
 
 # Resend API Setup (Fast HTTP-based Mailer)
 resend.api_key = os.getenv('RESEND_API_KEY')
@@ -179,7 +228,7 @@ class User(db.Model, UserMixin):
             return {"all": True}
         if not self.permissions:
             return {
-                "modules": {"dashboard": True, "symptom_tags": True, "assistant": True, "add_medicine": True, "transactions": True, "billing": True, "inventory": True, "alerts": True, "ledger": True, "settings": False, "distributors": True},
+                "modules": {"dashboard": True, "symptom_tags": True, "assistant": True, "add_medicine": True, "transactions": True, "billing": True, "inventory": True, "alerts": True, "ledger": True, "settings": False, "distributors": True, "bills_vault": True},
                 "actions": {"inventory_edit": False, "inventory_delete": False, "delete_bill": False , "map_medicine": False , "delete_tag": False , "delete_mapping": False, "ledger_delete": False, "ledger_edit": False, "delete_distributor": False, "edit_distributor": False},
                 "settings": {"store": False, "billing": False, "stock": False, "tax": False, "security": False, "backup": False, "account": False, "staff": False}
             }
@@ -241,7 +290,8 @@ class User(db.Model, UserMixin):
                 'symptom_tags_master',
                 'smart_treatment',
                 'staff_management_pro',
-                'db_restore'
+                'db_restore',
+                'bills_vault',
             ]
             return feature_name in allowed_in_pro
 
@@ -374,6 +424,24 @@ class SaleItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     discount_percent = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, nullable=False)
+
+class StoreBill(db.Model):
+    __tablename__ = 'store_bills'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    distributor_name = db.Column(db.String(150), nullable=False)
+    bill_number = db.Column(db.String(100))
+    bill_date = db.Column(db.Date)
+    file_url = db.Column(db.Text, nullable=False)
+    file_type = db.Column(db.String(20), default='image')
+    created_at = db.Column(db.DateTime, default=get_ist_time)
+
+class BillFolder(db.Model):
+    __tablename__ = 'bill_folders'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    created_at = db.Column(db.DateTime, default=get_ist_time)
 
 class StoreSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -3472,7 +3540,9 @@ def create_verified_staff():
         email=email,
         role='cashier',
         plain_password=password,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        plan_type=current_user.get_effective_plan(),
+        subscription_status='active'
     )
     new_staff.set_password(password)
     
@@ -3884,5 +3954,249 @@ def switch_to_trial():
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+def get_store_owner_id():
+    # Agar user admin nahi hai aur uske paas owner_id hai, toh uski dukan ke admin ka ID return karega
+    if current_user.role != 'admin' and current_user.owner_id:
+        return current_user.owner_id
+    return current_user.id
+
+# ---------------------------------------------------------
+# DEDICATED BILLS VAULT / ARCHIVE ROUTES
+# ---------------------------------------------------------
+@app.route('/bills-vault')
+@login_required
+def bills_vault():
+    # Basic plan walon ko access restricted
+    if not current_user.can_access('bills_vault'):
+        flash('ACCESS_RESTRICTED', 'access_denied_popup')
+        return redirect(request.referrer or url_for('billing'))
+
+    if current_user.role != 'admin' and not current_user.has_permission('modules', 'bills_vault'):
+        flash('ACCESS_RESTRICTED', 'access_denied_popup')
+        return redirect(request.referrer or url_for('billing'))
+
+    store_id = get_store_owner_id()
+    bills = StoreBill.query.filter_by(user_id=store_id).order_by(StoreBill.created_at.desc()).all()
+    
+    # 1. Dedicated BillFolder table se folders fetch karein
+    existing_folders = BillFolder.query.filter_by(user_id=store_id).order_by(BillFolder.name.asc()).all()
+    folder_names = [f.name for f in existing_folders]
+    
+    # Backward compatibility: agar koi puraana bill bina BillFolder entry ke tha to register kar do
+    needs_commit = False
+    for b in bills:
+        if b.distributor_name and b.distributor_name not in folder_names:
+            db.session.add(BillFolder(user_id=store_id, name=b.distributor_name))
+            folder_names.append(b.distributor_name)
+            needs_commit = True
+    if needs_commit:
+        db.session.commit()
+        
+    distributors = sorted(folder_names)
+
+    # Plan usage stats pass karein
+    owner = User.query.get(store_id)
+    plan = owner.get_effective_plan() if owner else 'basic'
+
+    return render_template('bills_vault.html', bills=bills, distributors=distributors, plan=plan)
+
+
+@app.route('/upload-vault-bill', methods=['POST'])
+@login_required
+def upload_vault_bill():
+    if not current_user.can_access('bills_vault'):
+        return jsonify({'status': 'error', 'message': 'Bills Vault is available on Pro & Ultra plans.'}), 403
+
+    if current_user.role != 'admin' and not current_user.has_permission('modules', 'bills_vault'):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+    store_id = get_store_owner_id()
+    dist_name = request.form.get('distributor_name', '').strip().upper()
+    bill_no = request.form.get('bill_number', '').strip()
+    raw_date = request.form.get('bill_date', '').strip()
+    
+    if not dist_name:
+        return jsonify({'status': 'error', 'message': 'Distributor name is required.'}), 400
+
+    owner = User.query.get(store_id)
+    plan = owner.get_effective_plan() if owner else 'basic'
+
+    # PRO Plan Limits Check (300 Folders & 20,000 Bills)
+    if plan == 'pro':
+        total_bills_count = StoreBill.query.filter_by(user_id=store_id).count()
+        if total_bills_count >= 20000:
+            return jsonify({'status': 'error', 'message': 'Pro Plan limit reached (20,000 Bills). Upgrade to Ultra for Unlimited.'}), 403
+
+        # Check folder limit if new folder is being created
+        existing_folder = BillFolder.query.filter_by(user_id=store_id, name=dist_name).first()
+        if not existing_folder:
+            distinct_folders_count = BillFolder.query.filter_by(user_id=store_id).count()
+            if distinct_folders_count >= 300:
+                return jsonify({'status': 'error', 'message': 'Pro Plan limit reached (300 Folders). Upgrade to Ultra for Unlimited.'}), 403
+
+    if 'bill_file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded.'}), 400
+
+    file = request.files['bill_file']
+    if not file or file.filename == '':
+        return jsonify({'status': 'error', 'message': 'No file selected.'}), 400
+
+    bill_date_val = None
+    if raw_date:
+        try:
+            bill_date_val = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except Exception:
+            bill_date_val = None
+
+    filename = file.filename.lower()
+    raw_bytes = file.read()
+
+    try:
+        if filename.endswith('.pdf'):
+            content_type = 'application/pdf'
+            upload_bytes = raw_bytes
+            clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.pdf"
+            file_type = 'pdf'
+        else:
+            img = Image.open(BytesIO(raw_bytes))
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            max_size = 1600
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            output_io = BytesIO()
+            img.save(output_io, format='WEBP', quality=80, optimize=True)
+            upload_bytes = output_io.getvalue()
+            content_type = 'image/webp'
+            clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.webp"
+            file_type = 'image'
+
+        public_file_url = upload_to_r2(upload_bytes, clean_name, content_type=content_type)
+
+        # 1. Folder check / creation in BillFolder table
+        folder_record = BillFolder.query.filter_by(user_id=store_id, name=dist_name).first()
+        if not folder_record:
+            db.session.add(BillFolder(user_id=store_id, name=dist_name))
+
+        # 2. Save bill record
+        new_bill = StoreBill(
+            user_id=store_id,
+            distributor_name=dist_name,
+            bill_number=bill_no,
+            bill_date=bill_date_val,
+            file_url=public_file_url,
+            file_type=file_type
+        )
+        db.session.add(new_bill)
+        db.session.commit()
+
+        return jsonify({'status': 'success', 'message': 'Bill successfully archived!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/edit-vault-bill/<int:bill_id>', methods=['POST'])
+@login_required
+def edit_vault_bill(bill_id):
+    store_id = get_store_owner_id()
+    bill = StoreBill.query.filter_by(id=bill_id, user_id=store_id).first()
+    if not bill:
+        return jsonify({'status': 'error', 'message': 'Bill not found'}), 404
+
+    bill_no = request.form.get('bill_number', '').strip()
+    raw_date = request.form.get('bill_date', '').strip()
+
+    bill_date_val = None
+    if raw_date:
+        try:
+            bill_date_val = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except Exception:
+            bill_date_val = None
+
+    try:
+        bill.bill_number = bill_no
+        bill.bill_date = bill_date_val
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Bill updated successfully!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/delete-vault-bill/<int:bill_id>', methods=['POST'])
+@login_required
+def delete_vault_bill(bill_id):
+    store_id = get_store_owner_id()
+    bill = StoreBill.query.filter_by(id=bill_id, user_id=store_id).first()
+    if not bill:
+        return jsonify({'status': 'error', 'message': 'Bill not found'}), 404
+
+    try:
+        # 1. Cloudflare R2 se delete karein
+        delete_from_r2(bill.file_url)
+
+        # 2. Database se bill row delete karein
+        # (Note: BillFolder table untouched rahegi, to agar ye aakhri bill bhi tha tab bhi folder create rahega)
+        db.session.delete(bill)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/rename-vault-folder', methods=['POST'])
+@login_required
+def rename_vault_folder():
+    store_id = get_store_owner_id()
+    old_name = request.form.get('old_folder_name', '').strip().upper()
+    new_name = request.form.get('new_folder_name', '').strip().upper()
+
+    if not old_name or not new_name:
+        return jsonify({'status': 'error', 'message': 'Both names required.'}), 400
+
+    try:
+        # 1. BillFolder record update
+        folder = BillFolder.query.filter_by(user_id=store_id, name=old_name).first()
+        if folder:
+            folder.name = new_name
+
+        # 2. Us folder ke sabhi bills ka distributor_name update
+        StoreBill.query.filter_by(user_id=store_id, distributor_name=old_name).update({'distributor_name': new_name})
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Folder renamed to {new_name}!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/delete-vault-folder', methods=['POST'])
+@login_required
+def delete_vault_folder():
+    store_id = get_store_owner_id()
+    folder_name = request.form.get('folder_name', '').strip().upper()
+
+    if not folder_name:
+        return jsonify({'status': 'error', 'message': 'Folder name required.'}), 400
+
+    try:
+        # 1. Folder ke saare bills ko Cloudflare R2 aur database se delete karein
+        bills_to_delete = StoreBill.query.filter_by(user_id=store_id, distributor_name=folder_name).all()
+        for b in bills_to_delete:
+            delete_from_r2(b.file_url)
+            db.session.delete(b)
+
+        # 2. BillFolder table se bhi folder entry delete karein
+        BillFolder.query.filter_by(user_id=store_id, name=folder_name).delete()
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" and its bills deleted.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)

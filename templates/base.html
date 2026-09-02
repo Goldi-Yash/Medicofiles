@@ -522,6 +522,33 @@
                         </a>
                         {% endif %}
                     </li>
+
+                    <!-- Bills Vault -->
+                    <li class="nav-item">
+                        {% if current_user.role == 'admin' or current_user.has_permission('modules', 'bills_vault') %}
+                        {% if can_access('bills_vault') %}
+                        <a href="{{ url_for('bills_vault') }}"
+                            class="nav-link {% if request.path == '/bills-vault' %}active{% endif %}">
+                            <i class="bi bi-safe2"></i>
+                            <span class="nav-text">Bills Vault</span>
+                        </a>
+                        {% else %}
+                        <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#pricingUpgradeModal"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-safe2"></i>
+                            <span class="nav-text">Bills Vault</span>
+                            <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.6rem;">PRO</span>
+                        </a>
+                        {% endif %}
+                        {% else %}
+                        <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Bills Vault')"
+                            class="nav-link text-white-50 opacity-50">
+                            <i class="bi bi-safe2"></i>
+                            <span class="nav-text">Bills Vault</span>
+                        </a>
+                        {% endif %}
+                    </li>
+
                     <!-- Transaction History -->
                     <li class="nav-item">
                         {% if current_user.has_permission('modules', 'transactions') %}
@@ -548,7 +575,7 @@
                         {% else %}
                         <a href="javascript:void(0)" onclick="showAccessDeniedPopup('Distributors')"
                             class="nav-link text-white-50 opacity-50">
-                            <i class="bi bi-clock-history"></i>
+                            <i class="bi bi-truck"></i>
                             <span class="nav-text">Distributors</span>
                         </a>
                         {% endif %}
@@ -764,6 +791,7 @@
                                         Uses</li>
                                     <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Staff Accounts
                                     </li>
+                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Digital Bills Vault</li>
                                 </ul>
                                 <a href="/checkout?plan=basic"
                                     class="btn btn-outline-light rounded-pill py-2 w-100 fw-semibold">Choose Basic</a>
@@ -801,6 +829,7 @@
                                     </li>
                                     <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore
                                     </li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to 20,000 Invoices)</li>
                                 </ul>
                                 <a href="/checkout?plan=pro"
                                     class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">Upgrade to Pro</a>
@@ -825,6 +854,7 @@
                                     </li>
                                     <li><i class="bi bi-check2 text-success me-2"></i>Automated Cloud Snapshots</li>
                                     <li><i class="bi bi-check2 text-success me-2"></i>Priority VIP On-Call Support</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Unlimited Bills & Invoices Vault</li>
                                 </ul>
                                 <a href="/checkout?plan=ultra"
                                     class="btn btn-outline-warning rounded-pill py-2 w-100 fw-semibold">Choose Ultra</a>
