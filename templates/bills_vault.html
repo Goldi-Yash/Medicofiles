@@ -186,7 +186,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Select File / Capture Photo *</label>
-                        <input type="file" name="bill_file" id="vaultFileInput" class="form-control"
+                        <input type="file" name="bill_file" id="vaultFileInput" multiple class="form-control"
                             accept="image/*,application/pdf" required>
                     </div>
                 </div>
@@ -329,8 +329,11 @@
     async function submitVaultUpload(e) {
         e.preventDefault();
         const btn = document.getElementById('uploadSubmitBtn');
+        const fileInput = document.getElementById('vaultFileInput');
+        const fileCount = fileInput.files ? fileInput.files.length : 1;
+
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Archiving...';
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Archiving ${fileCount} Bill(s)...`;
 
         const formData = new FormData(document.getElementById('vaultUploadForm'));
         try {

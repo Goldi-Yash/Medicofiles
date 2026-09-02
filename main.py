@@ -4021,25 +4021,22 @@ def upload_vault_bill():
     owner = User.query.get(store_id)
     plan = owner.get_effective_plan() if owner else 'basic'
 
+    # Multiple Files fetch karein
+    files = request.files.getlist('bill_file')
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({'status': 'error', 'message': 'No file selected.'}), 400
+
     # PRO Plan Limits Check (300 Folders & 20,000 Bills)
     if plan == 'pro':
         total_bills_count = StoreBill.query.filter_by(user_id=store_id).count()
-        if total_bills_count >= 20000:
+        if (total_bills_count + len(files)) > 20000:
             return jsonify({'status': 'error', 'message': 'Pro Plan limit reached (20,000 Bills). Upgrade to Ultra for Unlimited.'}), 403
 
-        # Check folder limit if new folder is being created
         existing_folder = BillFolder.query.filter_by(user_id=store_id, name=dist_name).first()
         if not existing_folder:
             distinct_folders_count = BillFolder.query.filter_by(user_id=store_id).count()
             if distinct_folders_count >= 300:
                 return jsonify({'status': 'error', 'message': 'Pro Plan limit reached (300 Folders). Upgrade to Ultra for Unlimited.'}), 403
-
-    if 'bill_file' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No file uploaded.'}), 400
-
-    file = request.files['bill_file']
-    if not file or file.filename == '':
-        return jsonify({'status': 'error', 'message': 'No file selected.'}), 400
 
     bill_date_val = None
     if raw_date:
@@ -4048,51 +4045,57 @@ def upload_vault_bill():
         except Exception:
             bill_date_val = None
 
-    filename = file.filename.lower()
-    raw_bytes = file.read()
-
     try:
-        if filename.endswith('.pdf'):
-            content_type = 'application/pdf'
-            upload_bytes = raw_bytes
-            clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.pdf"
-            file_type = 'pdf'
-        else:
-            img = Image.open(BytesIO(raw_bytes))
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
-
-            max_size = 1600
-            if img.width > max_size or img.height > max_size:
-                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-
-            output_io = BytesIO()
-            img.save(output_io, format='WEBP', quality=80, optimize=True)
-            upload_bytes = output_io.getvalue()
-            content_type = 'image/webp'
-            clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.webp"
-            file_type = 'image'
-
-        public_file_url = upload_to_r2(upload_bytes, clean_name, content_type=content_type)
-
-        # 1. Folder check / creation in BillFolder table
+        # Folder check / creation in BillFolder table
         folder_record = BillFolder.query.filter_by(user_id=store_id, name=dist_name).first()
         if not folder_record:
             db.session.add(BillFolder(user_id=store_id, name=dist_name))
 
-        # 2. Save bill record
-        new_bill = StoreBill(
-            user_id=store_id,
-            distributor_name=dist_name,
-            bill_number=bill_no,
-            bill_date=bill_date_val,
-            file_url=public_file_url,
-            file_type=file_type
-        )
-        db.session.add(new_bill)
-        db.session.commit()
+        uploaded_count = 0
+        for file in files:
+            if not file or file.filename == '':
+                continue
 
-        return jsonify({'status': 'success', 'message': 'Bill successfully archived!'})
+            filename = file.filename.lower()
+            raw_bytes = file.read()
+
+            if filename.endswith('.pdf'):
+                content_type = 'application/pdf'
+                upload_bytes = raw_bytes
+                clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.pdf"
+                file_type = 'pdf'
+            else:
+                img = Image.open(BytesIO(raw_bytes))
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+
+                max_size = 1600
+                if img.width > max_size or img.height > max_size:
+                    img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+                output_io = BytesIO()
+                img.save(output_io, format='WEBP', quality=80, optimize=True)
+                upload_bytes = output_io.getvalue()
+                content_type = 'image/webp'
+                clean_name = f"{uuid.uuid4().hex[:12]}_{dist_name.replace(' ', '_')}_{uuid.uuid4().hex[:6]}.webp"
+                file_type = 'image'
+
+            public_file_url = upload_to_r2(upload_bytes, clean_name, content_type=content_type)
+
+            new_bill = StoreBill(
+                user_id=store_id,
+                distributor_name=dist_name,
+                bill_number=bill_no,
+                bill_date=bill_date_val,
+                file_url=public_file_url,
+                file_type=file_type
+            )
+            db.session.add(new_bill)
+            uploaded_count += 1
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'{uploaded_count} bill(s) successfully archived!'})
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
