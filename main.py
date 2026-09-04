@@ -436,6 +436,12 @@ class StoreBill(db.Model):
     file_type = db.Column(db.String(20), default='image')
     created_at = db.Column(db.DateTime, default=get_ist_time)
 
+    payment_status = db.Column(db.String(20), default='pending')
+    payment_mode = db.Column(db.String(20), nullable=True)
+    payment_date = db.Column(db.Date, nullable=True)
+    payment_slip_url = db.Column(db.Text, nullable=True)
+    paid_amount = db.Column(db.Numeric(10, 2), nullable=True)
+
 class BillFolder(db.Model):
     __tablename__ = 'bill_folders'
     id = db.Column(db.Integer, primary_key=True)
@@ -4197,6 +4203,99 @@ def delete_vault_folder():
 
         db.session.commit()
         return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" and its bills deleted.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/attach-vault-slip/<int:bill_id>', methods=['POST'])
+@login_required
+def attach_vault_slip(bill_id):
+    store_id = get_store_owner_id()
+    bill = StoreBill.query.filter_by(id=bill_id, user_id=store_id).first()
+    if not bill:
+        return jsonify({'status': 'error', 'message': 'Bill not found'}), 404
+
+    # Form data parse
+    payment_mode = request.form.get('payment_mode', 'cash').strip().lower()
+    raw_amount = request.form.get('paid_amount', '').strip()
+    raw_date = request.form.get('payment_date', '').strip()
+
+    # Amount format
+    paid_amt = None
+    if raw_amount:
+        try:
+            paid_amt = float(raw_amount)
+        except ValueError:
+            paid_amt = None
+
+    # Payment date format (default aaj ki date agar blank ho)
+    pay_date = get_ist_time().date()
+    if raw_date:
+        try:
+            pay_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except Exception:
+            pass
+
+    # Optional: Parchi photo upload to Cloudflare R2
+    slip_url = bill.payment_slip_url # purana url retain kare agar new image na di ho
+    if 'slip_file' in request.files:
+        file = request.files['slip_file']
+        if file and file.filename != '':
+            try:
+                raw_bytes = file.read()
+                img = Image.open(BytesIO(raw_bytes))
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                
+                # Compress to webp for fast loading
+                max_size = 1200
+                if img.width > max_size or img.height > max_size:
+                    img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                
+                out_io = BytesIO()
+                img.save(out_io, format='WEBP', quality=80, optimize=True)
+                slip_bytes = out_io.getvalue()
+                
+                slip_name = f"slip_{uuid.uuid4().hex[:8]}_{bill.distributor_name.replace(' ', '_')}.webp"
+                slip_url = upload_to_r2(slip_bytes, slip_name, content_type='image/webp')
+            except Exception as img_err:
+                print(f"[SLIP UPLOAD ERROR]: {img_err}")
+
+    try:
+        bill.payment_status = 'paid'
+        bill.payment_mode = payment_mode
+        bill.paid_amount = paid_amt
+        bill.payment_date = pay_date
+        bill.payment_slip_url = slip_url
+        
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Payment slip successfully attached!'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/delete-vault-slip/<int:bill_id>', methods=['POST'])
+@login_required
+def delete_vault_slip(bill_id):
+    store_id = get_store_owner_id()
+    bill = StoreBill.query.filter_by(id=bill_id, user_id=store_id).first()
+    if not bill:
+        return jsonify({'status': 'error', 'message': 'Bill not found'}), 404
+
+    try:
+        # 1. Cloudflare R2 se parchi ki image delete karein
+        if bill.payment_slip_url:
+            delete_from_r2(bill.payment_slip_url)
+
+        # 2. Payment data reset karke wapas UNPAID banayein
+        bill.payment_status = 'pending'
+        bill.payment_mode = None
+        bill.paid_amount = None
+        bill.payment_date = None
+        bill.payment_slip_url = None
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Slip removed. Bill marked as unpaid.'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500

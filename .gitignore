@@ -35,3 +35,6 @@ create_store_admin.py
 
 # reset_password.py
 reset_password.py
+
+.tmp.drivedownload/
+.tmp.driveupload/
