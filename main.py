@@ -344,18 +344,61 @@ def inject_subscription_status():
         'can_access': lambda x: False
     }
 
+@app.route('/subscription-expired')
+def subscription_expired_page():
+    return render_template('subscription_expired.html')
+
 @app.before_request
 def enforce_active_subscription():
     if current_user.is_authenticated:
-        # 'switch_to_trial' ko allowed list me add karein
-        allowed_endpoints = ['checkout_plan', 'confirm_subscription', 'confirm_subscription_with_proof' , 'switch_to_trial', 'logout', 'static']
-        if request.endpoint in allowed_endpoints:
+        # Allowed routes jahan expired user bhi ja sakta hai (payment, logout, static files)
+        allowed_endpoints = [
+            'subscription_expired_page',
+            'checkout_plan',
+            'confirm_subscription',
+            'confirm_subscription_with_proof',
+            'switch_to_trial',
+            'logout',
+            'login',
+            'pricing',
+            'razorpay_callback',
+            'checkout',
+            'signup',
+            'verify_otp',
+            'static',
+            'payment_webhook'
+        ]
+        
+        if request.endpoint in allowed_endpoints or not request.endpoint:
             return
-            
+
+        # Store owner find karein
         owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
-        if owner and owner.subscription_status == 'pending_payment':
-            target_plan = request.args.get('plan') or owner.plan_type or 'basic'
-            return redirect(url_for('checkout_plan', plan=target_plan))
+
+        if owner:
+            # 1. Agar payment pending hai
+            if getattr(owner, 'subscription_status', None) == 'pending_payment':
+                target_plan = request.args.get('plan') or getattr(owner, 'plan_type', 'basic')
+                return redirect(url_for('checkout_plan', plan=target_plan))
+
+            # 2. Agar status direct 'expired' set hai
+            is_status_expired = getattr(owner, 'subscription_status', None) == 'expired'
+
+            # 3. Agar plan expiry date nikal chuki hai
+            is_date_expired = False
+            expiry_val = getattr(owner, 'plan_expiry_date', None) or getattr(owner, 'subscription_end_date', None)
+            if expiry_val:
+                now_dt = get_ist_time() if 'get_ist_time' in globals() else datetime.utcnow()
+                exp_date = expiry_val.date() if isinstance(expiry_val, datetime) else expiry_val
+                curr_date = now_dt.date() if isinstance(now_dt, datetime) else now_dt
+                if exp_date < curr_date:
+                    is_date_expired = True
+
+            # Dono me se koi bhi expired ho toh block karein
+            if is_status_expired or is_date_expired:
+                if request.is_json or request.path.startswith('/api/'):
+                    return jsonify({'status': 'error', 'message': 'Subscription expired. Please renew.'}), 403
+                return redirect(url_for('subscription_expired_page'))
     
 class DemandNotes(db.Model):
     __tablename__ = 'demand_notes'
