@@ -691,6 +691,78 @@ def get_medicine_info(med_name):
             'side_effects': "Safety Note: Read label carefully. Common side effects may include mild nausea, stomach upset, or drowsiness in sensitive individuals."
         })
 
+def get_otp_email_template(otp_code, title="Verify Your Account", subtitle="Use the OTP below to complete your verification."):
+    # Medicofiles ka live logo URL (agar static file hai to https://www.medicofiles.in/static/... use karein)
+    logo_url = "https://www.medicofiles.in/static/img/logo.png"
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{title}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4f7fb; padding: 40px 10px;">
+        <tr>
+            <td align="center">
+        <!-- Email Card Container -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e9ecef;">
+                
+                <!-- Brand Header -->
+                <tr>
+                <td align="center" style="padding: 35px 20px 20px 20px; background-color: #0b0f19;">
+                    <img src="{logo_url}" alt="Medicofiles" width="48" height="48" style="display: block; border-radius: 10px; margin-bottom: 12px;" onerror="this.style.display='none'">
+                    <span style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; display: block;">Medicofiles</span>
+                    <span style="font-size: 12px; color: #94a3b8; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">Pharmacy Vault & Management</span>
+                </td>
+                </tr>
+
+                <!-- Body Content -->
+                <tr>
+                    <td style="padding: 35px 30px 25px 30px; text-align: center;">
+                    <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 600; color: #1e293b;">{title}</h2>
+                    <p style="margin: 0 0 28px 0; font-size: 14px; line-height: 1.6; color: #64748b;">{subtitle}</p>
+
+                    <!-- Bada OTP Badge Box -->
+                    <div style="background: #f8fafc; border: 2px dashed #0284c7; border-radius: 12px; padding: 18px 24px; display: inline-block; margin-bottom: 25px;">
+                    <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #0f172a; margin-left: 8px;">{otp_code}</span>
+                    </div>
+
+                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #94a3b8;">
+                    This code is valid for <strong>10 minutes</strong>. Do not share this OTP with anyone.
+                    </p>
+                </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr>
+                    <td style="padding: 0 30px;">
+                    <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 0;">
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding: 24px 30px 30px 30px; text-align: center;">
+                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #94a3b8;">
+                        If you did not request this verification, please safely ignore this email.
+                    </p>
+                    <p style="margin: 0; font-size: 12px; color: #64748b;">
+                        &copy; 2026 Medicofiles. All rights reserved. &bull; <a href="https://www.medicofiles.in" style="color: #0284c7; text-decoration: none;">medicofiles.in</a>
+                    </p>
+                    </td>
+                </tr>
+
+            </table>
+            </td>
+        </tr>
+        </table>
+    </body>
+    </html>
+    """
+
 @app.route('/')
 @login_required
 def dashboard():
@@ -2788,6 +2860,7 @@ def forgot_password():
                 resend.Emails.send({
                     "from": "Medicofiles <team@medicofiles.in>",
                     "to": [email],
+                    "reply_to": "yashpanchal8709@gmail.com",
                     "subject": "Password Reset Link - Medico",
                     "html": f"""
                         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -2910,8 +2983,9 @@ def send_email_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [new_email],
+            "reply_to": "yashpanchal8709@gmail.com",
             "subject": "Medico Account - Email Verification OTP",
-            "html": f"<p>Hello {current_user.username},<br><br>Your OTP to verify and update your new email address on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
+            "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
         return {'status': 'success', 'message': f'OTP sent successfully to {new_email}!'}
     except Exception as e:
@@ -2965,8 +3039,9 @@ def send_signup_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
+            "reply_to": "yashpanchal8709@gmail.com",
             "subject": "Medico Signup - Email Verification OTP",
-            "html": f"<p>Hello,<br><br>Your OTP for creating a new account on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
+            "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
         return {'status': 'success', 'message': f'OTP sent successfully to {email}!'}
     except Exception as e:
@@ -3640,8 +3715,9 @@ def send_staff_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
+            "reply_to": "yashpanchal8709@gmail.com",
             "subject": "Staff Registration OTP Verification",
-            "html": f"<p>Your OTP for staff account registration is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b>. Valid for 10 minutes.</p>"
+            "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
         return jsonify({'status': 'success', 'message': f'OTP sent successfully to {email}'})
     except Exception as e:
