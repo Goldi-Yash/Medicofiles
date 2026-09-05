@@ -2786,7 +2786,7 @@ def forgot_password():
         # Resend API Password Reset Logic
             try:
                 resend.Emails.send({
-                    "from": "Medicofiles <onboarding@resend.dev>",
+                    "from": "Medicofiles <team@medicofiles.in>",
                     "to": [email],
                     "subject": "Password Reset Link - Medico",
                     "html": f"""
@@ -2908,7 +2908,7 @@ def send_email_otp():
 
     try:
         resend.Emails.send({
-            "from": "Medicofiles <onboarding@resend.dev>",
+            "from": "Medicofiles <team@medicofiles.in>",
             "to": [new_email],
             "subject": "Medico Account - Email Verification OTP",
             "html": f"<p>Hello {current_user.username},<br><br>Your OTP to verify and update your new email address on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
@@ -2963,7 +2963,7 @@ def send_signup_otp():
 
     try:
         resend.Emails.send({
-            "from": "Medicofiles <onboarding@resend.dev>",
+            "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
             "subject": "Medico Signup - Email Verification OTP",
             "html": f"<p>Hello,<br><br>Your OTP for creating a new account on Medico is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b><br><br>If you did not request this, please ignore.</p>"
@@ -3638,7 +3638,7 @@ def send_staff_otp():
 
     try:
         resend.Emails.send({
-            "from": "Medicofiles <onboarding@resend.dev>",
+            "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
             "subject": "Staff Registration OTP Verification",
             "html": f"<p>Your OTP for staff account registration is: <b style='font-size:20px; color:#0d6efd;'>{otp}</b>. Valid for 10 minutes.</p>"
@@ -4146,6 +4146,8 @@ def delete_vault_bill(bill_id):
     try:
         # 1. Cloudflare R2 se delete karein
         delete_from_r2(bill.file_url)
+        if bill.payment_slip_url:
+            delete_from_r2(bill.payment_slip_url)
 
         # 2. Database se bill row delete karein
         # (Note: BillFolder table untouched rahegi, to agar ye aakhri bill bhi tha tab bhi folder create rahega)
@@ -4196,6 +4198,8 @@ def delete_vault_folder():
         bills_to_delete = StoreBill.query.filter_by(user_id=store_id, distributor_name=folder_name).all()
         for b in bills_to_delete:
             delete_from_r2(b.file_url)
+            if b.payment_slip_url:
+                delete_from_r2(b.payment_slip_url)
             db.session.delete(b)
 
         # 2. BillFolder table se bhi folder entry delete karein
@@ -4285,7 +4289,10 @@ def delete_vault_slip(bill_id):
     try:
         # 1. Cloudflare R2 se parchi ki image delete karein
         if bill.payment_slip_url:
-            delete_from_r2(bill.payment_slip_url)
+            try:
+                delete_from_r2(bill.payment_slip_url)
+            except Exception as r2_err:
+                print(f"[R2 SLIP DELETE ERROR]: {r2_err}")
 
         # 2. Payment data reset karke wapas UNPAID banayein
         bill.payment_status = 'pending'
