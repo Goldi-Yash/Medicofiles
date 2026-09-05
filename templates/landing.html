@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medicofiles — Next-Gen Medical Store Management</title>
+    <meta name="description"
+        content="Medicofiles is an all-in-one cloud pharmacy management software for medical store billing, purchase invoice vault, live inventory, and smart POS.">
+    <meta name="keywords"
+        content="Medicofiles, medicofiles in, pharmacy billing software, medical store software, chemist inventory software">
+    <meta name="robots" content="index, follow">
 
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='rotate(-45 32 32)'><path d='M16 20 C16 11.163 23.163 4 32 4 L32 60 C23.163 60 16 52.837 16 44 Z' fill='%232563eb'/><path d='M32 4 C40.837 4 48 11.163 48 20 L48 44 C48 52.837 40.837 60 32 60 Z' fill='%231d4ed8'/><line x1='32' y1='4' x2='32' y2='60' stroke='%23ffffff' stroke-width='4'/></g></svg>">
@@ -19,7 +24,7 @@
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="manifest" href="/manifest.json">
+    <!-- <link rel="manifest" href="/manifest.json"> -->
 
     <style>
         html {
@@ -300,15 +305,18 @@
                     <li class="nav-item"><a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
                             href="#ai-magic">AI-Magic</a></li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="javascript:void(0)"
-                            data-bs-toggle="modal" data-bs-target="#appTutorialModal" style="cursor: pointer;">App
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
+                            href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#appTutorialModal"
+                            style="cursor: pointer;">App
                             Tutorial</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="#contact-us">Contact Us</a>
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
+                            href="#contact-us">Contact Us</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap" href="#pricing-section">Pricing
+                        <a class="nav-link text-light opacity-75 hover-opacity-100 text-nowrap"
+                            href="#pricing-section">Pricing
                             Plans</a>
                     </li>
                     <li class="nav-item">
@@ -986,7 +994,8 @@
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>Dedicated Stock Alerts Page</li>
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>1 Admin + 2 Staff Accounts</li>
                             <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore</li>
-                            <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to 20,000 Invoices)</li>
+                            <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to 20,000
+                                Invoices)</li>
                         </ul>
                         <a href="{% if current_user.is_authenticated %}/checkout?plan=pro{% else %}{{ url_for('signup', plan='pro') }}{% endif %}"
                             class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">
