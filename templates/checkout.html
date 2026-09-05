@@ -197,6 +197,10 @@
                                     style="width: 160px; height: 160px;">
                             </div>
                             <div class="small text-white mb-3">GPay • PhonePe • Paytm • Any UPI</div>
+                            <a id="upiIntentBtn" href="#"
+                                class="btn btn-sm btn-outline-info w-100 mb-3 d-md-none fw-semibold">
+                                <i class="bi bi-phone me-1"></i> Open & Pay via UPI App
+                            </a>
 
                             <!-- UTR Input -->
                             <div class="mb-3 text-start">
@@ -241,6 +245,9 @@
         </div>
     </div>
 
+    <!-- Free & Fast Standalone QR Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
         // 👇 YAHAN APNI REAL UPI ID DAAL DEIN 👇
         const YOUR_UPI_ID = "8700655156@ibl"; // ya 8700655156@ybl, aapki jo bhi primary UPI ID ho
@@ -250,8 +257,20 @@
         let activeAmount = "{{ plan_info.price }}";
 
         function updateQrCode(price) {
-            const upiUri = `upi://pay?pa=${YOUR_UPI_ID}&pn=${encodeURIComponent(YOUR_BUSINESS_NAME)}&am=${price}&cu=INR`;
-            document.getElementById('upiQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiUri)}`;
+            const note = encodeURIComponent("Medicofiles " + (activePlanKey || "PLAN").toUpperCase());
+            const upiUrl = `upi://pay?pa=${YOUR_UPI_ID}&pn=${encodeURIComponent(YOUR_BUSINESS_NAME)}&am=${price}&cu=INR&tn=${note}`;
+
+            // QR image update
+            const qrImg = document.getElementById('upiQrImg');
+            if (qrImg) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUrl)}`;
+            }
+
+            // Mobile intent link update (agar button ho)
+            const mobileBtn = document.getElementById('upiIntentBtn');
+            if (mobileBtn) {
+                mobileBtn.href = upiUrl;
+            }
         }
 
         // Initial QR render
