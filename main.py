@@ -221,7 +221,7 @@ class User(db.Model, UserMixin):
     plan_type = db.Column(db.String(50), default='trial') # trial, basic, pro, ultra
     subscription_status = db.Column(db.String(50), default='active') # active, expired
     trial_start_date = db.Column(db.DateTime, default=get_ist_time)
-    subscription_end_date = db.Column(db.DateTime, default=lambda: get_ist_time() + timedelta(days=30))
+    subscription_end_date = db.Column(db.DateTime, default=lambda: get_ist_time() + timedelta(days=15))
 
     def get_permissions(self):
         if self.role == 'admin':
@@ -2852,7 +2852,7 @@ def signup():
             new_plan_type = 'trial' if is_trial else selected_plan
             new_sub_status = 'active' if is_trial else 'pending_payment'
             # Paid plan par trial days nahi balki payment pending rahegi
-            new_end_date = get_ist_time() + timedelta(days=30) if is_trial else get_ist_time()
+            new_end_date = get_ist_time() + timedelta(days=15) if is_trial else get_ist_time()
 
             new_user = User(
                 username=extracted_username,
@@ -2873,7 +2873,7 @@ def signup():
 
             # Routing
             if is_trial:
-                flash('Welcome! Your 30-Day Free Trial has started.', 'success')
+                flash('Welcome! Your 15-Day Free Trial has started.', 'success')
                 return redirect(url_for('dashboard'))
             else:
                 # Seedha checkout screen par payment QR ke sath bhejega
@@ -4062,18 +4062,18 @@ def switch_to_trial():
         if owner.trial_start_date is not None and owner.plan_type != 'trial' and owner.subscription_status != 'pending_payment':
             return jsonify({
                 'status': 'error',
-                'message': 'You have already used your 30-Day Free Trial on this account.'
+                'message': 'You have already used your 15-Day Free Trial on this account.'
             }), 400
             
         owner.plan_type = 'trial'
         owner.subscription_status = 'active'
         owner.trial_start_date = get_ist_time()
-        owner.subscription_end_date = get_ist_time() + timedelta(days=30)
+        owner.subscription_end_date = get_ist_time() + timedelta(days=15)
         db.session.commit()
         
         return jsonify({
             'status': 'success',
-            'message': 'Switched to 30-Day Free Trial successfully!'
+            'message': 'Switched to 15-Day Free Trial successfully!'
         })
     except Exception as e:
         db.session.rollback()

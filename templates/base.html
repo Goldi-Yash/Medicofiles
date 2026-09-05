@@ -619,7 +619,7 @@
                 style="background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); color: #f8fafc; border-left: 4px solid #3b82f6 !important;">
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-primary rounded-pill px-2 py-1"><i class="bi bi-clock-history me-1"></i>
-                        30-Day Free Trial</span>
+                        15-Day Free Trial</span>
                     <span class="small">You have <strong class="text-warning">{{ trial_days_left }} days
                             remaining</strong> with full unrestricted access.</span>
                 </div>
@@ -636,7 +636,7 @@
                     <i class="bi bi-exclamation-octagon-fill fs-5"></i>
                     <span class="small fw-semibold">
                         {% if current_user.plan_type == 'trial' %}
-                        Your <strong>30-day Free Trial</strong> has expired. Choose a plan to continue billing & AI
+                        Your <strong>15-day Free Trial</strong> has expired. Choose a plan to continue billing & AI
                         features.
                         {% else %}
                         Your <strong>{{ current_user.plan_type|upper }} Plan</strong> has expired. Please renew your
