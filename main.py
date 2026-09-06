@@ -2905,7 +2905,7 @@ def forgot_password():
                 resend.Emails.send({
                     "from": "Medicofiles <team@medicofiles.in>",
                     "to": [email],
-                    "reply_to": "yashpanchal8709@gmail.com",
+                    "reply_to": "medicoxfiles@gmail.com",
                     "subject": "Password Reset Link - Medico",
                     "html": f"""
                         <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -3028,7 +3028,7 @@ def send_email_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [new_email],
-            "reply_to": "yashpanchal8709@gmail.com",
+            "reply_to": "medicoxfiles@gmail.com",
             "subject": "Medico Account - Email Verification OTP",
             "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
@@ -3084,7 +3084,7 @@ def send_signup_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
-            "reply_to": "yashpanchal8709@gmail.com",
+            "reply_to": "medicoxfiles@gmail.com",
             "subject": "Medico Signup - Email Verification OTP",
             "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
@@ -3760,7 +3760,7 @@ def send_staff_otp():
         resend.Emails.send({
             "from": "Medicofiles <team@medicofiles.in>",
             "to": [email],
-            "reply_to": "yashpanchal8709@gmail.com",
+            "reply_to": "medicoxfiles@gmail.com",
             "subject": "Staff Registration OTP Verification",
             "html": get_otp_email_template(otp_code=otp, title="Email Verification", subtitle="Enter this code to complete your Medicofiles verification.")
         })
