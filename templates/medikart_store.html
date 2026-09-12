@@ -76,33 +76,30 @@
 
 <body class="bg-[#F4F6F8] text-slate-900 antialiased min-h-screen flex flex-col justify-between">
 
-    <!-- ==================== TOP NAVIGATION BAR ==================== -->
-    <header class="sticky top-0 z-40 bg-[#0c831f] text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+    <!-- TOP NAVIGATION BAR (Solid background, no transparency on scroll) -->
+    <header class="sticky top-0 z-50 text-white shadow-md" style="background-color: #008521 !important;">
 
+        <!-- ================= 1. DESKTOP VIEW ONLY (SCREEN >= 768px) - 100% ORIGINAL ================= -->
+        <div class="hidden md:flex max-w-7xl mx-auto px-4 py-3 items-center justify-between gap-4">
             <!-- Brand & ETA -->
             <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1.5 bg-[#085214] px-3 py-1.5 rounded-xl border border-emerald-400/20">
+                <div class="flex items-center gap-1.5 bg-[#006e1b] px-3 py-1.5 rounded-xl border border-emerald-400/30">
                     <i class="bi bi-lightning-charge-fill text-yellow-300 text-sm"></i>
                     <span class="text-xs font-black tracking-wider uppercase">30 Mins</span>
                 </div>
                 <a href="{{ url_for('medikart_bp.public_medikart_store') }}"
                     class="flex items-center gap-2.5 text-decoration-none group cursor-pointer transition active:scale-95 select-none">
-                    <!-- Real Medicofiles Capsule Logo Image -->
                     <img src="{{ url_for('static', filename='images/medikart_logo.png') }}" alt="Medikart Logo"
                         class="w-7 h-7 object-contain drop-shadow-sm group-hover:scale-105 transition-transform brightness-0 invert">
-
-                    <h1 class="text-2xl font-black tracking-tight text-white mb-0">
-                        Medikart
-                    </h1>
+                    <h1 class="text-2xl font-black tracking-tight text-white mb-0">Medikart</h1>
                 </a>
             </div>
 
             <!-- Location Selector Trigger Pill -->
             <div onclick="openLocationModal()"
-                class="flex items-center gap-2 bg-[#0a6e1a]/80 hover:bg-[#085a15] text-white px-3.5 py-1.5 rounded-full cursor-pointer transition border border-emerald-400/30 text-xs font-semibold max-w-[220px] sm:max-w-xs truncate shadow-sm">
+                class="flex items-center gap-2 bg-[#006e1b] hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-full cursor-pointer transition border border-emerald-400/40 text-xs font-semibold max-w-[220px] sm:max-w-xs truncate shadow-sm">
                 <i class="bi bi-geo-alt-fill text-amber-300 shrink-0 text-sm"></i>
-                <div class="flex flex-col text-left truncate">
+                <div class="flex flex-col text-truncate">
                     <span class="text-[9px] text-emerald-200 uppercase font-black tracking-wider leading-none">Deliver
                         To</span>
                     <span id="activeLocationDisplay" class="truncate font-bold text-xs">Detecting location...</span>
@@ -120,17 +117,15 @@
 
             <!-- Customer Auth Header Button -->
             <div id="authHeaderWrapper" class="flex items-center">
-                <!-- When Not Logged In -->
                 <button id="navLoginBtn" onclick="openAuthModal()"
-                    class="text-white hover:text-emerald-100 font-bold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-emerald-700/60">
+                    class="text-white hover:text-emerald-100 font-bold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-emerald-800/60">
                     <i class="bi bi-person-circle text-base"></i>
                     <span>Login</span>
                 </button>
 
-                <!-- When Logged In (Auto Shown via JS) -->
                 <div id="navUserDropdown" class="hidden relative">
                     <button onclick="toggleUserMenu()"
-                        class="bg-emerald-700/80 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-2 border border-emerald-500/40">
+                        class="bg-[#006e1b] hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl transition flex items-center gap-2 border border-emerald-400/40">
                         <i class="bi bi-person-check-fill text-emerald-300 text-sm"></i>
                         <span id="navUserName" class="truncate max-w-[120px]">Account</span>
                         <i class="bi bi-chevron-down text-[10px] text-emerald-200"></i>
@@ -138,18 +133,15 @@
                     <div id="userMenuDropdown"
                         class="hidden absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-700 text-xs font-semibold">
                         <div class="px-4 py-2 border-b border-slate-100">
-                            <p class="text-[10px] text-slate-400 font-medium">Logged in as</p>
+                            <p class="text-[10px] text-slate-400 font-medium">Logged in as:</p>
                             <p id="menuUserIdentifier" class="font-bold text-slate-800 truncate"></p>
                         </div>
-
                         <button onclick="openOrdersDrawer()"
                             class="w-full text-left px-4 py-2.5 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition">
                             <i class="bi bi-bag-check text-emerald-600 text-sm"></i>
                             <span>My Orders & Tracking</span>
                         </button>
-
                         <div class="my-1 border-t border-slate-100"></div>
-
                         <button onclick="logoutCustomer()"
                             class="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition">
                             <i class="bi bi-box-arrow-right"></i> Logout
@@ -160,7 +152,7 @@
 
             <!-- Cart Button Pill -->
             <button onclick="toggleCartDrawer()"
-                class="flex items-center gap-3 bg-[#085214] hover:bg-[#063d0f] border border-emerald-400/30 px-4 py-2.5 rounded-xl font-extrabold text-sm transition shadow">
+                class="flex items-center gap-3 bg-[#006e1b] hover:bg-[#005a16] border border-emerald-400/40 px-4 py-2.5 rounded-xl font-extrabold text-sm transition shadow">
                 <div class="relative">
                     <i class="bi bi-bag-check-fill text-lg text-emerald-300"></i>
                     <span id="cartBadge"
@@ -168,7 +160,7 @@
                 </div>
                 <div class="text-left leading-tight hidden sm:block">
                     <span class="block text-[11px] font-semibold text-emerald-200" id="cartItemSummary">0 Items</span>
-                    <span class="block text-xs font-black text-white" id="cartTotalSummary">₹0</span>
+                    <span class="block text-sm font-black text-white" id="cartTotalSummary">₹0</span>
                 </div>
             </button>
 
@@ -182,32 +174,74 @@
                 </svg>
                 <!-- <span>App</span> -->
                 <span
-                    class="bg-green-500/80 text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">APK</span>
+                    class="bg-green-400 text-slate-900 text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">APK</span>
             </a>
-
         </div>
 
-        <!-- Category Quick Filters Bar -->
-        <div class="bg-[#0a6e1a] border-t border-emerald-600/40">
+        <!-- ================= 2. MOBILE APP VIEW (SCREEN < 768px) ================= -->
+        <div class="block md:hidden px-3 pt-2.5 pb-2.5" style="background-color: #008521 !important;">
+            <!-- Mobile Row 1: Brand, Address & Quick Actions -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <a href="{{ url_for('medikart_bp.public_medikart_store') }}"
+                        class="shrink-0 flex items-center gap-1.5 text-white text-decoration-none">
+                        <img src="{{ url_for('static', filename='images/medikart_logo.png') }}"
+                            class="w-6 h-6 object-contain brightness-0 invert" alt="Logo">
+                        <span class="text-lg font-black tracking-tight leading-none text-white">Medikart</span>
+                    </a>
+                    <div onclick="openLocationModal()"
+                        class="flex items-center gap-1 bg-[#006e1b] px-2.5 py-1 rounded-full text-white border border-emerald-400/30 truncate max-w-[150px] cursor-pointer">
+                        <i class="bi bi-geo-alt-fill text-amber-300 text-[10px] shrink-0"></i>
+                        <span id="activeLocationDisplayMobile"
+                            class="text-[11px] font-bold truncate leading-none">Gurugram</span>
+                        <i class="bi bi-chevron-down text-[8px] text-emerald-200 shrink-0"></i>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="openAuthModal()"
+                        class="w-8 h-8 rounded-full bg-[#006e1b] flex items-center justify-center text-white border border-emerald-400/30">
+                        <i class="bi bi-person-fill text-sm"></i>
+                    </button>
+                    <button onclick="toggleCartDrawer()"
+                        class="relative w-8 h-8 rounded-full bg-[#006e1b] flex items-center justify-center text-white border border-emerald-400/30">
+                        <i class="bi bi-bag-check-fill text-sm text-yellow-300"></i>
+                        <span id="cartBadgeMobile"
+                            class="hidden absolute -top-1 -right-1 bg-yellow-400 text-slate-900 text-[9px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Row 2: Full Width Native Search Bar -->
+            <div class="relative w-full">
+                <input type="text" id="liveSearchInputMobile" placeholder="Search 'Dolo 650', 'Allegra'..."
+                    class="w-full bg-white text-slate-800 placeholder-slate-400 text-xs rounded-xl pl-9 pr-3 py-2 outline-none shadow font-medium"
+                    onkeyup="filterProducts(this.value)">
+                <i class="bi bi-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            </div>
+        </div>
+
+        <!-- Category Quick Filters Bar (Solid Green) -->
+        <div style="background-color: #00731c !important;" class="border-t border-emerald-600/50">
             <div
-                class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2 overflow-x-auto hide-scrollbar text-xs font-semibold">
+                class="max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 overflow-x-auto hide-scrollbar text-xs font-semibold">
                 <button onclick="filterCategory('ALL')"
-                    class="category-btn active bg-white text-emerald-800 px-4 py-1.5 rounded-lg shadow-sm whitespace-nowrap">All
+                    class="category-btn active bg-white text-emerald-800 px-3.5 sm:px-4 py-1.5 rounded-lg shadow-sm whitespace-nowrap text-[11px] sm:text-xs">All
                     Medicines</button>
                 <button onclick="filterCategory('Fever & Pain')"
-                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Fever
+                    class="category-btn bg-[#005a16]/60 hover:bg-[#005a16] text-white px-3 sm:px-3.5 py-1.5 rounded-lg whitespace-nowrap transition text-[11px] sm:text-xs">Fever
                     & Pain</button>
                 <button onclick="filterCategory('First Aid')"
-                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">First
+                    class="category-btn bg-[#005a16]/60 hover:bg-[#005a16] text-white px-3 sm:px-3.5 py-1.5 rounded-lg whitespace-nowrap transition text-[11px] sm:text-xs">First
                     Aid</button>
                 <button onclick="filterCategory('Acidity & Gas')"
-                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Acidity
+                    class="category-btn bg-[#005a16]/60 hover:bg-[#005a16] text-white px-3 sm:px-3.5 py-1.5 rounded-lg whitespace-nowrap transition text-[11px] sm:text-xs">Acidity
                     & Gas</button>
                 <button onclick="filterCategory('Cold & Allergy')"
-                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Cold
+                    class="category-btn bg-[#005a16]/60 hover:bg-[#005a16] text-white px-3 sm:px-3.5 py-1.5 rounded-lg whitespace-nowrap transition text-[11px] sm:text-xs">Cold
                     & Allergy</button>
                 <button onclick="filterCategory('Personal Care')"
-                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Personal
+                    class="category-btn bg-[#005a16]/60 hover:bg-[#005a16] text-white px-3 sm:px-3.5 py-1.5 rounded-lg whitespace-nowrap transition text-[11px] sm:text-xs">Personal
                     Care</button>
             </div>
         </div>
@@ -1010,12 +1044,34 @@
         </div>
     </div>
 
+    <!-- ================= MOBILE STICKY FLOATING CART BAR (SCREEN < 768px ONLY) ================= -->
+    <div id="mobileFloatingCart" class="fixed bottom-3 left-3 right-3 z-40 md:hidden hidden">
+        <div onclick="toggleCartDrawer()"
+            class="bg-[#008521] text-white p-3 rounded-2xl shadow-xl flex items-center justify-between cursor-pointer border border-emerald-400/30">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-emerald-700/80 flex items-center justify-center">
+                    <i class="bi bi-bag-check-fill text-emerald-300"></i>
+                </div>
+                <div>
+                    <p id="mobileCartItemSummary"
+                        class="text-[11px] text-emerald-200 font-semibold leading-none mb-0.5">0 Items</p>
+                    <p id="mobileCartTotalSummary" class="text-sm font-black leading-none text-white">₹0</p>
+                </div>
+            </div>
+            <div
+                class="flex items-center gap-1 font-bold text-xs bg-white text-emerald-800 px-3 py-1.5 rounded-xl shadow-sm">
+                <span>View Cart</span>
+                <i class="bi bi-arrow-right"></i>
+            </div>
+        </div>
+    </div>
+
     <!-- Cart Logic & Filtering Engine -->
     <script>
         let cart = {};
 
         async function detectUserLocation() {
-            const locDisplay = document.getElementById('currentLocDisplay');
+            const locDisplay = document.getElementById('activeLocationDisplay') || document.getElementById('activeLocationDisplayMobile');
             if (!navigator.geolocation) {
                 locDisplay.innerText = "GPS Not Supported";
                 return;
@@ -1073,10 +1129,24 @@
             });
         }
 
-        function filterProducts() {
-            const q = document.getElementById('liveSearchInput').value.toLowerCase();
-            document.querySelectorAll('.product-card').forEach(c => {
-                c.style.display = c.dataset.name.includes(q) ? '' : 'none';
+        function filterProducts(mobileVal) {
+            const desktopInput = document.getElementById('liveSearchInput');
+            const mobileInput = document.getElementById('liveSearchInputMobile');
+
+            // Dono search inputs ko aapas mein sync rakhein
+            const query = (mobileVal !== undefined ? mobileVal : (desktopInput ? desktopInput.value : '')).toLowerCase().trim();
+            if (desktopInput && mobileVal !== undefined) desktopInput.value = mobileVal;
+            if (mobileInput && mobileVal === undefined && desktopInput) mobileInput.value = desktopInput.value;
+
+            const cards = document.querySelectorAll('.product-card');
+            cards.forEach(card => {
+                const name = (card.getAttribute('data-name') || '').toLowerCase();
+                const category = (card.getAttribute('data-category') || '').toLowerCase();
+                if (!query || name.includes(query) || category.includes(query)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
             });
         }
 
@@ -1300,6 +1370,26 @@
             document.getElementById('cartTotalSummary').innerText = `₹${total.toFixed(2)}`;
             document.getElementById('billSubtotal').innerText = `₹${total.toFixed(2)}`;
             document.getElementById('billGrandTotal').innerText = `₹${total.toFixed(2)}`;
+
+            // Mobile Header Cart Badge & Sticky Floating Bar Sync
+            const mobBadge = document.getElementById('cartBadgeMobile');
+            const mobBar = document.getElementById('mobileFloatingCart');
+            const mobSummary = document.getElementById('mobileCartItemSummary');
+            const mobTotal = document.getElementById('mobileCartTotalSummary');
+
+            if (mobBadge) {
+                mobBadge.innerText = count;
+                mobBadge.classList.toggle('hidden', count === 0);
+            }
+            if (mobBar) {
+                mobBar.classList.toggle('hidden', count === 0);
+            }
+            if (mobSummary) {
+                mobSummary.innerText = `${count} Items`;
+            }
+            if (mobTotal) {
+                mobTotal.innerText = `₹${total.toFixed(2)}`;
+            }
 
             // Product Cards par Inline Stepper Sync
             document.querySelectorAll('.card-action-slot').forEach(slot => {
@@ -1612,7 +1702,9 @@
         // 4. Address Selection & Header Update
         function setActiveDeliveryLocation(title, fullDetail, type) {
             const display = document.getElementById('activeLocationDisplay');
+            const displayMob = document.getElementById('activeLocationDisplayMobile');
             if (display) display.innerText = title;
+            if (displayMob) displayMob.innerText = title;
 
             localStorage.setItem('medikart_active_addr_title', title);
             localStorage.setItem('medikart_active_addr_full', fullDetail);
