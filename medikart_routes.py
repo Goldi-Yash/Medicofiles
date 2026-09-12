@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify , session
+from flask import Blueprint, render_template, request, jsonify , session ,current_app, send_from_directory
 from flask_login import login_required, current_user
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -172,6 +172,11 @@ def delete_rx_from_r2(prescription_url):
         print(f"[R2 SUCCESS] Prescription deleted: {object_key}")
     except Exception as e:
         print(f"[R2 ERROR] Prescription deletion failed: {e}")
+
+@medikart_bp.route('/.well-known/assetlinks.json')
+def medikart_assetlinks():
+    well_known_dir = os.path.join(current_app.static_folder, '.well-known')
+    return send_from_directory(well_known_dir, 'assetlinks.json', mimetype='application/json')
 
 # Medikart Public Showcase & Welcome Page
 @medikart_bp.route('/medikart/about')
