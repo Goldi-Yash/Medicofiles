@@ -806,7 +806,7 @@ def add_custom_medicine():
     mrp_str = request.form.get('mrp', '0').strip()
     composition = request.form.get('composition', '').strip() or name
     pack_size = request.form.get('pack_size', '').strip() or '1 Unit'
-    rx_type = request.form.get('rx_type', 'otc') # otc | rx | strict
+    rx_type = request.form.get('rx_type', 'strict') # otc | rx | strict
 
     if not name:
         return jsonify({'success': False, 'message': 'Medicine name is required'}), 400
@@ -817,15 +817,16 @@ def add_custom_medicine():
         return jsonify({'success': False, 'message': 'Invalid MRP value'}), 400
 
     # Rx boolean configuration
-    if rx_type == 'strict':
-        req_rx = True
-        strict_rx = True
-    elif rx_type == 'rx':
+    if rx_type == 'rx':
         req_rx = True
         strict_rx = False
-    else:
+    elif rx_type == 'otc':
         req_rx = False
         strict_rx = False
+    else:
+        # Default: Always Rx Mandatory
+        req_rx = True
+        strict_rx = True
 
     # Handle Photo Upload using project's verified get_r2_client()
     image_url = None
