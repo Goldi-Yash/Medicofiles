@@ -351,6 +351,10 @@ def inject_subscription_status():
         'can_access': lambda x: False
     }
 
+@app.route('/robots.txt')
+def robots_txt():
+    return send_from_directory(app.static_folder, 'robots.txt')
+
 @app.route('/subscription-expired')
 def subscription_expired_page():
     if current_user.is_authenticated:

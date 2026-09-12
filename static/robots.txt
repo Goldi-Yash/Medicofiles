@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Allow: /medikart
+Allow: /static/
+
+Sitemap: https://medicofiles.in/sitemap.xml

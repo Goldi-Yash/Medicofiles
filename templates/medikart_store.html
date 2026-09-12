@@ -4,10 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medikart — 15 Mins Medicine & Essentials Delivery</title>
+    <title>Medikart — 30 Mins Medicine & Essentials Delivery</title>
     <!-- Medikart Tab Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/medikart_logo.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/color/48/shopping-bag--v1.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/color/192/shopping-bag--v1.png">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/medikart_logo.png') }}">
+
+    <!-- Open Graph / WhatsApp Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://medikart.medicofiles.in">
+    <meta property="og:title" content="Medikart — 15-30 Mins Express Medicine Delivery">
+    <meta property="og:description"
+        content="Order genuine medicines from verified neighborhood chemists. Superfast 15-30 mins delivery with zero fake medicines.">
+    <meta property="og:image" content="https://img.icons8.com/color/512/shopping-bag--v1.png">
+
+    <!-- Google Structured Data (Schema.org JSON-LD for rich snippet + Logo) -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Pharmacy",
+        "name": "Medikart",
+        "url": "https://medikart.medicofiles.in",
+        "logo": "https://img.icons8.com/color/192/shopping-bag--v1.png",
+        "description": "Hyperlocal express pharmacy delivery delivering from verified local chemist shelves in 15-30 minutes.",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://medikart.medicofiles.in/?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
