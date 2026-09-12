@@ -1,0 +1,2335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medikart — 15 Mins Medicine & Essentials Delivery</title>
+    <!-- Medikart Tab Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/medikart_logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/medikart_logo.png') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="bg-[#F4F6F8] text-slate-900 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- ==================== TOP NAVIGATION BAR ==================== -->
+    <header class="sticky top-0 z-40 bg-[#0c831f] text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+
+            <!-- Brand & ETA -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1.5 bg-[#085214] px-3 py-1.5 rounded-xl border border-emerald-400/20">
+                    <i class="bi bi-lightning-charge-fill text-yellow-300 text-sm"></i>
+                    <span class="text-xs font-black tracking-wider uppercase">30 Mins</span>
+                </div>
+                <a href="{{ url_for('medikart_bp.public_medikart_store') }}"
+                    class="flex items-center gap-2.5 text-decoration-none group cursor-pointer transition active:scale-95 select-none">
+                    <!-- Real Medicofiles Capsule Logo Image -->
+                    <img src="{{ url_for('static', filename='images/medikart_logo.png') }}" alt="Medikart Logo"
+                        class="w-7 h-7 object-contain drop-shadow-sm group-hover:scale-105 transition-transform brightness-0 invert">
+
+                    <h1 class="text-2xl font-black tracking-tight text-white mb-0">
+                        Medikart
+                    </h1>
+                </a>
+            </div>
+
+            <!-- Location Selector Trigger Pill -->
+            <div onclick="openLocationModal()"
+                class="flex items-center gap-2 bg-[#0a6e1a]/80 hover:bg-[#085a15] text-white px-3.5 py-1.5 rounded-full cursor-pointer transition border border-emerald-400/30 text-xs font-semibold max-w-[220px] sm:max-w-xs truncate shadow-sm">
+                <i class="bi bi-geo-alt-fill text-amber-300 shrink-0 text-sm"></i>
+                <div class="flex flex-col text-left truncate">
+                    <span class="text-[9px] text-emerald-200 uppercase font-black tracking-wider leading-none">Deliver
+                        To</span>
+                    <span id="activeLocationDisplay" class="truncate font-bold text-xs">Detecting location...</span>
+                </div>
+                <i class="bi bi-chevron-down text-[10px] text-emerald-200 shrink-0 ml-1"></i>
+            </div>
+
+            <!-- Search Input -->
+            <div class="flex-1 max-w-lg relative">
+                <input type="text" id="liveSearchInput" placeholder="Search medicines, paracetamol, Dolo..."
+                    class="w-full bg-white text-slate-800 placeholder-slate-400 text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none shadow-inner font-medium focus:ring-2 focus:ring-emerald-300"
+                    onkeyup="filterProducts()">
+                <i class="bi bi-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            </div>
+
+            <!-- Customer Auth Header Button -->
+            <div id="authHeaderWrapper" class="flex items-center">
+                <!-- When Not Logged In -->
+                <button id="navLoginBtn" onclick="openAuthModal()"
+                    class="text-white hover:text-emerald-100 font-bold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-emerald-700/60">
+                    <i class="bi bi-person-circle text-base"></i>
+                    <span>Login</span>
+                </button>
+
+                <!-- When Logged In (Auto Shown via JS) -->
+                <div id="navUserDropdown" class="hidden relative">
+                    <button onclick="toggleUserMenu()"
+                        class="bg-emerald-700/80 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-2 border border-emerald-500/40">
+                        <i class="bi bi-person-check-fill text-emerald-300 text-sm"></i>
+                        <span id="navUserName" class="truncate max-w-[120px]">Account</span>
+                        <i class="bi bi-chevron-down text-[10px] text-emerald-200"></i>
+                    </button>
+                    <div id="userMenuDropdown"
+                        class="hidden absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 text-slate-700 text-xs font-semibold">
+                        <div class="px-4 py-2 border-b border-slate-100">
+                            <p class="text-[10px] text-slate-400 font-medium">Logged in as</p>
+                            <p id="menuUserIdentifier" class="font-bold text-slate-800 truncate"></p>
+                        </div>
+
+                        <button onclick="openOrdersDrawer()"
+                            class="w-full text-left px-4 py-2.5 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition">
+                            <i class="bi bi-bag-check text-emerald-600 text-sm"></i>
+                            <span>My Orders & Tracking</span>
+                        </button>
+
+                        <div class="my-1 border-t border-slate-100"></div>
+
+                        <button onclick="logoutCustomer()"
+                            class="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Button Pill -->
+            <button onclick="toggleCartDrawer()"
+                class="flex items-center gap-3 bg-[#085214] hover:bg-[#063d0f] border border-emerald-400/30 px-4 py-2.5 rounded-xl font-extrabold text-sm transition shadow">
+                <div class="relative">
+                    <i class="bi bi-bag-check-fill text-lg text-emerald-300"></i>
+                    <span id="cartBadge"
+                        class="hidden absolute -top-2 -right-2 bg-yellow-400 text-slate-900 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+                </div>
+                <div class="text-left leading-tight hidden sm:block">
+                    <span class="block text-[11px] font-semibold text-emerald-200" id="cartItemSummary">0 Items</span>
+                    <span class="block text-xs font-black text-white" id="cartTotalSummary">₹0</span>
+                </div>
+            </button>
+
+        </div>
+
+        <!-- Category Quick Filters Bar -->
+        <div class="bg-[#0a6e1a] border-t border-emerald-600/40">
+            <div
+                class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2 overflow-x-auto hide-scrollbar text-xs font-semibold">
+                <button onclick="filterCategory('ALL')"
+                    class="category-btn active bg-white text-emerald-800 px-4 py-1.5 rounded-lg shadow-sm whitespace-nowrap">All
+                    Medicines</button>
+                <button onclick="filterCategory('Fever & Pain')"
+                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Fever
+                    & Pain</button>
+                <button onclick="filterCategory('First Aid')"
+                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">First
+                    Aid</button>
+                <button onclick="filterCategory('Acidity & Gas')"
+                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Acidity
+                    & Gas</button>
+                <button onclick="filterCategory('Cold & Allergy')"
+                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Cold
+                    & Allergy</button>
+                <button onclick="filterCategory('Personal Care')"
+                    class="category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition">Personal
+                    Care</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN PRODUCT GRID ==================== -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow">
+
+        <!-- Top Announcement Strip -->
+        <div
+            class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-2xl p-4 mb-6 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">⚡</span>
+                <div>
+                    <h2 class="text-sm font-black text-emerald-950">(First Delivery Fee Free) Delivering fresh from your neighborhood verified
+                        chemist</h2>
+                    <p class="text-xs text-emerald-700 mt-0.5">Zero counterfeit guarantee • Packed with bill & batch
+                        records</p>
+                </div>
+            </div>
+            <span
+                class="hidden md:inline-flex text-xs font-bold bg-white text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-200">
+                Active Store: 1
+            </span>
+        </div>
+
+        <!-- Product Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="productsGrid">
+            {% for item in items %}
+            <div class="product-card bg-white border border-slate-200/80 hover:border-emerald-500/50 hover:shadow-lg rounded-2xl p-4 flex flex-col justify-between transition group"
+                data-name="{{ item.name|lower }}" data-category="{{ item.category }}" data-id="{{ item.master_id }}">
+
+                <div>
+                    <!-- Product Image Container (Clickable for PDP Modal) -->
+                    <div onclick="openProductDetail('{{ item.master_id }}')"
+                        class="h-36 w-full rounded-2xl bg-white border border-slate-100 flex items-center justify-center relative mb-3 p-1.5 overflow-hidden group-hover:border-emerald-300 transition-all cursor-pointer">
+                        {% if item.image_url and item.image_url != 'NULL' and item.image_url.strip() %}
+                        <img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy"
+                            referrerpolicy="no-referrer"
+                            class="h-full w-full object-contain scale-110 group-hover:scale-125 transition-transform duration-200">
+                        {% else %}
+                        <span class="text-4xl opacity-90 drop-shadow-sm select-none">💊</span>
+                        {% endif %}
+
+                        <!-- NEW: Clean Floating Corner Badge -->
+                        {% if item.requires_rx and item.is_strictly_rx %}
+                        <span
+                            class="absolute top-2 left-2 z-10 text-[9px] font-black tracking-tight text-rose-700 bg-rose-50/95 backdrop-blur-xs border border-rose-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <i class="bi bi-shield-lock-fill text-[10px] text-rose-600"></i> Rx Mandatory
+                        </span>
+                        {% elif item.requires_rx %}
+                        <span
+                            class="absolute top-2 left-2 z-10 text-[9px] font-black tracking-tight text-amber-800 bg-amber-50/95 backdrop-blur-xs border border-amber-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <i class="bi bi-file-earmark-medical text-[10px] text-amber-700"></i> Rx Required
+                        </span>
+                        {% endif %}
+                        <!-- Delivery ETA Tag (Bottom Left of Product Image) -->
+                        {% if item.is_procurement_item %}
+                        <span
+                            class="absolute bottom-2 left-2 z-10 text-[9px] font-black tracking-tight text-amber-900 bg-amber-100/95 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <i class="bi bi-clock-history text-amber-600"></i> Delivers in 1-2 Days
+                        </span>
+                        {% else %}
+                        <span
+                            class="absolute bottom-2 left-2 z-10 text-[9px] font-black tracking-tight text-emerald-800 bg-emerald-50/95 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                            <i class="bi bi-lightning-charge-fill text-emerald-600"></i> 30 Mins
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Product Specs (Clickable for PDP Modal) -->
+                    <div onclick="openProductDetail('{{ item.master_id }}')" class="cursor-pointer">
+                        <span class="text-[11px] font-semibold text-slate-400 block mb-0.5 uppercase tracking-wide">{{
+                            item.category }}</span>
+                        <h3
+                            class="font-bold text-sm text-slate-900 line-clamp-2 leading-snug group-hover:text-emerald-700 transition">
+                            {{ item.name }}</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">{{ item.brand }}</p>
+                    </div>
+                </div>
+
+                <!-- Price & Add Button -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <!-- NEW: Clean Single MRP Price -->
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-base font-black text-slate-900">₹{{ item.mrp }}</span>
+                    </div>
+
+                    <!-- Action Button / Inline Stepper Wrapper -->
+                    <div class="card-action-slot" id="card-action-{{ item.master_id }}" data-id="{{ item.master_id }}"
+                        data-name="{{ item.name }}" data-price="{{ item.selling_price }}"
+                        data-storeid="{{ item.store_id }}"
+                        data-strictrx="{{ 'true' if item.is_strictly_rx else 'false' }}">
+                        <button onclick="addToCartFromCard('{{ item.master_id }}')"
+                            class="bg-emerald-50 hover:bg-[#0c831f] text-[#0c831f] hover:text-white border border-emerald-600/30 font-black text-xs px-4 py-1.5 rounded-xl transition active:scale-95 shadow-sm">
+                            ADD
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Empty Catalog Fallback -->
+        {% if items|length == 0 %}
+        <div class="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300">
+            <span class="text-5xl d-block mb-3">📦</span>
+            <h3 class="text-lg font-bold text-slate-700">No items listed by store yet</h3>
+            <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Open Medicofiles -> Medikart Hub to push items from
+                master catalog to this shelf.</p>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <!-- ==================== POWERED BY & CONTACT FOOTER ==================== -->
+    <footer class="mt-12 py-5 border-t border-slate-200/80 bg-white relative">
+        <div class="w-full px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+
+            <!-- Placeholder taaki desktop par layout perfectly balanced rahe -->
+            <div class="hidden md:block w-48 shrink-0"></div>
+
+            <!-- Center: Powered By -->
+            <p
+                class="text-xs font-semibold text-slate-500 tracking-wide text-center mx-auto md:absolute md:left-1/2 md:-translate-x-1/2">
+                Powered by <span class="text-blue-600 font-black">Medicofiles</span> Pharmacy Operating System
+            </p>
+
+            <!-- Right Corner: Contact Details -->
+            <div class="flex flex-wrap items-center justify-end gap-3 text-xs font-bold text-slate-600 md:ml-auto">
+                <span class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Contact:</span>
+
+                <!-- Phone Link -->
+                <a href="tel:+918700655156"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition shadow-sm">
+                    <i class="bi bi-telephone-fill text-emerald-600"></i>
+                    <span>+91 8700655156</span>
+                </a>
+
+                <!-- Mail Link -->
+                <a href="mailto:medicoxfiles@gmail.com"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 transition shadow-sm">
+                    <i class="bi bi-envelope-fill text-emerald-600"></i>
+                    <span>medicoxfiles@gmail.com</span>
+                </a>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- ==================== SLIDE-OVER CART DRAWER ==================== -->
+    <div id="cartDrawerBackdrop" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"
+        onclick="toggleCartDrawer()"></div>
+    <div id="cartDrawer"
+        class="fixed right-0 top-0 bottom-0 w-full sm:w-[420px] bg-white z-50 shadow-2xl flex flex-col justify-between transform translate-x-full transition-transform duration-300">
+
+        <!-- Drawer Header -->
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-bag-heart-fill text-[#0c831f] text-lg"></i>
+                <h3 class="font-extrabold text-slate-900">Your Basket</h3>
+            </div>
+            <button onclick="toggleCartDrawer()" class="text-slate-400 hover:text-slate-800 text-lg">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <!-- Minimum Order Value (₹100) Indicator -->
+        <div id="minOrderAlertBox" class="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl">
+            <div class="flex items-center justify-between text-xs font-bold text-amber-900 mb-1.5">
+                <span id="minOrderText" class="flex items-center gap-1.5">
+                    <i class="bi bi-info-circle-fill text-amber-600"></i>
+                    Add ₹100 more to place order
+                </span>
+                <span id="minOrderProgressText" class="text-[11px] font-black text-amber-700">₹0 / ₹100</span>
+            </div>
+            <div class="w-full bg-amber-200/60 rounded-full h-2 overflow-hidden">
+                <div id="minOrderProgressBar" class="bg-amber-600 h-2 rounded-full transition-all duration-300"
+                    style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Cart Items Scroll -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-3" id="cartItemList">
+            <!-- Injected by JavaScript -->
+        </div>
+
+        <!-- Drawer Footer Checkout -->
+        <div class="p-5 border-t border-slate-100 bg-slate-50 space-y-4">
+            <div class="space-y-1 text-xs">
+                <div class="flex justify-between text-slate-500">
+                    <span>Item Total</span>
+                    <span id="billSubtotal" class="font-bold text-slate-800">₹0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-500">
+                    <span>Hyperlocal Delivery Partner Fee</span>
+                    <span class="text-emerald-700 font-bold">(First Free)Pay to Delivery Partner</span>
+                </div>
+                <div class="flex justify-between text-sm font-black text-slate-900 pt-2 border-t">
+                    <span>To Pay</span>
+                    <span id="billGrandTotal" class="text-[#0c831f]">₹0.00</span>
+                </div>
+            </div>
+
+            <!-- Simple Quick Checkout Inputs -->
+            <div class="space-y-2">
+                <input type="text" id="custName" placeholder="Your Name"
+                    class="w-full text-xs p-2.5 border rounded-xl bg-white outline-none focus:ring-1 focus:ring-emerald-500">
+
+                <input type="tel" id="custPhone" placeholder="Mobile Number (10 digits)"
+                    class="w-full text-xs p-2.5 border rounded-xl bg-white outline-none focus:ring-1 focus:ring-emerald-500">
+
+                <div>
+                    <div class="flex items-center justify-between px-1 mb-1">
+                        <span class="text-[10px] font-black tracking-wider text-slate-400">Delivery
+                            Address (Exact Location Prefered)</span>
+                        <button type="button" onclick="openLocationModal()"
+                            class="text-[10px] font-extrabold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer">
+                            <i class="bi bi-geo-alt"></i> Change Location
+                        </button>
+                    </div>
+                    <textarea id="custAddress" rows="2" placeholder="Complete Delivery Address & Flat/Shop No."
+                        class="w-full text-xs p-2.5 border rounded-xl bg-white outline-none focus:ring-1 focus:ring-emerald-500 resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Dynamic Prescription Upload Box -->
+            <div id="rxUploadContainer"
+                class="p-3 bg-emerald-50/60 border border-dashed border-emerald-300 rounded-2xl transition-all">
+                <label class="block text-[11px] font-bold text-emerald-900 mb-1.5 flex items-center justify-between"
+                    id="rxLabel">
+                    <span><i class="bi bi-file-earmark-medical me-1"></i> Upload Prescription (Optional)</span>
+                    <span class="text-[10px] text-emerald-600 font-normal">JPG/PNG</span>
+                </label>
+                <input type="file" id="prescriptionFile" accept="image/*" onchange="validateCheckoutRequirements()"
+                    class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer w-full">
+                <p id="rxStrictNotice" class="hidden text-[10px] font-bold text-red-600 mt-1.5 flex items-center gap-1">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Cart contains Schedule H/Strict medicine. Doctor
+                    prescription is mandatory.
+                </p>
+            </div>
+
+            <button onclick="submitOrder()" id="checkoutBtn"
+                class="w-full bg-[#0c831f] hover:bg-[#0a6e1a] text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-emerald-700/20 active:scale-[0.99] flex items-center justify-center gap-2">
+                <span>Place Your Order</span>
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- ==================== ORDER SUCCESS MODAL ==================== -->
+    <div id="orderSuccessModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div
+                class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto">
+                ✓
+            </div>
+            <h3 class="text-xl font-black text-slate-900">Order Placed to Store!</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Chemist is packing your items now. Order tracking ID: <br>
+                <span class="font-black text-emerald-700 text-base" id="confirmedOrderId">MK-XXXX</span>
+            </p>
+            <button onclick="location.reload()"
+                class="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl text-xs transition">
+                Continue Shopping
+            </button>
+        </div>
+    </div>
+
+    <!-- Location Picker & Saved Addresses Modal (Blinkit Style) -->
+    <div id="locationModal"
+        class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div
+            class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-sm">Choose Delivery Location</h3>
+                </div>
+                <button onclick="closeLocationModal()"
+                    class="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+            </div>
+
+            <div class="p-5 max-h-[80vh] overflow-y-auto space-y-4">
+
+                <div class="relative">
+                    <div class="relative flex items-center">
+                        <i class="bi bi-search absolute left-3.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="localitySearchInput" oninput="handleLocalitySearch(this.value)"
+                            placeholder="Search area, landmark, colony (e.g. Basai, Sec 9)"
+                            class="w-full pl-9 pr-8 py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs rounded-2xl border border-slate-200 focus:border-emerald-500 focus:outline-none transition">
+                        <button type="button" onclick="clearLocalitySearch()" id="clearSearchBtn"
+                            class="hidden absolute right-3 text-slate-400 hover:text-slate-600">
+                            <i class="bi bi-x-circle-fill text-xs"></i>
+                        </button>
+                    </div>
+                    <!-- Live Search Suggestions Dropdown -->
+                    <div id="searchSuggestionsBox"
+                        class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    </div>
+                </div>
+
+                <!-- Option 1: Live High-Accuracy GPS Trigger -->
+                <button onclick="fetchAccurateLiveLocation()" id="btnGpsLocate"
+                    class="w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 transition text-left group shadow-sm">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                        <i class="bi bi-crosshair text-base"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <p class="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                            Use Precise Live GPS Location
+                            <span
+                                class="bg-emerald-200/80 text-emerald-900 text-[9px] px-1.5 py-0.2 rounded font-extrabold">Instant</span>
+                        </p>
+                        <p id="gpsSubText" class="text-[11px] text-emerald-700/90 leading-tight mt-0.5">Locate exact
+                            road, block & landmark via GPS</p>
+                    </div>
+                    <i class="bi bi-chevron-right text-xs text-emerald-600"></i>
+                </button>
+
+                <!-- Divider -->
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-3 text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Or
+                        Saved Addresses</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- Saved Addresses List -->
+                <div id="savedAddressesContainer" class="space-y-2.5">
+                    <!-- Injected via JavaScript -->
+                </div>
+
+                <!-- Option 2: Manual Add/Edit Form Trigger -->
+                <div id="manualAddressSection">
+                    <button type="button" onclick="toggleManualAddressForm()" id="btnToggleManualForm"
+                        class="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl text-slate-600 hover:text-emerald-700 text-xs font-bold flex items-center justify-center gap-2 transition">
+                        <i class="bi bi-plus-circle-fill text-emerald-600"></i> Add New Delivery Address
+                    </button>
+
+                    <!-- Address Edit/Create Form Box -->
+                    <form id="addressForm"
+                        class="hidden mt-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3"
+                        onsubmit="saveCustomAddress(event)">
+                        <input type="hidden" id="editAddressId" value="">
+
+                        <div class="flex gap-2">
+                            <button type="button" onclick="selectTag('Home')"
+                                class="tag-btn flex-1 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600"
+                                data-tag="Home">Home</button>
+                            <button type="button" onclick="selectTag('Work')"
+                                class="tag-btn flex-1 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600"
+                                data-tag="Work">Work</button>
+                            <button type="button" onclick="selectTag('Other')"
+                                class="tag-btn flex-1 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600"
+                                data-tag="Other">Other</button>
+                        </div>
+                        <input type="hidden" id="addressTag" value="Home">
+
+                        <div>
+                            <label class="text-[10px] font-extrabold text-slate-500 uppercase">Flat / House No / Floor /
+                                Building</label>
+                            <input type="text" id="inputFlat" required placeholder="e.g. Flat 402, Tower B, Palm Grove"
+                                class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 bg-white">
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-extrabold text-slate-500 uppercase">Area / Sector / Road /
+                                Landmark</label>
+                            <input type="text" id="inputArea" required
+                                placeholder="e.g. Near Huda Market, Sector 99, Gurgaon"
+                                class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 bg-white">
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <button type="button" onclick="cancelManualAddress()"
+                                class="flex-1 py-2 text-xs font-bold text-slate-600 bg-slate-200 rounded-xl hover:bg-slate-300 transition">Cancel</button>
+                            <button type="submit"
+                                class="flex-1 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-md shadow-emerald-600/20">Save
+                                Address</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PRODUCT DETAILS SLIDE-OVER MODAL ==================== -->
+    <div id="productDetailModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex justify-end">
+        <div
+            class="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col justify-between overflow-hidden animate-in slide-in-from-right duration-200">
+
+            <!-- Top Bar -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <div class="flex items-center gap-2">
+                    <span
+                        class="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full"
+                        id="pdpCategory">Category</span>
+                    <!-- NAYA DYNAMIC BADGE CONTAINER -->
+                    <span id="pdpRxBadge"
+                        class="hidden text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 border"></span>
+                </div>
+                <button onclick="closeProductDetailModal()"
+                    class="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable Content Body -->
+            <div class="p-6 overflow-y-auto space-y-6 flex-grow">
+
+                <!-- Top Section: Image & Basic Title/Price -->
+                <div class="flex flex-col sm:flex-row gap-5 items-center">
+                    <!-- NEW: Clickable & Zoomable Image Trigger -->
+                    <div onclick="openImageLightbox()"
+                        class="w-40 h-40 shrink-0 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center p-2 relative overflow-hidden shadow-inner cursor-zoom-in group/img">
+                        <img id="pdpImage" src="" alt="Product"
+                            class="h-full w-full object-contain mix-blend-multiply scale-105 group-hover/img:scale-110 transition-transform duration-200">
+                        <span id="pdpCapsule" class="text-6xl hidden">💊</span>
+
+                        <!-- Zoom Indicator Icon -->
+                        <div id="pdpZoomBadge"
+                            class="absolute bottom-2 right-2 bg-black/60 text-white p-1 rounded-lg text-[11px] opacity-0 group-hover/img:opacity-100 transition shadow">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 flex-grow text-center sm:text-left">
+                        <p id="pdpBrand" class="text-xs font-extrabold text-emerald-700 tracking-wider uppercase">Brand
+                        </p>
+                        <h2 id="pdpTitle" class="text-lg font-black text-slate-900 leading-tight">Medicine Name</h2>
+                        <p id="pdpDosage" class="text-xs text-slate-500 font-semibold">Dosage Form</p>
+
+                        <div class="flex items-baseline gap-2 pt-1 justify-center sm:justify-start">
+                            <span id="pdpPrice" class="text-2xl font-black text-slate-900">₹0</span>
+                            <span id="pdpMrp" class="text-xs text-slate-400 line-through">₹0</span>
+                            <span id="pdpDiscount"
+                                class="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">Save
+                                0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trust Badges Bar -->
+                <div
+                    class="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-center bg-slate-50/50 rounded-xl px-2">
+                    <div>
+                        <i class="bi bi-shield-check text-emerald-600 text-sm"></i>
+                        <p class="text-[10px] font-black text-slate-700 mt-0.5">100% Genuine</p>
+                        <p class="text-[9px] text-slate-400">Verified Chemist</p>
+                    </div>
+                    <div>
+                        <i class="bi bi-lightning-charge-fill text-amber-500 text-sm"></i>
+                        <p class="text-[10px] font-black text-slate-700 mt-0.5">20-Min Delivery</p>
+                        <p class="text-[9px] text-slate-400">Direct From Store</p>
+                    </div>
+                    <div>
+                        <i class="bi bi-box-seam-fill text-blue-600 text-sm"></i>
+                        <p class="text-[10px] font-black text-slate-700 mt-0.5">Tamper Proof</p>
+                        <p class="text-[9px] text-slate-400">Batch Bill Included</p>
+                    </div>
+                </div>
+
+                <!-- Clinical Information Sections (AI Powered / Cached) -->
+                <div class="space-y-4">
+
+                    <!-- Salt / Active Composition -->
+                    <div class="p-3.5 bg-emerald-50/40 border border-emerald-100 rounded-2xl">
+                        <h4
+                            class="text-xs font-black text-emerald-950 flex items-center gap-1.5 uppercase tracking-wider mb-1">
+                            <i class="bi bi-diagram-3-fill text-emerald-600"></i> Active Salt & Composition
+                        </h4>
+                        <p id="pdpComposition" class="text-xs font-semibold text-slate-700 leading-relaxed">Loading
+                            composition...</p>
+                    </div>
+
+                    <!-- Uses -->
+                    <div>
+                        <h4
+                            class="text-xs font-black text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <i class="bi bi-check2-circle text-blue-600"></i> Primary Uses & Clinical Benefits
+                        </h4>
+                        <p id="pdpUses" class="text-xs text-slate-600 leading-relaxed">Loading uses...</p>
+                    </div>
+
+                    <!-- Side Effects -->
+                    <div>
+                        <h4
+                            class="text-xs font-black text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <i class="bi bi-exclamation-triangle text-amber-600"></i> Potential Side Effects
+                        </h4>
+                        <p id="pdpSideEffects" class="text-xs text-slate-600 leading-relaxed">Loading precautions...</p>
+                    </div>
+
+                    <!-- Safety & Storage Warnings -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                            <p class="text-[10px] font-black uppercase text-slate-500 mb-0.5 flex items-center gap-1">
+                                <i class="bi bi-shield-slash text-red-500"></i> Safety Precautions
+                            </p>
+                            <p id="pdpSafety" class="text-[11px] text-slate-600">Follow physician instructions.</p>
+                        </div>
+                        <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                            <p class="text-[10px] font-black uppercase text-slate-500 mb-0.5 flex items-center gap-1">
+                                <i class="bi bi-thermometer-half text-blue-500"></i> Storage Guide
+                            </p>
+                            <p id="pdpStorage" class="text-[11px] text-slate-600">Store in a cool dry place.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Bottom Action Footer with Cart Button -->
+            <div class="p-4 border-t border-slate-200 bg-white flex items-center justify-between gap-4">
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Price</span>
+                    <p id="pdpBottomPrice" class="text-lg font-black text-slate-900">₹0</p>
+                </div>
+
+                <div id="pdpActionBtnSlot" class="w-48">
+                    <!-- Injected Add / Stepper Button -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== HIGH-RES IMAGE LIGHTBOX MODAL ==================== -->
+    <div id="imageLightboxModal"
+        class="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
+        onclick="closeImageLightbox()">
+
+        <!-- Top Bar: Close & Product Title -->
+        <div class="absolute top-5 inset-x-6 flex items-center justify-between text-white"
+            onclick="event.stopPropagation()">
+            <div>
+                <h3 id="lightboxTitle" class="font-black text-sm tracking-wide">Product Image</h3>
+                <p class="text-[11px] text-slate-300">Click anywhere outside or scroll to inspect</p>
+            </div>
+            <button onclick="closeImageLightbox()"
+                class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/20 text-lg">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <!-- Big Image Container -->
+        <div class="max-w-2xl max-h-[80vh] w-full flex items-center justify-center p-4"
+            onclick="event.stopPropagation()">
+            <img id="lightboxImg" src="" alt="Zoomed Product"
+                class="max-h-[75vh] max-w-full object-contain rounded-2xl drop-shadow-2xl transition-transform duration-300 hover:scale-125 cursor-zoom-out"
+                onclick="closeImageLightbox()">
+        </div>
+
+    </div>
+
+    <!-- ================= AUTHENTICATION MODAL (BLINKIT/ZEPTO STYLE) ================= -->
+    <div id="medikartAuthModal"
+        class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+        <div
+            class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
+
+            <!-- Top Green Decorative Banner -->
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative">
+                <button onclick="closeAuthModal()"
+                    class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/20 hover:bg-black/30 flex items-center justify-center text-white transition">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+                <div class="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center mb-3 backdrop-blur-xs">
+                    <i class="bi bi-shield-check text-2xl text-white"></i>
+                </div>
+                <h3 class="text-xl font-black tracking-tight" id="authModalTitle">Welcome to Medikart</h3>
+                <p class="text-xs text-emerald-100 font-medium mt-0.5" id="authModalSubtitle">Login or Sign up to place
+                    your medicine delivery</p>
+            </div>
+
+            <!-- Modal Content Form Body -->
+            <div class="p-6">
+
+                <!-- STAGE 1: Email Input Only -->
+                <div id="authStageIdentifier" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email
+                            Address</label>
+                        <div class="relative">
+                            <input type="email" id="authIdentifierInput" placeholder="name@example.com"
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white text-slate-900 rounded-2xl px-4 py-3 text-sm font-semibold outline-hidden transition">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+                            <i class="bi bi-shield-check text-emerald-600"></i> We'll send a 4-digit code to your inbox.
+                        </p>
+                    </div>
+
+                    <button onclick="handleSendOtp()" id="btnSendOtp"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                        <span>Continue with Email</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- STAGE 2: OTP Verification -->
+                <div id="authStageOtp" class="hidden space-y-4">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500">Enter 4-digit code sent to</p>
+                        <p id="otpSentTarget" class="text-sm font-black text-slate-800 tracking-wide"></p>
+                    </div>
+
+                    <div class="flex justify-center gap-3 my-2">
+                        <input type="text" maxlength="4" id="authOtpInput" placeholder="• • • •"
+                            class="w-40 text-center tracking-[12px] text-2xl font-black bg-slate-50 border border-slate-300 focus:border-emerald-500 focus:bg-white rounded-2xl py-2.5 outline-hidden">
+                    </div>
+
+                    <button onclick="handleVerifyOtp()" id="btnVerifyOtp"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-600/20">
+                        Verify & Continue
+                    </button>
+
+                    <div class="flex justify-between items-center text-xs pt-2">
+                        <button onclick="switchAuthStage('identifier')"
+                            class="text-slate-400 hover:text-slate-600 font-semibold">
+                            Change Email
+                        </button>
+                        <button onclick="handleSendOtp(true)" id="btnResendOtp"
+                            class="text-emerald-600 hover:text-emerald-700 font-bold">
+                            Resend OTP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STAGE 3: First-time Profile Completion (Name & Address) -->
+                <div id="authStageProfile" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full Name
+                            *</label>
+                        <input type="text" id="authNameInput" placeholder="e.g. Rahul Sharma"
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white text-slate-900 rounded-2xl px-4 py-2.5 text-sm font-semibold outline-hidden transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Delivery
+                            Address *</label>
+                        <textarea id="authAddressInput" rows="3" placeholder="House/Flat no., Street, Landmark, Pincode"
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white text-slate-900 rounded-2xl px-4 py-2.5 text-sm font-semibold outline-hidden transition resize-none"></textarea>
+                    </div>
+
+                    <button onclick="handleSaveProfile()" id="btnSaveProfile"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5">
+                        <i class="bi bi-check2-circle text-base"></i>
+                        <span>Save & Complete Setup</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ORDERS & LIVE TRACKING DRAWER ================= -->
+    <div id="medikartOrdersDrawer" class="fixed inset-0 z-50 overflow-hidden hidden">
+        <!-- Backdrop -->
+        <div onclick="closeOrdersDrawer()" class="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity">
+        </div>
+
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
+
+                <!-- Drawer Header -->
+                <div
+                    class="p-5 bg-gradient-to-r from-emerald-700 to-teal-700 text-white flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                            <i class="bi bi-box-seam text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-base tracking-tight leading-tight">My Orders</h3>
+                            <p class="text-[11px] text-emerald-100 font-medium">Live status synced with chemist</p>
+                        </div>
+                    </div>
+                    <button onclick="closeOrdersDrawer()"
+                        class="w-8 h-8 rounded-full bg-black/20 hover:bg-black/30 flex items-center justify-center text-white transition">
+                        <i class="bi bi-x-lg text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Orders List Container -->
+                <div id="customerOrdersContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="bi bi-arrow-repeat animate-spin text-2xl inline-block mb-2 text-emerald-600"></i>
+                        <p class="text-xs font-semibold">Fetching your orders...</p>
+                    </div>
+                </div>
+
+                <!-- Drawer Footer Refresh -->
+                <div
+                    class="p-4 bg-white border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
+                    <span class="flex items-center gap-1.5 text-emerald-600">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Auto-sync active
+                    </span>
+                    <button onclick="loadCustomerOrders()"
+                        class="text-slate-600 hover:text-emerald-700 font-bold flex items-center gap-1">
+                        <i class="bi bi-arrow-clockwise text-sm"></i> Refresh
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MEDIKART UPI PAYMENT MODAL ================= -->
+    <div id="medikartPaymentModal"
+        class="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div
+            class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 my-auto">
+
+            <!-- Green Header -->
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 p-5 text-white relative">
+                <button onclick="closePaymentModal()"
+                    class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/20 hover:bg-black/30 flex items-center justify-center text-white transition">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+                <div class="flex items-center gap-2 mb-1">
+                    <span
+                        class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 uppercase tracking-widest text-emerald-100">Direct
+                        Merchant Pay</span>
+                </div>
+                <h3 class="text-xl font-black tracking-tight">Instant UPI Payment</h3>
+                <p class="text-xs text-emerald-100 mt-0.5">Zero convenience fee • 100% Secure Transfer</p>
+            </div>
+
+            <!-- Payment Body -->
+            <div class="p-5 text-center space-y-4">
+
+                <!-- Amount Card -->
+                <div
+                    class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 flex justify-between items-center px-4">
+                    <div class="text-left">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Payable Amount</p>
+                        <p class="text-xs text-emerald-700 font-medium">To: <span id="payeeStoreName"
+                                class="font-bold text-slate-800">Verified Pharmacy</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-black text-emerald-700" id="paymentTotalDisplay">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic QR Code Display -->
+                <div
+                    class="inline-block p-3 bg-white border-2 border-dashed border-emerald-300 rounded-2xl shadow-inner my-1">
+                    <img id="medikartDynamicQr" src="" alt="Scan & Pay UPI QR"
+                        class="w-44 h-44 mx-auto rounded-xl block">
+                    <div class="flex items-center justify-center gap-1.5 mt-2 text-[10px] font-bold text-slate-500">
+                        <i class="bi bi-qr-code-scan text-emerald-600 text-xs"></i>
+                        <span>Scan with any UPI App</span>
+                    </div>
+                </div>
+
+                <!-- Mobile Direct UPI Intent Button -->
+                <div>
+                    <a id="medikartUpiIntentBtn" href="#"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/20">
+                        <i class="bi bi-phone-fill text-sm"></i>
+                        <span>Tap to Pay via UPI App (GPay / PhonePe / Paytm)</span>
+                    </a>
+                    <p class="text-[10px] text-slate-400 mt-1">Direct app intent for mobile devices</p>
+                </div>
+
+                <!-- UTR Verification Box -->
+                <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 text-left space-y-2">
+                    <label class="block text-xs font-bold text-slate-700 flex justify-between items-center">
+                        <span>Enter 12-Digit UTR / Ref Number *</span>
+                        <span class="text-[10px] text-rose-500 font-normal">Mandatory</span>
+                    </label>
+                    <input type="text" id="orderUtrInput" maxlength="12" placeholder="e.g. 425896321458"
+                        class="w-full bg-white border border-slate-300 focus:border-emerald-500 text-slate-900 rounded-xl px-3 py-2 text-center tracking-widest text-sm font-black outline-hidden">
+                    <p class="text-[10px] text-slate-400 leading-tight">
+                        Find this in your payment app transaction receipt under "UPI Transaction ID" or "Ref No".
+                    </p>
+                </div>
+
+                <!-- Final Confirmation Submit -->
+                <button onclick="handleConfirmPaymentOrder()" id="btnConfirmPayment"
+                    class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-700/25 flex items-center justify-center gap-2">
+                    <i class="bi bi-shield-lock-fill text-base"></i>
+                    <span>Confirm Payment & Place Order</span>
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Logic & Filtering Engine -->
+    <script>
+        let cart = {};
+
+        async function detectUserLocation() {
+            const locDisplay = document.getElementById('currentLocDisplay');
+            if (!navigator.geolocation) {
+                locDisplay.innerText = "GPS Not Supported";
+                return;
+            }
+
+            locDisplay.innerText = "Fetching GPS...";
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    try {
+                        // Free Reverse Geocoding via OpenStreetMap Nominatim
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const data = await res.json();
+
+                        const addr = data.address;
+                        const subLocality = addr.suburb || addr.neighbourhood || addr.residential || addr.road || '';
+                        const city = addr.city || addr.town || addr.state_district || 'Gurugram';
+
+                        const cleanAddress = subLocality ? `${subLocality}, ${city}` : city;
+                        locDisplay.innerText = cleanAddress;
+                        locDisplay.title = cleanAddress;
+
+                        // Auto-fill checkout address ONLY IF user has no saved profile address
+                        const custAddrInput = document.getElementById('custAddress');
+                        if (custAddrInput && !custAddrInput.value.trim() && !custAddrInput.dataset.userOverridden) {
+                            custAddrInput.value = `${cleanAddress} (Auto-detected via GPS)`;
+                        }
+                    } catch (e) {
+                        locDisplay.innerText = `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+                    }
+                },
+                (error) => {
+                    locDisplay.innerText = "Location Blocked (Allow GPS)";
+                },
+                { timeout: 10000 }
+            );
+        }
+
+        function filterCategory(cat) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.className = "category-btn bg-emerald-800/40 hover:bg-emerald-800 text-white px-3.5 py-1.5 rounded-lg whitespace-nowrap transition";
+            });
+            event.target.className = "category-btn active bg-white text-emerald-800 px-4 py-1.5 rounded-lg shadow-sm whitespace-nowrap font-bold";
+
+            const cards = document.querySelectorAll('.product-card');
+            cards.forEach(card => {
+                if (cat === 'ALL' || card.dataset.category === cat) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function filterProducts() {
+            const q = document.getElementById('liveSearchInput').value.toLowerCase();
+            document.querySelectorAll('.product-card').forEach(c => {
+                c.style.display = c.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+
+        function toggleCartDrawer() {
+            const drawer = document.getElementById('cartDrawer');
+            const backdrop = document.getElementById('cartDrawerBackdrop');
+            const isClosed = drawer.classList.contains('translate-x-full');
+
+            if (isClosed) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('hidden');
+
+                // Auto-fill active location into cart address box
+                const addrField = document.getElementById('custAddress');
+                const savedAddr = localStorage.getItem('medikart_active_addr_full');
+                if (addrField && savedAddr) {
+                    addrField.value = savedAddr;
+                }
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function addToCart(btn) {
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const price = parseFloat(btn.dataset.price);
+            const isStrict = (btn.dataset.strictrx === 'true');
+            const storeId = btn.dataset.storeid ? parseInt(btn.dataset.storeid) : null;
+
+            if (cart[id]) {
+                cart[id].qty += 1;
+            } else {
+                cart[id] = { id, name, price, qty: 1, isStrict: isStrict, store_id: storeId };
+            }
+            updateCartUI();
+        }
+
+        // Card se add karne ke liye
+        function addToCartFromCard(masterId) {
+            const slot = document.getElementById(`card-action-${masterId}`);
+            if (!slot) return;
+
+            const name = slot.dataset.name;
+            const price = parseFloat(slot.dataset.price);
+            const isStrict = (slot.dataset.strictrx === 'true');
+            const storeId = slot.dataset.storeid ? parseInt(slot.dataset.storeid) : null;
+
+            if (cart[masterId]) {
+                cart[masterId].qty += 1;
+            } else {
+                cart[masterId] = { id: masterId, name, price, qty: 1, isStrict: isStrict, store_id: storeId };
+            }
+            updateCartUI();
+        }
+
+        // Stepper se +/- karne ke liye
+        function stepCardQty(masterId, change) {
+            if (!cart[masterId]) return;
+
+            cart[masterId].qty += change;
+            if (cart[masterId].qty <= 0) {
+                delete cart[masterId];
+            }
+            updateCartUI();
+        }
+
+        // Validate karega ki strict dawa hai ya nahi
+        function hasStrictMedicineInCart() {
+            return Object.values(cart).some(item => item.isStrict === true);
+        }
+
+        function validateCheckoutRequirements() {
+            const isStrictRequired = hasStrictMedicineInCart();
+            const rxInput = document.getElementById('prescriptionFile');
+            const rxContainer = document.getElementById('rxUploadContainer');
+            const rxLabel = document.getElementById('rxLabel');
+            const rxNotice = document.getElementById('rxStrictNotice');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            const hasFile = rxInput && rxInput.files && rxInput.files.length > 0;
+
+            // 1. Calculate Cart Subtotal
+            let subtotal = 0;
+            Object.values(cart).forEach(it => {
+                subtotal += (it.price || 0) * it.qty;
+            });
+
+            const MIN_ORDER = 100;
+            const remaining = Math.max(0, MIN_ORDER - subtotal);
+            const percentage = Math.min(100, Math.round((subtotal / MIN_ORDER) * 100));
+
+            // 2. Minimum Order Value Progress Bar UI Update (Step 1 wala box)
+            const alertBox = document.getElementById('minOrderAlertBox');
+            const alertText = document.getElementById('minOrderText');
+            const progressText = document.getElementById('minOrderProgressText');
+            const progressBar = document.getElementById('minOrderProgressBar');
+
+            if (progressBar) progressBar.style.width = `${percentage}%`;
+            if (progressText) progressText.innerText = `₹${subtotal.toFixed(0)} / ₹${MIN_ORDER}`;
+
+            if (subtotal === 0) {
+                if (alertBox) alertBox.classList.add('hidden');
+            } else if (remaining > 0) {
+                if (alertBox) {
+                    alertBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200');
+                    alertBox.classList.add('bg-amber-50', 'border-amber-200');
+                }
+                if (progressBar) {
+                    progressBar.classList.remove('bg-emerald-600');
+                    progressBar.classList.add('bg-amber-600');
+                }
+                if (alertText) {
+                    alertText.className = "flex items-center gap-1.5 text-xs font-bold text-amber-900";
+                    alertText.innerHTML = `<i class="bi bi-shield-lock-fill text-amber-600"></i> Add ₹${remaining.toFixed(0)} more to unlock order`;
+                }
+            } else {
+                // ₹100 requirement poori ho gayi
+                if (alertBox) {
+                    alertBox.classList.remove('hidden', 'bg-amber-50', 'border-amber-200');
+                    alertBox.classList.add('bg-emerald-50', 'border-emerald-200');
+                }
+                if (progressBar) {
+                    progressBar.classList.remove('bg-amber-600');
+                    progressBar.classList.add('bg-emerald-600');
+                }
+                if (alertText) {
+                    alertText.className = "flex items-center gap-1.5 text-xs font-bold text-emerald-900";
+                    alertText.innerHTML = `<i class="bi bi-check-circle-fill text-emerald-600"></i> Minimum order requirement met!`;
+                }
+            }
+
+            // 3. Rx Box Visual State
+            if (isStrictRequired) {
+                if (!hasFile) {
+                    if (rxContainer) rxContainer.className = "p-3 bg-red-50 border-2 border-dashed border-red-400 rounded-2xl transition-all";
+                    if (rxLabel) rxLabel.innerHTML = `<span class="flex items-center"><i class="bi bi-shield-fill-exclamation text-red-600 me-1"></i> Doctor Rx (MANDATORY)</span><span class="text-[10px] text-red-600 font-bold">REQUIRED</span>`;
+                    if (rxNotice) rxNotice.classList.remove('hidden');
+                } else {
+                    if (rxContainer) rxContainer.className = "p-3 bg-emerald-50/60 border border-emerald-300 rounded-2xl transition-all";
+                    if (rxLabel) rxLabel.innerHTML = `<span class="flex items-center"><i class="bi bi-check-circle-fill text-emerald-600 me-1"></i> Doctor Rx Attached</span><span class="text-[10px] text-emerald-700 font-bold">VERIFIED ✓</span>`;
+                    if (rxNotice) rxNotice.classList.add('hidden');
+                }
+            } else {
+                if (rxContainer) rxContainer.className = "p-3 bg-emerald-50/60 border border-dashed border-emerald-300 rounded-2xl transition-all";
+                if (rxLabel) rxLabel.innerHTML = `<span class="flex items-center"><i class="bi bi-file-earmark-medical me-1"></i> Upload Prescription (Optional)</span><span class="text-[10px] text-emerald-600 font-normal">JPG/PNG</span>`;
+                if (rxNotice) rxNotice.classList.add('hidden');
+            }
+
+            // 4. Final Button Lock/Unlock Evaluation
+            if (!checkoutBtn) return false;
+
+            // Condition A: Minimum ₹100 cart value hona zaroori hai
+            if (subtotal < MIN_ORDER) {
+                checkoutBtn.disabled = true;
+                checkoutBtn.className = "w-full bg-slate-300 text-slate-500 py-3.5 rounded-2xl font-black text-sm cursor-not-allowed flex items-center justify-center gap-2";
+                checkoutBtn.innerHTML = `<span>Add ₹${remaining.toFixed(0)} More to Order</span><i class="bi bi-lock-fill"></i>`;
+                return false;
+            }
+
+            // Condition B: Strict medicine ke liye Rx upload zaroori hai
+            if (isStrictRequired && !hasFile) {
+                checkoutBtn.disabled = true;
+                checkoutBtn.className = "w-full bg-slate-300 text-slate-500 py-3.5 rounded-2xl font-black text-sm cursor-not-allowed flex items-center justify-center gap-2";
+                checkoutBtn.innerHTML = `<span>Upload Prescription to Order</span><i class="bi bi-lock-fill"></i>`;
+                return false;
+            }
+
+            // Dono conditions pass: Unlock Continue Button
+            checkoutBtn.disabled = false;
+            checkoutBtn.className = "w-full bg-[#0c831f] hover:bg-[#0a6e1a] text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-emerald-700/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer";
+            checkoutBtn.innerHTML = `<span>Place Your Order</span><i class="bi bi-arrow-right"></i>`;
+            return true;
+        }
+
+        function changeQty(id, delta) {
+            if (cart[id]) {
+                cart[id].qty += delta;
+                if (cart[id].qty <= 0) delete cart[id];
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cartItemList');
+            const items = Object.values(cart);
+            list.innerHTML = '';
+
+            let total = 0;
+            let count = 0;
+
+            if (items.length === 0) {
+                list.innerHTML = `
+        <div class="text-center py-12 text-slate-400">
+        <i class="bi bi-cart-x text-4xl block mb-2 opacity-50"></i>
+        <span class="text-xs font-semibold">Your basket is empty</span>
+        </div>`;
+            } else {
+                items.forEach(it => {
+                    total += it.price * it.qty;
+                    count += it.qty;
+                    list.innerHTML += `
+        <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+            <div class="max-w-[190px]">
+            <h4 class="text-xs font-bold text-slate-800 truncate">${it.name}</h4>
+            <span class="text-[11px] font-black text-emerald-800">₹${(it.price * it.qty).toFixed(2)}</span>
+            </div>
+            <div class="flex items-center gap-2 bg-[#0c831f] text-white rounded-xl px-2 py-1 text-xs font-bold">
+            <button onclick="changeQty('${it.id}', -1)" class="w-5 text-center leading-none">-</button>
+            <span>${it.qty}</span>
+            <button onclick="changeQty('${it.id}', 1)" class="w-5 text-center leading-none">+</button>
+            </div>
+        </div>`;
+                });
+            }
+
+            // Header & Drawer Cart Summary Update
+            document.getElementById('cartBadge').innerText = count;
+            document.getElementById('cartBadge').classList.toggle('hidden', count === 0);
+            document.getElementById('cartItemSummary').innerText = `${count} Items`;
+            document.getElementById('cartTotalSummary').innerText = `₹${total.toFixed(2)}`;
+            document.getElementById('billSubtotal').innerText = `₹${total.toFixed(2)}`;
+            document.getElementById('billGrandTotal').innerText = `₹${total.toFixed(2)}`;
+
+            // Product Cards par Inline Stepper Sync
+            document.querySelectorAll('.card-action-slot').forEach(slot => {
+                const itemId = slot.dataset.id;
+                if (cart[itemId] && cart[itemId].qty > 0) {
+                    slot.innerHTML = `
+        <div class="flex items-center justify-between bg-[#0c831f] text-white rounded-xl px-2 py-1 text-xs font-bold shadow-sm min-w-[76px]">
+            <button onclick="stepCardQty('${itemId}', -1)" class="w-5 text-center leading-none hover:opacity-80 active:scale-90 transition">−</button>
+            <span class="px-1.5 font-extrabold text-[12px]">${cart[itemId].qty}</span>
+            <button onclick="stepCardQty('${itemId}', 1)" class="w-5 text-center leading-none hover:opacity-80 active:scale-90 transition">+</button>
+        </div>
+        `;
+                } else {
+                    slot.innerHTML = `
+        <button onclick="addToCartFromCard('${itemId}')"
+                class="bg-emerald-50 hover:bg-[#0c831f] text-[#0c831f] hover:text-white border border-emerald-600/30 font-black text-xs px-4 py-1.5 rounded-xl transition active:scale-95 shadow-sm">
+            ADD
+        </button>
+        `;
+                }
+            });
+
+            validateCheckoutRequirements();
+        }
+
+        let activeOrderPayload = null;
+
+        async function submitOrder() {
+            const items = Object.values(cart);
+            if (items.length === 0) {
+                alert('Your cart is empty');
+                return;
+            }
+
+            if (!currentCustomer) {
+                openAuthModal(true);
+                return;
+            }
+
+            const nameInput = document.getElementById('custName');
+            const phoneInput = document.getElementById('custPhone');
+            const addrInput = document.getElementById('custAddress');
+
+            if (nameInput && !nameInput.value.trim() && currentCustomer.name) nameInput.value = currentCustomer.name;
+            if (phoneInput && !phoneInput.value.trim() && currentCustomer.phone) phoneInput.value = currentCustomer.phone;
+            if (addrInput && !addrInput.value.trim() && currentCustomer.address) addrInput.value = currentCustomer.address;
+
+            const name = nameInput ? nameInput.value.trim() : (currentCustomer.name || '');
+            const phone = phoneInput ? phoneInput.value.trim() : (currentCustomer.phone || '');
+            const address = addrInput ? addrInput.value.trim() : (currentCustomer.address || '');
+            const fileInput = document.getElementById('prescriptionFile');
+
+            if (!name || !phone || !address) {
+                alert('Please enter Name, Phone and Delivery Address');
+                return;
+            }
+
+            let rxBase64 = null;
+            if (fileInput && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                rxBase64 = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            const total = items.reduce((s, x) => s + (x.price * x.qty), 0);
+
+            // Save temporary state for payment confirmation
+            activeOrderPayload = {
+                name,
+                phone,
+                address,
+                cart: items,
+                prescription_data: rxBase64,
+                total: total
+            };
+
+            // Open Instant UPI Payment Modal
+            openPaymentModal(total);
+        }
+
+        // Helper: Login hone ke turant baad automatically order trigger karne ke liye
+        function submitOrderAfterAuth() {
+            submitOrder();
+        }
+
+        // Initialize
+        detectUserLocation();
+
+        // --- Precise Location & Address Management System ---
+        let selectedTagValue = 'Home';
+
+        function openLocationModal() {
+            document.getElementById('locationModal').classList.remove('hidden');
+            renderSavedAddresses();
+        }
+
+        function closeLocationModal() {
+            document.getElementById('locationModal').classList.add('hidden');
+            cancelManualAddress();
+        }
+
+        // Clean Address Formatter: Irrelevant long roads ko filter karke Local Colony & Landmark pick karega
+        function formatCleanAddress(data) {
+            if (!data || !data.address) return null;
+            const a = data.address;
+
+            // Exact residential points
+            const landmark = a.amenity || a.building || a.shop || a.hospital || '';
+            const colony = a.neighbourhood || a.suburb || a.residential || a.village || a.quarter || '';
+            const road = a.road || a.street || '';
+            const sector = a.city_district || a.subdistrict || '';
+            const city = a.city || a.town || 'Gurugram';
+            const pincode = a.postcode ? ` - ${a.postcode}` : '';
+
+            // Short Header Title (Max 2 clean elements, no weird road clutter)
+            let title = "";
+            if (colony) {
+                title = colony;
+            } else if (road) {
+                title = road;
+            } else {
+                title = sector || city;
+            }
+
+            // Full Crisp Address for Checkout Box
+            let parts = [];
+            if (landmark) parts.push(landmark);
+            if (road && road !== colony) parts.push(road);
+            if (colony) parts.push(colony);
+            if (sector && sector !== colony) parts.push(sector);
+            parts.push(city);
+
+            const cleanFull = parts.filter(Boolean).join(', ') + pincode;
+            return { title, full: cleanFull };
+        }
+
+        // 1. GPS Live Locator Powered by Google Maps Platform
+        function fetchAccurateLiveLocation() {
+            const gpsBtn = document.getElementById('btnGpsLocate');
+            const subText = document.getElementById('gpsSubText');
+
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your device/browser.");
+                return;
+            }
+
+            subText.innerText = "Accessing high-precision GPS...";
+            gpsBtn.classList.add('opacity-75', 'pointer-events-none');
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    try {
+                        subText.innerText = "Resolving exact street & landmark via Google Maps...";
+                        const res = await fetch('/medikart/api/reverse-geocode', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lat: lat, lng: lng })
+                        });
+
+                        const data = await res.json();
+                        if (data.success && data.full_address) {
+                            setActiveDeliveryLocation(data.title, data.full_address, 'GPS');
+                            closeLocationModal();
+                        } else {
+                            // Graceful fallback if exact geocoding drops
+                            setActiveDeliveryLocation("Current Location", `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'GPS');
+                            closeLocationModal();
+                        }
+                    } catch (err) {
+                        console.error("Geocoding Error:", err);
+                        alert("Network error fetching location from Google Maps.");
+                    } finally {
+                        subText.innerText = "Locate exact road, block & landmark via GPS";
+                        gpsBtn.classList.remove('opacity-75', 'pointer-events-none');
+                    }
+                },
+                (err) => {
+                    alert("GPS Permission Denied. Please allow location access in your browser settings.");
+                    subText.innerText = "Locate exact road, block & landmark via GPS";
+                    gpsBtn.classList.remove('opacity-75', 'pointer-events-none');
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        }
+
+        // 2. Instant Search for Exact Colony / Sector (e.g. Basai, Bhawani Enclave, Sec 9)
+        let searchDebounceTimer = null;
+        function handleLocalitySearch(val) {
+            clearTimeout(searchDebounceTimer);
+            const clearBtn = document.getElementById('clearSearchBtn');
+            const box = document.getElementById('searchSuggestionsBox');
+
+            if (!val || val.trim().length < 2) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                clearBtn.classList.add('hidden');
+                return;
+            }
+            clearBtn.classList.remove('hidden');
+
+            searchDebounceTimer = setTimeout(async () => {
+                try {
+                    // Gurugram targeted search bounding box
+                    const q = encodeURIComponent(val.trim() + " Gurugram");
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${q}&addressdetails=1&limit=5&countrycodes=in`);
+                    const results = await res.json();
+
+                    if (results && results.length > 0) {
+                        box.innerHTML = results.map(r => {
+                            const f = formatCleanAddress(r) || { title: r.name, full: r.display_name };
+                            return `
+            <div class="p-3 hover:bg-emerald-50/60 cursor-pointer transition flex items-start gap-2.5 text-left"
+                onclick="selectSearchResult('${f.title.replace(/'/g, "\\'")}', '${f.full.replace(/'/g, "\\'")}')">
+                <i class="bi bi-geo-alt-fill text-emerald-600 mt-0.5 text-xs"></i>
+                <div>
+                <p class="text-xs font-bold text-slate-800">${f.title}</p>
+                <p class="text-[10px] text-slate-500 line-clamp-1">${f.full}</p>
+                </div>
+            </div>
+            `;
+                        }).join('');
+                        box.classList.remove('hidden');
+                    } else {
+                        box.innerHTML = `<div class="p-3 text-center text-xs text-slate-400">No matching places found</div>`;
+                        box.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error("Search failed:", e);
+                }
+            }, 350);
+        }
+
+        function selectSearchResult(title, full) {
+            setActiveDeliveryLocation(title, full, 'Search');
+            clearLocalitySearch();
+            closeLocationModal();
+        }
+
+        function clearLocalitySearch() {
+            const inp = document.getElementById('localitySearchInput');
+            if (inp) inp.value = '';
+            document.getElementById('searchSuggestionsBox').classList.add('hidden');
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+        }
+
+        // 2. LocalStorage Helpers for Saved Addresses
+        function getStoredAddresses() {
+            try {
+                return JSON.parse(localStorage.getItem('medikart_saved_addresses') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function setStoredAddresses(list) {
+            localStorage.setItem('medikart_saved_addresses', JSON.stringify(list));
+        }
+
+        // 3. Render Saved Addresses with Select, Edit, Delete
+        function renderSavedAddresses() {
+            const container = document.getElementById('savedAddressesContainer');
+            const addresses = getStoredAddresses();
+            const currentActive = localStorage.getItem('medikart_active_addr_full') || '';
+
+            if (addresses.length === 0) {
+                container.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-2 italic">No saved addresses yet. Add one below!</p>`;
+                return;
+            }
+
+            container.innerHTML = addresses.map((addr) => {
+                const isSelected = (addr.fullAddress === currentActive);
+                const iconClass = addr.tag === 'Home' ? 'bi-house-door-fill' : (addr.tag === 'Work' ? 'bi-briefcase-fill' : 'bi-geo-alt-fill');
+
+                return `
+        <div class="flex items-start justify-between p-3 rounded-2xl border ${isSelected ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-white hover:border-slate-300'} transition cursor-pointer"
+            onclick="selectSavedAddress('${addr.id}')">
+        <div class="flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-lg ${isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'} flex items-center justify-center shrink-0 mt-0.5">
+            <i class="bi ${iconClass} text-xs"></i>
+            </div>
+            <div>
+            <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-slate-800">${addr.tag}</span>
+                ${isSelected ? '<span class="bg-emerald-200 text-emerald-900 text-[9px] font-black px-1.5 rounded">Active</span>' : ''}
+            </div>
+            <p class="text-[11px] font-semibold text-slate-700 leading-tight mt-0.5">${addr.flat}</p>
+            <p class="text-[10px] text-slate-400 line-clamp-1">${addr.area}</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0 ml-2" onclick="event.stopPropagation();">
+            <button onclick="editSavedAddress('${addr.id}')" title="Edit Address" class="w-6 h-6 rounded-md hover:bg-slate-100 text-slate-500 flex items-center justify-center">
+            <i class="bi bi-pencil-square text-xs"></i>
+            </button>
+            <button onclick="deleteSavedAddress('${addr.id}')" title="Delete Address" class="w-6 h-6 rounded-md hover:bg-red-50 text-red-500 flex items-center justify-center">
+        <i class="bi bi-trash3 text-xs"></i>
+            </button>
+        </div>
+        </div>
+    `;
+            }).join('');
+        }
+
+        // 4. Address Selection & Header Update
+        function setActiveDeliveryLocation(title, fullDetail, type) {
+            const display = document.getElementById('activeLocationDisplay');
+            if (display) display.innerText = title;
+
+            localStorage.setItem('medikart_active_addr_title', title);
+            localStorage.setItem('medikart_active_addr_full', fullDetail);
+            localStorage.setItem('medikart_active_addr_type', type);
+
+            // Live GPS ya naya address select hote hi Cart textarea ko TURANT force-update karein
+            const addrField = document.getElementById('custAddress');
+            if (addrField) {
+                addrField.value = fullDetail;
+            }
+        }
+
+        function selectSavedAddress(id) {
+            const addresses = getStoredAddresses();
+            const addr = addresses.find(a => a.id === id);
+            if (addr) {
+                setActiveDeliveryLocation(`${addr.tag}: ${addr.flat}`, `${addr.flat}, ${addr.area}`, addr.tag);
+                closeLocationModal();
+            }
+        }
+
+        // 5. Add / Edit / Delete Address Operations
+        function selectTag(tag) {
+            selectedTagValue = tag;
+            document.getElementById('addressTag').value = tag;
+            document.querySelectorAll('.tag-btn').forEach(btn => {
+                if (btn.dataset.tag === tag) {
+                    btn.className = 'tag-btn flex-1 py-1 text-xs font-bold rounded-lg border border-emerald-600 bg-emerald-600 text-white shadow-sm';
+                } else {
+                    btn.className = 'tag-btn flex-1 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-600';
+                }
+            });
+        }
+
+        function toggleManualAddressForm() {
+            const form = document.getElementById('addressForm');
+            const btn = document.getElementById('btnToggleManualForm');
+            form.classList.toggle('hidden');
+            btn.classList.toggle('hidden');
+        }
+
+        function cancelManualAddress() {
+            document.getElementById('addressForm').reset();
+            document.getElementById('editAddressId').value = '';
+            document.getElementById('addressForm').classList.add('hidden');
+            document.getElementById('btnToggleManualForm').classList.remove('hidden');
+            selectTag('Home');
+        }
+
+        function saveCustomAddress(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editAddressId').value;
+            const tag = document.getElementById('addressTag').value || 'Home';
+            const flat = document.getElementById('inputFlat').value.trim();
+            const area = document.getElementById('inputArea').value.trim();
+
+            if (!flat || !area) return;
+
+            let addresses = getStoredAddresses();
+            const full = `${flat}, ${area}`;
+
+            if (editId) {
+                addresses = addresses.map(a => a.id === editId ? { id: editId, tag, flat, area, fullAddress: full } : a);
+            } else {
+                const newAddr = {
+                    id: 'addr_' + Date.now(),
+                    tag,
+                    flat,
+                    area,
+                    fullAddress: full
+                };
+                addresses.push(newAddr);
+            }
+
+            setStoredAddresses(addresses);
+            setActiveDeliveryLocation(`${tag}: ${flat}`, full, tag);
+            cancelManualAddress();
+            renderSavedAddresses();
+            closeLocationModal();
+        }
+
+        function editSavedAddress(id) {
+            const addresses = getStoredAddresses();
+            const addr = addresses.find(a => a.id === id);
+            if (!addr) return;
+
+            document.getElementById('editAddressId').value = addr.id;
+            document.getElementById('inputFlat').value = addr.flat;
+            document.getElementById('inputArea').value = addr.area;
+            selectTag(addr.tag);
+
+            document.getElementById('addressForm').classList.remove('hidden');
+            document.getElementById('btnToggleManualForm').classList.add('hidden');
+        }
+
+        function deleteSavedAddress(id) {
+            if (!confirm("Are you sure you want to delete this address?")) return;
+            let addresses = getStoredAddresses().filter(a => a.id !== id);
+            setStoredAddresses(addresses);
+            renderSavedAddresses();
+        }
+
+        // 6. Init on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedTitle = localStorage.getItem('medikart_active_addr_title');
+            if (storedTitle) {
+                const display = document.getElementById('activeLocationDisplay');
+                if (display) display.innerText = storedTitle;
+            } else {
+                // Exact Store Neighborhood Default
+                setActiveDeliveryLocation("Gurugram - 122001", "Default");
+            }
+            selectTag('Home');
+        });
+
+        let currentPdpItem = null;
+
+        async function openProductDetail(masterId) {
+            const modal = document.getElementById('productDetailModal');
+            modal.classList.remove('hidden');
+
+            // Reset fields to skeleton / loading state
+            document.getElementById('pdpTitle').innerText = "Loading Medicine Details...";
+            document.getElementById('pdpComposition').innerText = "Fetching clinical composition...";
+            document.getElementById('pdpUses').innerText = "Retrieving pharmacological indications...";
+            document.getElementById('pdpSideEffects').innerText = "Analyzing safety profile...";
+
+            try {
+                const res = await fetch(`/medikart/api/product-details/${masterId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    alert("Failed to load details");
+                    closeProductDetailModal();
+                    return;
+                }
+
+                const p = data.product;
+                const c = data.clinical || {};
+                currentPdpItem = p;
+
+                // Dynamic Header Category & Rx Priority Badge
+                document.getElementById('pdpCategory').innerText = p.category || 'General Health';
+                const rxBadge = document.getElementById('pdpRxBadge');
+
+                if (p.requires_rx && p.is_strictly_rx) {
+                    rxBadge.className = "text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs";
+                    rxBadge.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Rx Mandatory ⚠️`;
+                    rxBadge.classList.remove('hidden');
+                } else if (p.requires_rx) {
+                    rxBadge.className = "text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full flex items-center gap-1";
+                    rxBadge.innerHTML = `<i class="bi bi-file-earmark-medical-fill"></i> Rx Required`;
+                    rxBadge.classList.remove('hidden');
+                } else {
+                    rxBadge.classList.add('hidden');
+                }
+
+                // Title, Brand, Dosage
+                document.getElementById('pdpTitle').innerText = p.name;
+                document.getElementById('pdpBrand').innerText = p.brand || 'Verified Manufacturer';
+                document.getElementById('pdpDosage').innerText = p.dosage_form || 'Standard Formulation';
+
+                // Pure MRP Display (No Selling Price / No Fake Discounts)
+                const pureMrp = parseFloat(p.mrp || p.selling_price || 0);
+                document.getElementById('pdpPrice').innerText = `₹${pureMrp.toFixed(2)}`;
+                document.getElementById('pdpBottomPrice').innerText = `₹${pureMrp.toFixed(2)}`;
+
+                // Hide crossed MRP and discount badge completely
+                const pdpMrpEl = document.getElementById('pdpMrp');
+                if (pdpMrpEl) pdpMrpEl.classList.add('hidden');
+                const discountEl = document.getElementById('pdpDiscount');
+                if (discountEl) discountEl.classList.add('hidden');
+
+                // Image
+                const imgEl = document.getElementById('pdpImage');
+                const capEl = document.getElementById('pdpCapsule');
+                if (p.image_url && p.image_url.trim()) {
+                    imgEl.src = p.image_url;
+                    imgEl.classList.remove('hidden');
+                    capEl.classList.add('hidden');
+                } else {
+                    imgEl.classList.add('hidden');
+                    capEl.classList.remove('hidden');
+                }
+
+                // Clinical Sections (from Cache or Gemini AI)
+                document.getElementById('pdpComposition').innerText = c.composition || 'Active Pharmaceutical Ingredient';
+                document.getElementById('pdpUses').innerText = c.uses || 'Used for targeted therapeutic indication.';
+                document.getElementById('pdpSideEffects').innerText = c.side_effects || 'No significant adverse reactions reported.';
+                document.getElementById('pdpSafety').innerText = c.safety_advice || 'Follow dosage directed by practitioner.';
+                document.getElementById('pdpStorage').innerText = c.storage || 'Store in a cool dry place away from heat.';
+
+                // Bottom Action Stepper Sync with existing Cart
+                renderPdpButton(p.id, p.name, price, p.is_strictly_rx);
+
+            } catch (err) {
+                console.error("PDP Error:", err);
+            }
+        }
+
+        function closeProductDetailModal() {
+            document.getElementById('productDetailModal').classList.add('hidden');
+        }
+
+        function renderPdpButton(id, name, price, isStrict) {
+            const slot = document.getElementById('pdpActionBtnSlot');
+            const qty = (cart[id] && cart[id].qty) ? cart[id].qty : 0;
+
+            if (qty > 0) {
+                slot.innerHTML = `
+        <div class="flex items-center justify-between bg-emerald-700 text-white rounded-xl px-3 py-2 font-black shadow-md">
+        <button onclick="changeQtyFromPdp('${id}', -1)" class="w-6 h-6 flex items-center justify-center hover:bg-emerald-800 rounded text-base">-</button>
+        <span class="text-sm font-bold">${qty} in Cart</span>
+        <button onclick="changeQtyFromPdp('${id}', 1)" class="w-6 h-6 flex items-center justify-center hover:bg-emerald-800 rounded text-base">+</button>
+        </div>
+    `;
+            } else {
+                slot.innerHTML = `
+        <button onclick="addToCartFromPdp('${id}', '${name.replace(/'/g, "\\'")}', ${price}, ${isStrict})"
+                class="w-full bg-[#0c831f] hover:bg-[#0a6e1a] text-white py-2.5 rounded-xl font-black text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-2">
+        <i class="bi bi-cart-plus-fill"></i> Add to Cart
+        </button>
+    `;
+            }
+        }
+
+        function addToCartFromPdp(id, name, price, isStrict) {
+            addToCartFromCard(id);
+            renderPdpButton(id, name, price, isStrict);
+        }
+
+        function changeQtyFromPdp(id, delta) {
+            changeQty(id, delta);
+            if (currentPdpItem) {
+                renderPdpButton(currentPdpItem.id, currentPdpItem.name, parseFloat(currentPdpItem.mrp || 0), currentPdpItem.is_strictly_rx);
+            }
+        }
+
+        function openImageLightbox() {
+            const pdpImg = document.getElementById('pdpImage');
+            if (!pdpImg || !pdpImg.src || pdpImg.classList.contains('hidden')) return;
+
+            const lightbox = document.getElementById('imageLightboxModal');
+            const targetImg = document.getElementById('lightboxImg');
+            const title = document.getElementById('lightboxTitle');
+
+            targetImg.src = pdpImg.src;
+            if (currentPdpItem) {
+                title.innerText = currentPdpItem.name;
+            }
+
+            lightbox.classList.remove('hidden');
+        }
+
+        function closeImageLightbox() {
+            const lightbox = document.getElementById('imageLightboxModal');
+            if (lightbox) lightbox.classList.add('hidden');
+        }
+
+        // ================= CUSTOMER AUTH CONTROLLER =================
+        let currentCustomer = null;
+        let pendingOrderAction = false; // Flag to auto-resume checkout after login
+
+        // Check login status on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            checkCustomerSession();
+        });
+
+        async function checkCustomerSession() {
+            try {
+                const res = await fetch('/medikart/auth/me');
+                const data = await res.json();
+                if (data.logged_in && data.customer) {
+                    setCustomerState(data.customer);
+                } else {
+                    clearCustomerState();
+                }
+            } catch (e) {
+                console.warn("Auth status check failed", e);
+            }
+        }
+
+        function setCustomerState(cust) {
+            currentCustomer = cust;
+            document.getElementById('navLoginBtn').classList.add('hidden');
+            document.getElementById('navUserDropdown').classList.remove('hidden');
+            document.getElementById('navUserName').innerText = cust.name ? cust.name.split(' ')[0] : (cust.phone || 'Account');
+            document.getElementById('menuUserIdentifier').innerText = cust.phone || cust.email || cust.name || 'User';
+
+            // Instant sync to checkout inputs
+            const custNameInput = document.getElementById('custName');
+            const custPhoneInput = document.getElementById('custPhone');
+            const custAddrInput = document.getElementById('custAddress');
+
+            if (custNameInput && cust.name) custNameInput.value = cust.name;
+            if (custPhoneInput && cust.phone) custPhoneInput.value = cust.phone;
+            if (custAddrInput && cust.address) {
+                custAddrInput.value = cust.address;
+                custAddrInput.dataset.userOverridden = "true"; // Flag to stop auto-location overwrite
+            }
+        }
+
+        function clearCustomerState() {
+            currentCustomer = null;
+            document.getElementById('navLoginBtn').classList.remove('hidden');
+            document.getElementById('navUserDropdown').classList.add('hidden');
+        }
+
+        function toggleUserMenu() {
+            const m = document.getElementById('userMenuDropdown');
+            m.classList.toggle('hidden');
+        }
+
+        // Close dropdown on outside click
+        document.addEventListener('click', (e) => {
+            const wrap = document.getElementById('navUserDropdown');
+            const menu = document.getElementById('userMenuDropdown');
+            if (wrap && menu && !wrap.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Modal Toggles & Stages
+        function openAuthModal(forCheckout = false) {
+            pendingOrderAction = forCheckout;
+            switchAuthStage('identifier');
+            document.getElementById('medikartAuthModal').classList.remove('hidden');
+            document.getElementById('authIdentifierInput').focus();
+        }
+
+        function closeAuthModal() {
+            document.getElementById('medikartAuthModal').classList.add('hidden');
+            pendingOrderAction = false;
+        }
+
+        function switchAuthStage(stage) {
+            document.getElementById('authStageIdentifier').classList.add('hidden');
+            document.getElementById('authStageOtp').classList.add('hidden');
+            document.getElementById('authStageProfile').classList.add('hidden');
+
+            if (stage === 'identifier') {
+                document.getElementById('authModalTitle').innerText = "Welcome to Medikart";
+                document.getElementById('authModalSubtitle').innerText = "Login or Sign up to manage medicine orders";
+                document.getElementById('authStageIdentifier').classList.remove('hidden');
+            } else if (stage === 'otp') {
+                document.getElementById('authModalTitle').innerText = "Verify OTP";
+                document.getElementById('authModalSubtitle').innerText = "Confirm your identity with the 4-digit code";
+                document.getElementById('authStageOtp').classList.remove('hidden');
+                document.getElementById('authOtpInput').value = '';
+                document.getElementById('authOtpInput').focus();
+            } else if (stage === 'profile') {
+                document.getElementById('authModalTitle').innerText = "Almost Done!";
+                document.getElementById('authModalSubtitle').innerText = "Enter delivery details for fast ordering";
+                document.getElementById('authStageProfile').classList.remove('hidden');
+            }
+        }
+
+        // 1. Send OTP (Email only)
+        async function handleSendOtp(isResend = false) {
+            const emailVal = document.getElementById('authIdentifierInput').value.trim().toLowerCase();
+            if (!emailVal || !emailVal.includes('@')) {
+                alert("Please enter a valid email address");
+                return;
+            }
+
+            const btn = isResend ? document.getElementById('btnResendOtp') : document.getElementById('btnSendOtp');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/medikart/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    document.getElementById('otpSentTarget').innerText = emailVal;
+                    switchAuthStage('otp');
+                } else {
+                    alert(d.message || "Could not send OTP");
+                }
+            } catch (e) {
+                alert("Network error sending OTP");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 2. Verify OTP (Email only)
+        async function handleVerifyOtp() {
+            const emailVal = document.getElementById('authIdentifierInput').value.trim().toLowerCase();
+            const otpVal = document.getElementById('authOtpInput').value.trim();
+
+            if (!otpVal || otpVal.length < 4) {
+                alert("Please enter the 4-digit OTP");
+                return;
+            }
+
+            const btn = document.getElementById('btnVerifyOtp');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/medikart/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal, otp: otpVal })
+                });
+                const d = await res.json();
+
+                if (d.success) {
+                    if (d.is_new_user) {
+                        switchAuthStage('profile');
+                    } else {
+                        setCustomerState(d.customer);
+                        closeAuthModal();
+                        if (pendingOrderAction) {
+                            submitOrderAfterAuth();
+                        }
+                    }
+                } else {
+                    alert(d.message || "Invalid OTP entered");
+                }
+            } catch (e) {
+                alert("Verification failed due to network error");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 3. Save Profile
+        async function handleSaveProfile() {
+            const name = document.getElementById('authNameInput').value.trim();
+            const addr = document.getElementById('authAddressInput').value.trim();
+
+            if (!name || !addr) {
+                alert("Please provide both name and address");
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveProfile');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/medikart/auth/save-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name: name, address: addr })
+                });
+                const d = await res.json();
+
+                if (d.success) {
+                    setCustomerState(d.customer);
+                    closeAuthModal();
+                    if (pendingOrderAction) {
+                        submitOrderAfterAuth();
+                    }
+                } else {
+                    alert(d.message || "Failed to save profile");
+                }
+            } catch (e) {
+                alert("Network error while saving profile");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 4. Logout
+        async function logoutCustomer() {
+            await fetch('/medikart/auth/logout', { method: 'POST' });
+            clearCustomerState();
+            location.reload();
+        }
+
+        // ================= ORDERS DRAWER & LIVE STATUS ENGINE =================
+        let ordersPollInterval = null;
+
+        function openOrdersDrawer() {
+            const menu = document.getElementById('userMenuDropdown');
+            if (menu) menu.classList.add('hidden');
+
+            document.getElementById('medikartOrdersDrawer').classList.remove('hidden');
+            loadCustomerOrders();
+
+            // 6 second polling interval: Chemist Hub par change hote hi live reflect hoga
+            if (!ordersPollInterval) {
+                ordersPollInterval = setInterval(loadCustomerOrders, 6000);
+            }
+        }
+
+        function closeOrdersDrawer() {
+            document.getElementById('medikartOrdersDrawer').classList.add('hidden');
+            if (ordersPollInterval) {
+                clearInterval(ordersPollInterval);
+                ordersPollInterval = null;
+            }
+        }
+
+        async function loadCustomerOrders() {
+            const container = document.getElementById('customerOrdersContainer');
+            try {
+                const res = await fetch('/medikart/api/my-orders');
+                const data = await res.json();
+
+                if (!data.success || !data.orders || data.orders.length === 0) {
+                    container.innerHTML = `
+        <div class="text-center py-16 text-slate-400">
+            <i class="bi bi-bag-x text-4xl text-slate-300 mb-2 block"></i>
+            <p class="text-sm font-bold text-slate-600">No orders placed yet</p>
+            <p class="text-xs text-slate-400 mt-0.5">Your live and past orders will show up here.</p>
+        </div>`;
+                    return;
+                }
+
+                container.innerHTML = data.orders.map(order => renderOrderCard(order)).join('');
+            } catch (err) {
+                container.innerHTML = `
+        <div class="text-center py-8 text-rose-500 text-xs font-semibold">
+        Failed to load orders. Please click refresh.
+        </div>`;
+            }
+        }
+
+        function renderOrderCard(order) {
+            const status = (order.order_status || 'PENDING').toUpperCase();
+
+            // Status mapping matching Chemist Hub progression
+            // Stage 1: PENDING (Order Received)
+            // Stage 2: ACCEPTED (Chemist Confirmed)
+            // Stage 3: PACKED (Order Packed)
+            // Stage 4: DISPATCHED (Out for Delivery)
+
+            let step = 1;
+            let statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">Order Placed</span>`;
+            let etaText = "Store confirming in a while...";
+
+            if (status === 'ACCEPTED') {
+                step = 2;
+                statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">Packing Order</span>`;
+                etaText = "Pharmacist packing medicines";
+            } else if (status === 'PACKED') {
+                step = 3;
+                statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800">Packed & Ready</span>`;
+                etaText = "Ready for delivery rider pickup";
+            } else if (status === 'DISPATCHED') {
+                step = 4;
+                statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">Out for Delivery 🚀</span>`;
+                etaText = "Rider on the way to your address";
+            } else if (status === 'DELIVERED') {
+                step = 5;
+                statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800">Delivered & Received ✓</span>`;
+                etaText = "Order delivered successfully!";
+            } else if (status === 'CANCELLED') {
+                step = 0;
+                statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800">Cancelled</span>`;
+                etaText = "Order cancelled";
+            }
+
+            // Items formatting
+            let itemsListHtml = '';
+            try {
+                const rawItems = typeof order.items_json === 'string' ? JSON.parse(order.items_json) : order.items_json;
+                if (Array.isArray(rawItems)) {
+                    itemsListHtml = rawItems.map(it => `
+        <div class="flex justify-between text-xs py-1 border-b border-slate-50 last:border-0">
+            <span class="text-slate-700 font-medium">${it.name} <span class="text-slate-400 font-normal">x${it.qty || 1}</span></span>
+          <span class="text-slate-800 font-bold">₹${((it.price || 0) * (it.qty || 1)).toFixed(2)}</span>
+        </div>
+        `).join('');
+                }
+            } catch (e) { }
+
+            return `
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 transition hover:shadow-md">
+        <!-- Order Header -->
+        <div class="flex items-start justify-between border-b border-slate-100 pb-2.5 mb-3">
+        <div>
+            <span class="text-[10px] font-bold text-slate-400 tracking-wider">ORDER #${order.order_number}</span>
+            <p class="text-[11px] text-slate-500 font-medium mt-0.5">${order.created_at_str || ''}</p>
+        </div>
+        ${statusBadge}
+        </div>
+
+        <!-- Live Tracking Stepper (Blinkit / Zepto style) -->
+        ${step > 0 ? `
+        <div class="my-3 px-1">
+        <div class="flex items-center justify-between relative mb-2">
+            <!-- Track Progress Bar Line -->
+            <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 w-full z-0"></div>
+            <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 transition-all duration-500 z-0" 
+                    style="width: ${step === 1 ? '15%' : step === 2 ? '45%' : step === 3 ? '75%' : '100%'}"></div>
+
+            <!-- Step Dots -->
+            <div class="relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">✓</div>
+            <div class="relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${step >= 2 ? '✓' : '2'}</div>
+            <div class="relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= 3 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${step >= 3 ? '✓' : '3'}</div>
+            <div class="relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step >= 4 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">${step >= 4 ? '✓' : '4'}</div>
+        </div>
+        <div class="flex justify-between text-[9px] font-bold text-slate-500 text-center">
+            <span class="${step >= 1 ? 'text-emerald-700' : ''}">Placed</span>
+            <span class="${step >= 2 ? 'text-emerald-700' : ''}">Accepted</span>
+            <span class="${step >= 3 ? 'text-emerald-700' : ''}">Packed</span>
+            <span class="${step >= 4 ? 'text-emerald-700' : ''}">Out For Delivery</span>
+        </div>
+        <p class="text-[11px] font-bold text-emerald-800 mt-2.5 bg-emerald-50/80 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+            <i class="bi bi-clock-history"></i> ${etaText}
+        </p>
+        </div>` : ''}
+
+        <!-- Order Items Accordion / Summary -->
+        <div class="bg-slate-50/70 rounded-xl p-2.5 my-2.5 border border-slate-100">
+        ${itemsListHtml}
+        </div>
+
+        <!-- Footer Info -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+        <div>
+            <span class="text-[10px] text-slate-400 block font-medium">Delivering To</span>
+            <span class="text-[11px] font-semibold text-slate-700 truncate max-w-[200px] block">${order.delivery_address || ''}</span>
+        </div>
+        <div class="text-right">
+            <span class="text-[10px] text-slate-400 block font-medium">Total Paid</span>
+            <span class="text-sm font-black text-slate-900">₹${parseFloat(order.total_amount || 0).toFixed(2)}</span>
+        </div>
+        </div>
+
+        <!-- Order Received Action Button -->
+        ${status === 'DISPATCHED' ? `
+        <div class="mt-3 pt-2.5 border-t border-slate-100">
+            <button onclick="markOrderReceived(${order.id})" 
+                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>I have received this order</span>
+            </button>
+        </div>
+        ` : ''}
+
+        ${status === 'DELIVERED' ? `
+        <div class="mt-3 text-center py-2 bg-emerald-50 rounded-xl border border-emerald-200/60">
+            <span class="text-[11px] font-bold text-emerald-800 flex items-center justify-center gap-1.5">
+            <i class="bi bi-patch-check-fill text-emerald-600"></i> Delivery Completed & Received
+            </span>
+        </div>
+        ` : ''}
+
+    </div>
+    `;
+        }
+
+        // JDBM UPI ID = gpay-12190173835@okbizaxis
+        // Yash UPI ID = 8700655156@ibl;
+        // FIXED STORE DETAILS (Jai Dada Bhaiya Medicos)
+        const STORE_UPI_ID = "gpay-12190173835@okbizaxis";
+        const STORE_BUSINESS_NAME = "Jai Dada Bhaiya Medicos";
+        // const ACTIVE_STORE_ID = 4;
+
+        function openPaymentModal(totalAmount) {
+
+            document.getElementById('paymentTotalDisplay').innerText = `₹${totalAmount.toFixed(2)}`;
+            document.getElementById('payeeStoreName').innerText = STORE_BUSINESS_NAME;
+            document.getElementById('orderUtrInput').value = '';
+
+            const note = encodeURIComponent("Medikart Order");
+            const payeeName = encodeURIComponent(STORE_BUSINESS_NAME);
+            const upiUri = `upi://pay?pa=${encodeURIComponent(STORE_UPI_ID)}&pn=${payeeName}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${note}`;
+
+            // Dynamic QR
+            const qrImg = document.getElementById('medikartDynamicQr');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUri)}`;
+
+            // Mobile App Intent
+            const intentBtn = document.getElementById('medikartUpiIntentBtn');
+            intentBtn.href = upiUri;
+
+            document.getElementById('medikartPaymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('medikartPaymentModal').classList.add('hidden');
+        }
+
+        // Final UTR Submit to Server (Fixed & Robust Payload)
+        async function handleConfirmPaymentOrder() {
+            const utr = (document.getElementById('orderUtrInput').value || '').trim();
+
+            // 1. Strict 12-digit numeric check
+            if (!utr || utr.length !== 12 || isNaN(utr)) {
+                alert("⚠️ Please enter a valid 12-digit numeric UPI Ref / UTR Number.");
+                return;
+            }
+
+            if (!activeOrderPayload) {
+                alert("Cart session expired. Please reopen cart and click Place Order.");
+                closePaymentModal();
+                return;
+            }
+
+            const btn = document.getElementById('btnConfirmPayment');
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Verifying & Placing Order...';
+
+            try {
+                // Cart items ensure safe array format
+                const rawCartItems = Array.isArray(activeOrderPayload.cart)
+                    ? activeOrderPayload.cart
+                    : Object.values(cart || {});
+
+                const payload = {
+                    store_id: typeof ACTIVE_STORE_ID !== 'undefined' ? ACTIVE_STORE_ID : 4,
+                    name: activeOrderPayload.name,
+                    phone: activeOrderPayload.phone,
+                    address: activeOrderPayload.address,
+                    cart: rawCartItems,
+                    total: Number(activeOrderPayload.total),
+                    prescription_data: activeOrderPayload.prescription_data || null,
+                    utr_number: utr,
+                    payment_method: 'UPI'
+                };
+
+                const res = await fetch('/medikart/api/place-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    closePaymentModal();
+                    if (typeof toggleCartDrawer === 'function') toggleCartDrawer();
+
+                    const orderIdElem = document.getElementById('confirmedOrderId');
+                    if (orderIdElem) orderIdElem.innerText = data.order_number;
+
+                    const successModal = document.getElementById('orderSuccessModal');
+                    if (successModal) successModal.classList.remove('hidden');
+
+                    // Cart clear & storage update
+                    cart = {};
+                    if (typeof updateCartUI === 'function') updateCartUI();
+                    if (typeof saveCartToStorage === 'function') saveCartToStorage();
+                    activeOrderPayload = null;
+                } else {
+                    alert("⚠️ " + (data.message || "Order placement failed."));
+                }
+            } catch (e) {
+                console.error("Order submit exception:", e);
+                alert("Error: " + (e.message || "Could not complete request"));
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function markOrderReceived(orderId) {
+            if (!confirm("Did you receive all items in good condition?")) return;
+
+            try {
+                const res = await fetch('/medikart/api/confirm-received', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadCustomerOrders(); // Drawer turant refresh hoke Delivered state dikhayega
+                } else {
+                    alert(data.message || "Failed to update order");
+                }
+            } catch (e) {
+                alert("Connection error. Please try again.");
+            }
+        }
+    </script>
+</body>
+
+</html>

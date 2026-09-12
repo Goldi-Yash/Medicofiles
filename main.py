@@ -37,6 +37,7 @@ import uuid
 from io import BytesIO
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
+from medikart_routes import medikart_bp
 
 load_dotenv()
 
@@ -81,6 +82,10 @@ def get_ist_time():
     return datetime.now(ist).replace(tzinfo=None)
 
 app = Flask(__name__)
+
+# Register without touching existing routes
+app.register_blueprint(medikart_bp)
+
 # csrf = CSRFProtect(app)
 app.secret_key = os.getenv('app_secret_key')  # Replace with a secure key in production
 
@@ -348,6 +353,28 @@ def inject_subscription_status():
 
 @app.route('/subscription-expired')
 def subscription_expired_page():
+    if current_user.is_authenticated:
+        # DB se fresh data fetch karein
+        db.session.refresh(current_user)
+        owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
+        
+        if owner:
+            db.session.refresh(owner)
+            now_dt = get_ist_time() if 'get_ist_time' in globals() else datetime.utcnow()
+            if hasattr(now_dt, 'tzinfo') and now_dt.tzinfo is not None:
+                now_dt = now_dt.replace(tzinfo=None)
+
+            expiry_val = getattr(owner, 'subscription_end_date', None) or getattr(owner, 'plan_expiry_date', None)
+            if expiry_val:
+                if hasattr(expiry_val, 'tzinfo') and expiry_val.tzinfo is not None:
+                    expiry_val = expiry_val.replace(tzinfo=None)
+
+                # Agar date future ki hai, toh turant unblock karke active karo aur dashboard bhejo
+                if expiry_val >= now_dt:
+                    owner.subscription_status = 'active'
+                    db.session.commit()
+                    return redirect(url_for('dashboard'))
+
     return render_template('subscription_expired.html')
 
 @app.before_request
@@ -378,26 +405,54 @@ def enforce_active_subscription():
         owner = current_user if current_user.role == 'admin' or not getattr(current_user, 'owner_id', None) else User.query.get(current_user.owner_id)
 
         if owner:
+            try:
+                db.session.refresh(owner)
+            except Exception:
+                pass
+            
             # 1. Agar payment pending hai
             if getattr(owner, 'subscription_status', None) == 'pending_payment':
                 target_plan = request.args.get('plan') or getattr(owner, 'plan_type', 'basic')
                 return redirect(url_for('checkout_plan', plan=target_plan))
 
-            # 2. Agar status direct 'expired' set hai
-            is_status_expired = getattr(owner, 'subscription_status', None) == 'expired'
-
-            # 3. Agar plan expiry date nikal chuki hai
-            is_date_expired = False
-            expiry_val = getattr(owner, 'plan_expiry_date', None) or getattr(owner, 'subscription_end_date', None)
+            # === 2-WAY DYNAMIC SUBSCRIPTION TRUTH (Driven by subscription_end_date) ===
+            now_dt = get_ist_time() if 'get_ist_time' in globals() else datetime.utcnow()
+            if hasattr(now_dt, 'tzinfo') and now_dt.tzinfo is not None:
+                now_dt = now_dt.replace(tzinfo=None)
+    
+            expiry_val = getattr(owner, 'subscription_end_date', None) or getattr(owner, 'plan_expiry_date', None)
+    
             if expiry_val:
-                now_dt = get_ist_time() if 'get_ist_time' in globals() else datetime.utcnow()
-                exp_date = expiry_val.date() if isinstance(expiry_val, datetime) else expiry_val
-                curr_date = now_dt.date() if isinstance(now_dt, datetime) else now_dt
-                if exp_date < curr_date:
-                    is_date_expired = True
-
-            # Dono me se koi bhi expired ho toh block karein
-            if is_status_expired or is_date_expired:
+                if hasattr(expiry_val, 'tzinfo') and expiry_val.tzinfo is not None:
+                    expiry_val = expiry_val.replace(tzinfo=None)
+    
+                # CASE 1: Date valid hai (Date abhi future ki hai)
+                if expiry_val >= now_dt:
+                    # Agar database me galti se ya pehle se 'expired' pada tha, toh use turant 'active' karo
+                    if getattr(owner, 'subscription_status', None) != 'active':
+                        try:
+                            owner.subscription_status = 'active'
+                            db.session.commit()
+                        except Exception:
+                            db.session.rollback()
+                    # Access bilkul allow hai, dashboard smooth chalne do
+    
+                # CASE 2: Date nikal chuki hai (Expired)
+                else:
+                    # Database ko turant 'expired' karo
+                    if getattr(owner, 'subscription_status', None) != 'expired':
+                        try:
+                            owner.subscription_status = 'expired'
+                            db.session.commit()
+                        except Exception:
+                            db.session.rollback()
+    
+                    # User ko lock screen par bhej do
+                    if request.is_json or request.path.startswith('/api/'):
+                        return jsonify({'status': 'error', 'message': 'Subscription expired. Please renew.'}), 403
+                    return redirect(url_for('subscription_expired_page'))
+    
+            elif getattr(owner, 'subscription_status', None) == 'expired':
                 if request.is_json or request.path.startswith('/api/'):
                     return jsonify({'status': 'error', 'message': 'Subscription expired. Please renew.'}), 403
                 return redirect(url_for('subscription_expired_page'))
@@ -504,6 +559,7 @@ class StoreSettings(db.Model):
     gstin = db.Column(db.String(50), default="06XXXXX0000X1ZX")
     dl_number = db.Column(db.String(150), default="HR-GUG-XXXXXX")
     footer_note = db.Column(db.String(255), default="Goods once sold will not be taken back without original bill.")
+    upi_id = db.Column(db.String(100), default="8700655156@ibl")
 
     # --- NEW ADDED STORE & FILE FIELDS ---
     logo_path = db.Column(db.String(255), nullable=True)
@@ -998,6 +1054,7 @@ def settings():
         store_config.state = request.form.get('state', '').strip()
         store_config.pincode = request.form.get('pincode', '').strip()
         store_config.off_days = request.form.get('off_days', '').strip()
+        store_config.upi_id = request.form.get('upi_id', '').strip()
     
         # 2. Owner Details
         store_config.owner_name = request.form.get('owner_name', '').strip()
@@ -1402,23 +1459,30 @@ def upload_pdf_bill():
                         item['pack_size'] = '1 ml'
     
             med_k = str(item.get('name', '')).strip().lower()
+            
             if med_k:
-                if not item.get('composition') and med_k in cached_all and cached_all[med_k].get('composition'):
-                    item['composition'] = cached_all[med_k]['composition']
-                elif item.get('composition') and med_k not in cached_all:
-                    cached_all[med_k] = {
-                        'uses': f"{item['name']} is used as therapeutic medication containing {item['composition']}.",
-                        'side_effects': "Common side effects may include mild nausea or dizziness. Take as directed.",
-                        'composition': item['composition']
-                    }
-                    cache_dirty = True
-    
-        if cache_dirty:
-            try:
-                with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(cached_all, f, indent=4, ensure_ascii=False)
-            except Exception:
-                pass
+                # Agar bill me composition khali hai to salt cache se lookup karein
+                if not item.get('composition'):
+                    try:
+                        if os.path.exists('salt_cache.json'):
+                            with open('salt_cache.json', 'r', encoding='utf-8') as sf:
+                                s_data = json.load(sf)
+                                if med_k in s_data:
+                                    item['composition'] = s_data[med_k]
+                    except Exception:
+                        pass
+                # Agar bill se naya composition mila to sirf salt_cache.json me save karein
+                elif item.get('composition'):
+                    try:
+                        s_data = {}
+                        if os.path.exists('salt_cache.json'):
+                            with open('salt_cache.json', 'r', encoding='utf-8') as sf:
+                                s_data = json.load(sf)
+                        s_data[med_k] = item['composition'].strip()
+                        with open('salt_cache.json', 'w', encoding='utf-8') as sf:
+                            json.dump(s_data, sf, indent=2, ensure_ascii=False)
+                    except Exception:
+                        pass
     
         return jsonify({'status': 'success', 'items': items})
 

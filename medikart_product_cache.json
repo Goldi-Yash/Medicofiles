@@ -1,0 +1,51 @@
+{
+  "cetirizine 10mg strip": {
+    "composition": "Cetirizine Hydrochloride (10mg)",
+    "uses": "Cetirizine 10mg is a second-generation antihistamine used to treat symptoms of cold and allergies such as sneezing, runny nose, watery eyes, itchy nose or throat, and hives (urticaria). It works by blocking histamine, a natural substance in the body that triggers allergic reactions, providing prompt relief from allergy-related discomfort.",
+    "side_effects": "Drowsiness, dry mouth, tiredness, headache, dizziness, and mild nausea.",
+    "safety_advice": "May cause sedation; exercise caution while driving or operating machinery. Avoid consuming alcohol as it heightens drowsiness. Consult a physician before use during pregnancy, lactation, or if you have pre-existing kidney impairment.",
+    "storage": "Store below 30°C in a cool, dry place away from direct sunlight and moisture."
+  },
+  "dolo 650mg tablet": {
+    "composition": "Paracetamol (650mg)",
+    "uses": "Dolo 650mg Tablet is an analgesic (pain reliever) and antipyretic (fever reducer) used to manage mild to moderate pain, such as headaches, muscle aches, toothaches, joint pain, and menstrual cramps. It is also effectively used to reduce fever associated with viral infections, colds, and flu by blocking chemical messengers in the brain responsible for pain and fever signals.",
+    "side_effects": "Nausea, vomiting, abdominal pain, allergic skin reactions, and potential liver damage if taken in excess.",
+    "safety_advice": "Avoid alcohol consumption while taking this medication to prevent severe liver damage. Consult a physician before use during pregnancy or lactation. Do not take other paracetamol-containing products concurrently to prevent overdose.",
+    "storage": "Store below 30°C in a dry place away from direct light and moisture. Keep out of reach of children."
+  },
+  "digene acidity relief gel mint (200ml)": {
+    "composition": "Magnesium Hydroxide (185mg) + Dried Aluminium Hydroxide Gel (830mg) + Simethicone (50mg) + Sodium Carboxymethylcellulose (100mg) per 10ml",
+    "uses": "Digene Acidity Relief Gel Mint provides fast and effective relief from acidity, heartburn, gas, bloating, and stomach discomfort. It works by neutralizing excess stomach acid and breaking down trapped gas bubbles in the gut, providing rapid and sustained symptomatic relief from acid reflux and indigestion.",
+    "side_effects": "Mild constipation, diarrhea, chalky taste, or stomach cramps.",
+    "safety_advice": "Shake the bottle well before use. Avoid taking this medication within 2 hours of taking other oral drugs to prevent interference with their absorption. Consult a doctor before use if you have severe kidney problems, or if you are pregnant or breastfeeding.",
+    "storage": "Store below 30°C in a dry place away from direct sunlight. Do not freeze. Keep the bottle tightly closed and out of reach of children."
+  },
+  "pan-d capsule": {
+    "composition": "Pantoprazole (40mg) + Domperidone (30mg SR)",
+    "uses": "Pan-D Capsule is a combination medicine used in the treatment of gastroesophageal reflux disease (GERD), acid reflux, peptic ulcers, and associated heartburn or nausea. Pantoprazole works by reducing the amount of acid produced in the stomach, while Domperidone increases upper gastrointestinal tract motility to allow smoother passage of food and prevent acid regurgitation and vomiting.",
+    "side_effects": "Dry mouth, headache, dizziness, flatulence, diarrhea, stomach pain, and weakness.",
+    "safety_advice": "Take the capsule on an empty stomach, ideally 30 minutes before your morning meal. Avoid consuming alcohol, as it can worsen acid secretion and symptoms. Consult your doctor before using if you are pregnant, breastfeeding, or have pre-existing heart, liver, or kidney conditions.",
+    "storage": "Store below 30°C in a cool, dry place away from direct sunlight and moisture. Keep out of reach of children."
+  },
+  "allegra-m tablet": {
+    "composition": "Fexofenadine Hydrochloride (120mg) + Montelukast Sodium (10mg)",
+    "uses": "Allegra-M Tablet is primarily prescribed to treat symptoms of allergic rhinitis, such as sneezing, runny nose, itchy or watery eyes, and nasal congestion. It combines Fexofenadine, a non-drowsy second-generation antihistamine that blocks allergic responses, with Montelukast, a leukotriene receptor antagonist that reduces airway inflammation and swelling, providing comprehensive relief from seasonal and year-round allergies.",
+    "side_effects": "Common side effects include headache, drowsiness, dizziness, nausea, dry mouth, and fatigue.",
+    "safety_advice": "Avoid alcohol consumption while taking this medication as it can intensify drowsiness. Consult your doctor if you are pregnant, planning to become pregnant, or breastfeeding. Do not drive or operate heavy machinery if you experience dizziness or sleepiness after taking the tablet.",
+    "storage": "Store below 30°C in a dry place, protected from direct light and moisture. Keep out of reach of children."
+  },
+  "allegra 180mg tablet": {
+    "composition": "Fexofenadine Hydrochloride (180mg)",
+    "uses": "Allegra 180mg Tablet is a non-drowsy antihistamine indicated for the treatment of seasonal allergic rhinitis and chronic idiopathic urticaria (hives). It provides effective relief from allergy symptoms such as sneezing, runny nose, itchy or watery eyes, throat irritation, skin rashes, and hives by blocking natural histamine release in the body.",
+    "side_effects": "Headache, drowsiness, dizziness, nausea, and dry mouth.",
+    "safety_advice": "Avoid taking this medication with fruit juices (such as grapefruit, orange, or apple) as they can significantly reduce its absorption. Consult a doctor before use if you have kidney disease, or if you are pregnant or breastfeeding.",
+    "storage": "Store below 30°C in a dry place, protected from direct sunlight and moisture."
+  },
+  "azithral 500 tablet": {
+    "composition": "Azithromycin (500mg)",
+    "uses": "Azithral 500 Tablet is a macrolide antibiotic used to treat various bacterial infections, including upper and lower respiratory tract infections (such as bronchitis, pneumonia, sinusitis, and tonsillitis), ear and throat infections, skin and soft tissue infections, and certain sexually transmitted infections. It works by inhibiting bacterial protein synthesis, preventing the bacteria from growing and spreading.",
+    "side_effects": "Nausea, diarrhea, abdominal pain, vomiting, headache, dizziness, and flatulence.",
+    "safety_advice": "Take the tablet as directed by your physician and complete the full course even if you feel better. Do not take antacids containing aluminum or magnesium within 2 hours of taking this drug. Exercise caution if you have liver problems, kidney disease, or heart rhythm disorders (QT prolongation). Consult a doctor if you are pregnant or breastfeeding.",
+    "storage": "Store below 30°C in a cool, dry place protected from light and moisture. Keep out of reach of children."
+  }
+}

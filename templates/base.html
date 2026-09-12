@@ -523,6 +523,16 @@
                         {% endif %}
                     </li>
 
+                    <!-- Medikart Hub -->
+                    <li class="nav-item">
+                        <a href="/medicofiles/medikart"
+                            class="nav-link {% if request.path == '/medicofiles/medikart' %}active{% endif %}"
+                            style="border-left: 3px solid #10b981;">
+                            <i class="bi bi-shop text-success"></i>
+                            <span class="nav-text text-white">Medikart Hub</span>
+                        </a>
+                    </li>
+
                     <!-- Bills Vault -->
                     <li class="nav-item">
                         {% if current_user.role == 'admin' or current_user.has_permission('modules', 'bills_vault') %}
@@ -791,7 +801,8 @@
                                         Uses</li>
                                     <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Staff Accounts
                                     </li>
-                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Digital Bills Vault</li>
+                                    <li class="text-grey"><i class="bi bi-x text-danger me-2"></i>No Digital Bills Vault
+                                    </li>
                                 </ul>
                                 <a href="/checkout?plan=basic"
                                     class="btn btn-outline-light rounded-pill py-2 w-100 fw-semibold">Choose Basic</a>
@@ -829,7 +840,8 @@
                                     </li>
                                     <li><i class="bi bi-check2-circle text-primary me-2"></i>DB Backup + Full Restore
                                     </li>
-                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to 20,000 Invoices)</li>
+                                    <li><i class="bi bi-check2-circle text-primary me-2"></i>Digital Bills Vault (Up to
+                                        20,000 Invoices)</li>
                                 </ul>
                                 <a href="/checkout?plan=pro"
                                     class="btn btn-primary rounded-pill py-2 w-100 fw-bold shadow">Upgrade to Pro</a>
@@ -854,7 +866,8 @@
                                     </li>
                                     <li><i class="bi bi-check2 text-success me-2"></i>Automated Cloud Snapshots</li>
                                     <li><i class="bi bi-check2 text-success me-2"></i>Priority VIP On-Call Support</li>
-                                    <li><i class="bi bi-check2 text-success me-2"></i>Unlimited Bills & Invoices Vault</li>
+                                    <li><i class="bi bi-check2 text-success me-2"></i>Unlimited Bills & Invoices Vault
+                                    </li>
                                 </ul>
                                 <a href="/checkout?plan=ultra"
                                     class="btn btn-outline-warning rounded-pill py-2 w-100 fw-semibold">Choose Ultra</a>

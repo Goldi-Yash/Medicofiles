@@ -164,6 +164,26 @@
                                         placeholder="e.g. 08:00 AM - 10:00 PM"
                                         value="{{ config.operating_hours or '' }}">
                                 </div>
+                                <div class="col-md-6">
+                                    <label
+                                        class="form-label fw-semibold small text-muted d-flex justify-between align-items-center">
+                                        <span>Medikart Instant UPI ID (QR Receiving)</span>
+                                        <span
+                                            class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5"
+                                            style="font-size: 0.65rem;">Hyperlocal Pay</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span
+                                            class="input-group-text bg-light border-secondary border-opacity-25 text-primary">
+                                            <i class="bi bi-qr-code"></i>
+                                        </span>
+                                        <input type="text" name="upi_id" class="form-control"
+                                            placeholder="e.g. pharmacy@okaxis or 9876543210@paytm"
+                                            value="{{ config.upi_id or '8700655156@ibl' }}">
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.72rem;">Customer orders on Medikart
+                                        will dynamically route payments directly to this VPA.</small>
+                                </div>
 
                                 <div class="col-md-12">
                                     <label class="form-label fw-semibold small text-muted">Full Address / Street
