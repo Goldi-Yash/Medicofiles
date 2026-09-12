@@ -12,6 +12,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Medikart PWA Configuration -->
+    <link rel="manifest" href="{{ url_for('static', filename='medikart_manifest.json') }}">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Medikart">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/shopping-bag--v1.png">
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ url_for('static', filename='medikart_sw.js') }}")
+                    .then(reg => console.log('Medikart PWA Service Worker Registered', reg))
+                    .catch(err => console.log('Service Worker failed', err));
+            });
+        }
+    </script>
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -163,7 +181,8 @@
             <div class="flex items-center gap-3">
                 <span class="text-2xl">⚡</span>
                 <div>
-                    <h2 class="text-sm font-black text-emerald-950">(First Delivery Fee Free) Delivering fresh from your neighborhood verified
+                    <h2 class="text-sm font-black text-emerald-950">(First Delivery Fee Free) Delivering fresh from your
+                        neighborhood verified
                         chemist</h2>
                     <p class="text-xs text-emerald-700 mt-0.5">Zero counterfeit guarantee • Packed with bill & batch
                         records</p>
