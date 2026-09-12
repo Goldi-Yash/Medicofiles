@@ -377,6 +377,14 @@ def subscription_expired_page():
 
     return render_template('subscription_expired.html')
 
+# === SUBDOMAIN ROUTING FOR MEDIKART ===
+@app.before_request
+def handle_subdomain_routing():
+    host = request.host.lower().split(':')[0]
+    # Agar visitor medikart subdomain se aa raha hai aur homepage par land hua hai
+    if host.startswith('medikart.') and request.path == '/':
+        return redirect('/medikart')
+
 @app.before_request
 def enforce_active_subscription():
     if current_user.is_authenticated:
@@ -409,7 +417,7 @@ def enforce_active_subscription():
                 db.session.refresh(owner)
             except Exception:
                 pass
-            
+
             # 1. Agar payment pending hai
             if getattr(owner, 'subscription_status', None) == 'pending_payment':
                 target_plan = request.args.get('plan') or getattr(owner, 'plan_type', 'basic')
