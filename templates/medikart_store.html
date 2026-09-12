@@ -199,6 +199,11 @@
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
+                    <a href="{{ url_for('static', filename='Medikart.apk') }}" download="Medikart.apk"
+                        class="flex items-center gap-1 bg-[#006e1b] hover:bg-[#005a16] text-white border border-emerald-400/40 px-2 py-1.5 rounded-full text-[10px] font-bold active:scale-95 transition shadow-sm text-decoration-none">
+                        <i class="bi bi-android2 text-green-300 text-xs"></i>
+                        <!-- <span>App</span> -->
+                    </a>
                     <button onclick="openAuthModal()"
                         class="w-8 h-8 rounded-full bg-[#006e1b] flex items-center justify-center text-white border border-emerald-400/30">
                         <i class="bi bi-person-fill text-sm"></i>
