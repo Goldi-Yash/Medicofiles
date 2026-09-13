@@ -16,6 +16,7 @@ import random
 import resend
 import re
 import requests
+import pytz
 
 medikart_bp = Blueprint('medikart_bp', __name__)
 
@@ -375,6 +376,14 @@ def public_medikart_store():
 # Updated Order Placement Route (Saves URL in Postgres instead of heavy base64)
 @medikart_bp.route('/medikart/api/place-order', methods=['POST'])
 def place_order():
+    IST = pytz.timezone('Asia/Kolkata')
+    current_hour = datetime.now(IST).hour
+    if not (9 <= current_hour < 21):
+        return jsonify({
+            'success': False, 
+            'message': 'Store is currently closed! Medikart operating hours are 9:00 AM to 9:00 PM.'
+        }), 400
+    
     data = request.json or {}
     customer_name = data.get('name')
     customer_phone = data.get('phone')
