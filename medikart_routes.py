@@ -1424,3 +1424,49 @@ def reverse_geocode_coords():
             return jsonify({'success': False, 'message': 'Unable to resolve address from GPS'}), 404
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@medikart_bp.route('/medicofiles/medikart/edit-medicine', methods=['POST'])
+@login_required
+def edit_medicine():
+    master_id = request.form.get('master_id')
+    name = request.form.get('name', '').strip()
+    brand = request.form.get('brand', '').strip()
+    category = request.form.get('category', 'General Health').strip()
+    dosage_form = request.form.get('dosage_form', 'Tablet').strip()
+    mrp_str = request.form.get('mrp', '0').strip()
+    composition = request.form.get('composition', '').strip()
+    pack_size = request.form.get('pack_size', '1 Unit').strip()
+
+    if not master_id or not name:
+        return jsonify({'success': False, 'message': 'Medicine name and ID are required'}), 400
+
+    try:
+        mrp = float(mrp_str)
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid MRP value'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        # 1. Update Master Catalog MRP
+        cur.execute("""
+            UPDATE medikart_master_catalog 
+            SET name = %s, brand = %s, category = %s, dosage_form = %s, mrp = %s, composition = %s, pack_size = %s
+            WHERE id = %s
+        """, (name, brand, category, dosage_form, mrp, composition, pack_size, master_id))
+        
+        # 2. Also Update Store Inventory Selling Price so they stay synced
+        cur.execute("""
+            UPDATE medikart_store_inventory 
+            SET selling_price = %s, updated_at = NOW()
+            WHERE master_item_id = %s
+        """, (mrp, master_id))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Updated successfully'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
