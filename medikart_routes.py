@@ -373,6 +373,47 @@ def public_medikart_store():
         stores=available_stores
     )
 
+@medikart_bp.route('/medikart/api/validate-address', methods=['POST'])
+def validate_address():
+    data = request.json or {}
+    delivery_address = data.get('address', '').strip()
+    store_id = data.get('store_id', 4)
+    
+    if not delivery_address:
+        return jsonify({'success': False, 'message': 'Address is required'}), 400
+
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Get store location for geofence
+        cur.execute("SELECT address, city, pincode FROM store_settings WHERE user_id = %s OR id = %s LIMIT 1;", (store_id, store_id))
+        store_meta = cur.fetchone()
+        
+        store_full_addr = ""
+        if store_meta:
+            addr = store_meta.get('address') if isinstance(store_meta, dict) else store_meta[0]
+            city = store_meta.get('city') if isinstance(store_meta, dict) else store_meta[1]
+            pin = store_meta.get('pincode') if isinstance(store_meta, dict) else store_meta[2]
+            store_full_addr = f"{addr or ''}, {city or ''} {pin or ''}".strip(", ")
+            
+        if not store_full_addr or len(store_full_addr) < 5:
+            store_full_addr = "Basai village, Sector 99, Gurugram, Haryana 122001"
+
+        is_in_zone, dist_km, zone_msg = get_google_maps_distance_km(
+            origin_address=store_full_addr,
+            destination_address=delivery_address
+        )
+        
+        if not is_in_zone:
+            return jsonify({'success': False, 'message': f"Delivery Blocked: {zone_msg}"}), 400
+            
+        return jsonify({'success': True, 'message': 'Address is serviceable!'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 # Updated Order Placement Route (Saves URL in Postgres instead of heavy base64)
 @medikart_bp.route('/medikart/api/place-order', methods=['POST'])
 def place_order():

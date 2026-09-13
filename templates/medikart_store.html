@@ -1463,19 +1463,61 @@
             }
 
             const total = items.reduce((s, x) => s + (x.price * x.qty), 0);
+            const storeId = typeof ACTIVE_STORE_ID !== 'undefined' ? ACTIVE_STORE_ID : 4;
 
-            // Save temporary state for payment confirmation
-            activeOrderPayload = {
-                name,
-                phone,
-                address,
+            const payload = {
+                store_id: storeId,
+                name: name,
+                phone: phone,
+                address: address,
                 cart: items,
-                prescription_data: rxBase64,
-                total: total
+                total: total,
+                prescription_data: rxBase64
             };
 
-            // Open Instant UPI Payment Modal
-            openPaymentModal(total);
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            const originalText = checkoutBtn ? checkoutBtn.innerHTML : '';
+            if (checkoutBtn) {
+                checkoutBtn.disabled = true;
+                checkoutBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Checking Address...';
+            }
+
+            try {
+                // Step A: Pehle sirf address validate karo (Order save nahi hoga!)
+                const res = await fetch('/medikart/api/validate-address', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ address: address, store_id: storeId })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    alert("❌ " + (data.message || "Delivery not available for this location."));
+                    if (checkoutBtn) {
+                        checkoutBtn.disabled = false;
+                        checkoutBtn.innerHTML = originalText;
+                    }
+                    return; // Yahin rok do, payment modal mat kholo!
+                }
+
+                // Step B: Address sahi hai, ab payload save karke Payment Modal kholo
+                activeOrderPayload = payload;
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.innerHTML = originalText;
+                }
+
+                openPaymentModal(total);
+
+            } catch (err) {
+                console.error("Validation error:", err);
+                alert("Connection error while checking address. Please try again.");
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.innerHTML = originalText;
+                }
+            }
         }
 
         // Helper: Login hone ke turant baad automatically order trigger karne ke liye
